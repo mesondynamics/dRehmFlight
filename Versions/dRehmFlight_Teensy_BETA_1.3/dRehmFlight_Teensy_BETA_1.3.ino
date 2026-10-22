@@ -31,10 +31,11 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 //========================================================================================================================//
 
 //Uncomment only one receiver type
-#define USE_PWM_RX
+//#define USE_PWM_RX
 //#define USE_PPM_RX
 //#define USE_SBUS_RX
 //#define USE_DSM_RX
+#define USE_CRSF_RX //TX16S + ExpressLRS on Teensy 4.0 Serial5 (RX=21, TX=20)
 static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to match the number of transmitter channels you have
 
 //Uncomment only one IMU
@@ -64,6 +65,10 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include <Wire.h>     //I2c communication
 #include <SPI.h>      //SPI communication
 #include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
+#include "TricopterConfig.h"
+#if DREHM_ESC_DSHOT_RATE
+  #include "DShotTeensy4.h"
+#endif
 
 #if defined USE_SBUS_RX
   #include "src/SBUS/SBUS.h"   //sBus interface
@@ -71,6 +76,11 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 
 #if defined USE_DSM_RX
   #include "src/DSMRX/DSMRX.h"  
+#endif
+
+#if defined USE_CRSF_RX
+  #include <CRSFforArduino.hpp> //CRSFforArduino 2025.12.11, AGPL-3.0; see THIRD_PARTY_NOTICES.md
+  static_assert(CRSF_TELEMETRY_ENABLED == 0, "Run tools/configure_crsf_realtime.py to disable blocking CRSF telemetry");
 #endif
 
 #if defined USE_MPU6050_I2C
@@ -151,7 +161,7 @@ unsigned long channel_2_fs = 1500; //ail
 unsigned long channel_3_fs = 1500; //elev
 unsigned long channel_4_fs = 1500; //rudd
 unsigned long channel_5_fs = 2000; //gear, greater than 1500 = throttle cut
-unsigned long channel_6_fs = 2000; //aux1
+unsigned long channel_6_fs = 1500; //aux1, centered bench servo on failsafe
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
 float B_madgwick = 0.04;  //Madgwick filter parameter
@@ -168,12 +178,13 @@ float MagScaleY = 1.0;
 float MagScaleZ = 1.0;
 
 //IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-float AccErrorX = 0.0;
-float AccErrorY = 0.0;
-float AccErrorZ = 0.0;
-float GyroErrorX = 0.0;
-float GyroErrorY= 0.0;
-float GyroErrorZ = 0.0;
+// Static installed-level calibration: 2026-10-15, MPU6050; see docs/imu-calibration.json.
+float AccErrorX = 0.04727974f;
+float AccErrorY = -0.02008748f;
+float AccErrorZ = -0.07755037f;
+float GyroErrorX = -3.01755089f;
+float GyroErrorY = 0.67561323f;
+float GyroErrorZ = -0.54787786f;
 
 //Controller parameters (take note of defaults before modifying!): 
 float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
@@ -254,6 +265,8 @@ unsigned long current_time, prev_time;
 unsigned long print_counter, serial_counter;
 unsigned long blink_counter, blink_delay;
 bool blinkAlternate;
+uint32_t loopPeriodUs = 500, maxLoopPeriodUs = 500;
+uint32_t maxLoopWorkUs = 0, loopOverruns = 0;
 
 //Radio communication:
 unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm;
@@ -267,6 +280,40 @@ unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channe
 #endif
 #if defined USE_DSM_RX
   DSM1024 DSM;
+#endif
+#if defined USE_CRSF_RX
+  CRSFforArduino crsfReceiver(&Serial5);
+  uint16_t crsfInputChannelsUs[6] = {0, 0, 0, 0, 0, 0};
+  uint16_t crsfChannelsUs[6] = {1000, 1500, 1500, 1500, 2000, 1500};
+  bool crsfLinkUp = false;
+  bool crsfFailsafe = true;
+  bool crsfChannelsReady = false;
+
+  void onCRSFChannels(serialReceiverLayer::rcChannels_t *channels) {
+    for (uint8_t i = 0; i < 6; i++) {
+      crsfInputChannelsUs[i] = constrain(crsfReceiver.rcToUs(channels->value[i]), 1000, 2000);
+    }
+
+    // TX16S AETR is mapped to this sketch's throttle, roll, pitch, yaw order.
+    crsfChannelsUs[0] = crsfInputChannelsUs[2];
+    crsfChannelsUs[1] = crsfInputChannelsUs[0];
+    crsfChannelsUs[2] = crsfInputChannelsUs[1];
+    crsfChannelsUs[3] = tricopter::yawFromAetrUs(crsfInputChannelsUs[3]);
+    crsfChannelsUs[4] = crsfInputChannelsUs[4];
+    crsfChannelsUs[5] = crsfInputChannelsUs[5];
+    crsfFailsafe = channels->failsafe;
+    if (crsfFailsafe) crsfChannelsReady = false;
+  }
+
+  void onCRSFLinkUp() {
+    crsfLinkUp = true;
+  }
+
+  void onCRSFLinkDown() {
+    crsfLinkUp = false;
+    crsfFailsafe = true;
+    crsfChannelsReady = false;
+  }
 #endif
 
 //IMU:
@@ -299,6 +346,9 @@ float s1_command_scaled, s2_command_scaled, s3_command_scaled, s4_command_scaled
 int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_PWM, s6_command_PWM, s7_command_PWM;
 
 //Flight status
+#if DREHM_ESC_DSHOT_RATE
+DShotTeensy4 dshotOutput;
+#endif
 bool armedFly = false;
 
 //========================================================================================================================//
@@ -317,7 +367,10 @@ void setup() {
   pinMode(m4Pin, OUTPUT);
   pinMode(m5Pin, OUTPUT);
   pinMode(m6Pin, OUTPUT);
-  servo1.attach(servo1Pin, 900, 2100); //Pin, min PWM value, max PWM value
+#if DREHM_ESC_DSHOT_RATE
+  dshotOutput.begin(DREHM_ESC_DSHOT_RATE);
+#endif
+  servo1.attach(servo1Pin, tricopter::servoMinUs, tricopter::servoMaxUs);
   servo2.attach(servo2Pin, 900, 2100);
   servo3.attach(servo3Pin, 900, 2100);
   servo4.attach(servo4Pin, 900, 2100);
@@ -332,6 +385,11 @@ void setup() {
 
   //Initialize radio communication
   radioSetup();
+#if defined USE_CRSF_RX && DREHM_ESC_DSHOT_RATE == 300000
+  // Serial5/LPUART8: leave FIFO room during a 53us DShot300 frame at 420k baud.
+  IMXRT_LPUART8.WATER = (IMXRT_LPUART8.WATER & ~LPUART_WATER_RXWATER(3)) |
+                         LPUART_WATER_RXWATER(1);
+#endif
   
   //Set radio channels to default (safe) values before entering main loop
   channel_1_pwm = channel_1_fs;
@@ -350,7 +408,7 @@ void setup() {
   //calculate_IMU_error(); //Calibration parameters printed to serial monitor. Paste these in the user specified variables section, then comment this out forever.
 
   //Arm servo channels
-  servo1.write(0); //Command servo angle from 0-180 degrees (1000 to 2000 PWM)
+  servo1.write((int)tricopter::servoCenterDeg);
   servo2.write(0); //Set these to 90 for servos if you do not want them to briefly max out on startup
   servo3.write(0); //Keep these at 0 if you are using servo outputs for motors
   servo4.write(0);
@@ -363,7 +421,7 @@ void setup() {
   //calibrateESCs(); //PROPS OFF. Uncomment this to calibrate your ESCs by setting throttle stick to max, powering on, and lowering throttle to zero after the beeps
   //Code will not proceed past here if this function is uncommented!
 
-  //Arm OneShot125 motors
+  //Initialize ESC commands (protocol selected in TricopterConfig.h)
   m1_command_PWM = 125; //Command OneShot125 ESC from 125 to 250us pulse length
   m2_command_PWM = 125;
   m3_command_PWM = 125;
@@ -390,14 +448,16 @@ void loop() {
   //Keep track of what time it is and how much time has elapsed since the last loop
   prev_time = current_time;      
   current_time = micros();      
-  dt = (current_time - prev_time)/1000000.0;
+  loopPeriodUs = prev_time ? (uint32_t)(current_time - prev_time) : 500;
+  if (loopPeriodUs > maxLoopPeriodUs) maxLoopPeriodUs = loopPeriodUs;
+  dt = loopPeriodUs / 1000000.0f;
 
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
   //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
   //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
-  //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
+  //printGyroData(); //Send '?' over USB for one nonblocking snapshot; no periodic output.
   //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
   //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
   //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
@@ -405,6 +465,10 @@ void loop() {
   //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+
+  // Apply fresh radio/failsafe state before making arming and actuator decisions.
+  getCommands();
+  failSafe();
 
   // Get arming status
   armedStatus(); //Check if the throttle cut is off and throttle is low.
@@ -423,13 +487,13 @@ void loop() {
 
   //Actuator mixing and scaling to PWM values
   controlMixer(); //Mixes PID outputs to scaled actuator commands -- custom mixing assignments done here
-  scaleCommands(); //Scales motor commands to 125 to 250 range (oneshot125 protocol) and servo PWM commands to 0 to 180 (for servo library)
+  scaleCommands(); //Internal motor scale 125..250; commandMotors selects the wire protocol. Servo scale 0..180.
 
   //Throttle cut check
   throttleCut(); //Directly sets motor commands to low based on state of ch5
 
   //Command actuators
-  commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
+  commandMotors(); //Send the configured ESC protocol (DShot300 on this airframe).
   servo1.write(s1_command_PWM); //Writes PWM value to servo object
   servo2.write(s2_command_PWM);
   servo3.write(s3_command_PWM);
@@ -438,9 +502,12 @@ void loop() {
   servo6.write(s6_command_PWM);
   servo7.write(s7_command_PWM);
     
-  //Get vehicle commands for next loop iteration
-  getCommands(); //Pulls current available radio commands
-  failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
+  // No periodic USB output. Consume at most one byte per loop; '?' requests a snapshot.
+  if (Serial.available() > 0 && Serial.read() == '?') printGyroData();
+
+  const uint32_t workUs = (uint32_t)(micros() - current_time);
+  if (workUs > maxLoopWorkUs) maxLoopWorkUs = workUs;
+  if (workUs > 500) ++loopOverruns;
 
   //Regulate loop rate
   loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
@@ -471,28 +538,55 @@ void controlMixer() {
    *channel_6_pwm - free auxillary channel, can be used to toggle things with an 'if' statement
    */
    
-  //Quad mixing - EXAMPLE
-  m1_command_scaled = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
-  m2_command_scaled = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
-  m3_command_scaled = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
-  m4_command_scaled = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
+  // Equal 120-degree arms. Top view: M2 front-left, M4 front-right, M3 rear.
+  // Positive roll increases the left motor; positive pitch increases the rear motor.
+  // Yaw is produced by the central servo, not differential motor torque.
+  const tricopter::MotorMix mixed = tricopter::mix(thro_des, roll_PID, pitch_PID);
+  m1_command_scaled = 0;
+  m2_command_scaled = mixed.m2;
+  m3_command_scaled = mixed.m3;
+  m4_command_scaled = mixed.m4;
   m5_command_scaled = 0;
   m6_command_scaled = 0;
 
   //0.5 is centered servo, 0.0 is zero throttle if connecting to ESC for conventional PWM, 1.0 is max throttle
-  s1_command_scaled = 0;
+  s1_command_scaled = tricopter::servoCenterDeg / 180.0f;
   s2_command_scaled = 0;
   s3_command_scaled = 0;
   s4_command_scaled = 0;
   s5_command_scaled = 0;
   s6_command_scaled = 0;
   s7_command_scaled = 0;
+
+#if defined USE_CRSF_RX
+  if (crsfChannelsReady && crsfLinkUp && !crsfFailsafe) {
+    if (channel_5_pwm >= 1500) {
+      // Requested temporary full-range test, only with motors cut.
+      s1_command_scaled = tricopter::benchServoDeg(channel_6_pwm) / 180.0f;
+    } else if (armedFly) {
+      s1_command_scaled = tricopter::armedYawServoDeg(yaw_PID, channel_4_pwm) / 180.0f;
+    }
+  }
+#else
+  if (armedFly) s1_command_scaled = tricopter::armedYawServoDeg(yaw_PID, channel_4_pwm) / 180.0f;
+#endif
  
 }
 
 void armedStatus() {
+#if DREHM_ESC_DSHOT_RATE
+  if (!dshotOutput.ready()) { armedFly = false; return; }
+#endif
   //DESCRIPTION: Check if the throttle cut is off and the throttle input is low to prepare for flight.
-  if ((channel_5_pwm < 1500) && (channel_1_pwm < 1050)) {
+  bool receiverReady = true;
+#if defined USE_CRSF_RX
+  receiverReady = crsfChannelsReady && crsfLinkUp && !crsfFailsafe;
+#endif
+  if (!receiverReady || channel_5_pwm >= 1500) {
+    armedFly = false;
+    return;
+  }
+  if (tricopter::canArm(receiverReady, channel_1_pwm, channel_5_pwm, channel_6_pwm)) {
     armedFly = true;
   }
 }
@@ -553,7 +647,7 @@ void getIMUdata() {
    * the readings. The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
    * the constant errors found in calculate_IMU_error() on startup are subtracted from the accelerometer and gyro readings.
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX=0,MgY=0,MgZ=0;
 
   #if defined USE_MPU6050_I2C
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
@@ -1202,6 +1296,37 @@ void getCommands() {
         channel_5_pwm = values[4];
         channel_6_pwm = values[5];
     }
+
+  #elif defined USE_CRSF_RX
+    crsfReceiver.update();
+
+    // Require a live link, a low throttle, and the project's throttle-cut switch before accepting controls.
+    if (!crsfLinkUp || crsfFailsafe) {
+      crsfChannelsReady = false;
+    } else if (!crsfChannelsReady && crsfChannelsUs[0] < 1060 && crsfChannelsUs[4] > 1500) {
+      crsfChannelsReady = true;
+    }
+
+    if (!crsfChannelsReady) {
+      channel_1_pwm = channel_1_fs;
+      channel_2_pwm = channel_2_fs;
+      channel_3_pwm = channel_3_fs;
+      channel_4_pwm = channel_4_fs;
+      channel_5_pwm = channel_5_fs;
+      channel_6_pwm = channel_6_fs;
+      channel_1_pwm_prev = channel_1_fs;
+      channel_2_pwm_prev = channel_2_fs;
+      channel_3_pwm_prev = channel_3_fs;
+      channel_4_pwm_prev = channel_4_fs;
+      return;
+    }
+
+    channel_1_pwm = crsfChannelsUs[0];
+    channel_2_pwm = crsfChannelsUs[1];
+    channel_3_pwm = crsfChannelsUs[2];
+    channel_4_pwm = crsfChannelsUs[3];
+    channel_5_pwm = crsfChannelsUs[4];
+    channel_6_pwm = crsfChannelsUs[5];
   #endif
   
   //Low-pass the critical commands and update previous values
@@ -1254,63 +1379,49 @@ void failSafe() {
 }
 
 void commandMotors() {
+#if DREHM_ESC_DSHOT_RATE
+  const bool enabled = armedFly && channel_1_pwm > 1040 && dshotOutput.ready();
+  dshotOutput.send(dshot::fromPulseScale(m2_command_PWM, enabled),
+                   dshot::fromPulseScale(m3_command_PWM, enabled),
+                   dshot::fromPulseScale(m4_command_PWM, enabled));
+#else
   //DESCRIPTION: Send pulses to motor pins, oneshot125 protocol
   /*
    * My crude implimentation of OneShot125 protocol which sends 125 - 250us pulses to the ESCs (mXPin). The pulselengths being
    * sent are mX_command_PWM, computed in scaleCommands(). This may be replaced by something more efficient in the future.
    */
-  int wentLow = 0;
-  int pulseStart, timer;
-  int flagM1 = 0;
-  int flagM2 = 0;
-  int flagM3 = 0;
-  int flagM4 = 0;
-  int flagM5 = 0;
-  int flagM6 = 0;
-  
-  //Write all motor pins high
-  digitalWrite(m1Pin, HIGH);
+  uint8_t wentLow = 0;
+  bool flagM2 = false, flagM3 = false, flagM4 = false;
+
+  // Only the three connected airframe outputs are driven. Unused outputs stay low.
+  digitalWrite(m1Pin, LOW);
+  digitalWrite(m5Pin, LOW);
+  digitalWrite(m6Pin, LOW);
   digitalWrite(m2Pin, HIGH);
   digitalWrite(m3Pin, HIGH);
   digitalWrite(m4Pin, HIGH);
-  digitalWrite(m5Pin, HIGH);
-  digitalWrite(m6Pin, HIGH);
-  pulseStart = micros();
+  const uint32_t pulseStart = micros();
 
   //Write each motor pin low as correct pulse length is reached
-  while (wentLow < 6 ) { //Keep going until final (6th) pulse is finished, then done
-    timer = micros();
-    if ((m1_command_PWM <= timer - pulseStart) && (flagM1==0)) {
-      digitalWrite(m1Pin, LOW);
-      wentLow = wentLow + 1;
-      flagM1 = 1;
-    }
-    if ((m2_command_PWM <= timer - pulseStart) && (flagM2==0)) {
+  while (wentLow < 3) {
+    const uint32_t elapsed = (uint32_t)(micros() - pulseStart);
+    if (!flagM2 && elapsed >= (uint32_t)m2_command_PWM) {
       digitalWrite(m2Pin, LOW);
-      wentLow = wentLow + 1;
-      flagM2 = 1;
+      ++wentLow;
+      flagM2 = true;
     }
-    if ((m3_command_PWM <= timer - pulseStart) && (flagM3==0)) {
+    if (!flagM3 && elapsed >= (uint32_t)m3_command_PWM) {
       digitalWrite(m3Pin, LOW);
-      wentLow = wentLow + 1;
-      flagM3 = 1;
+      ++wentLow;
+      flagM3 = true;
     }
-    if ((m4_command_PWM <= timer - pulseStart) && (flagM4==0)) {
+    if (!flagM4 && elapsed >= (uint32_t)m4_command_PWM) {
       digitalWrite(m4Pin, LOW);
-      wentLow = wentLow + 1;
-      flagM4 = 1;
-    } 
-    if ((m5_command_PWM <= timer - pulseStart) && (flagM5==0)) {
-      digitalWrite(m5Pin, LOW);
-      wentLow = wentLow + 1;
-      flagM5 = 1;
-    } 
-    if ((m6_command_PWM <= timer - pulseStart) && (flagM6==0)) {
-      digitalWrite(m6Pin, LOW);
-      wentLow = wentLow + 1;
-      flagM6 = 1;
-    } 
+      ++wentLow;
+      flagM4 = true;
+    }
   }
+#endif
 }
 
 void armMotors() {
@@ -1360,7 +1471,7 @@ void calibrateESCs() {
       s5_command_scaled = thro_des;
       s6_command_scaled = thro_des;
       s7_command_scaled = thro_des;
-      scaleCommands(); //Scales motor commands to 125 to 250 range (oneshot125 protocol) and servo PWM commands to 0 to 180 (for servo library)
+      scaleCommands(); //Internal motor scale 125..250; commandMotors selects the wire protocol. Servo scale 0..180.
     
       //throttleCut(); //Directly sets motor commands to low based on state of ch5
       
@@ -1371,7 +1482,7 @@ void calibrateESCs() {
       servo5.write(s5_command_PWM);
       servo6.write(s6_command_PWM);
       servo7.write(s7_command_PWM);
-      commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
+      commandMotors(); //Send the configured ESC protocol (DShot300 on this airframe).
       
       //printRadioData(); //Radio pwm values (expected: 1000 to 2000)
       
@@ -1455,7 +1566,7 @@ void throttleCut() {
       channel_5_pwm is LOW then throttle cut is OFF and throttle value can change. (ThrottleCut is DEACTIVATED)
       channel_5_pwm is HIGH then throttle cut is ON and throttle value = 120 only. (ThrottleCut is ACTIVATED), (drone is DISARMED)
   */
-  if ((channel_5_pwm > 1500) || (armedFly == false)) {
+  if ((channel_5_pwm >= 1500) || (armedFly == false)) {
     armedFly = false;
     m1_command_PWM = 120;
     m2_command_PWM = 120;
@@ -1603,15 +1714,46 @@ void printDesiredState() {
 }
 
 void printGyroData() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    Serial.print(F("GyroX:"));
-    Serial.print(GyroX);
-    Serial.print(F(" GyroY:"));
-    Serial.print(GyroY);
-    Serial.print(F(" GyroZ:"));
-    Serial.println(GyroZ);
-  }
+  // On-demand bounded USB write, rate limited to 20 Hz. Never wait for a reader.
+  if ((uint32_t)(current_time - print_counter) < 50000) return;
+  print_counter = current_time;
+  if (!Serial || Serial.availableForWrite() < 512) return;
+
+  char line[512];
+  unsigned d2 = 0, d3 = 0, d4 = 0;
+#if DREHM_ESC_DSHOT_RATE
+  d2 = dshotOutput.last[0]; d3 = dshotOutput.last[1]; d4 = dshotOutput.last[2];
+#endif
+  const int servoUs = tricopter::servoMinUs +
+      (tricopter::servoEffectiveMaxUs - tricopter::servoMinUs) * s1_command_PWM / 180;
+#if defined USE_CRSF_RX
+  const int length = snprintf(line, sizeof(line),
+      "CH1:%u CH2:%u CH3:%u CH4:%u CH5:%u CH6:%u LINK:%u FS:%u READY:%u "
+      "ARM:%u FULLTEST:%u YAW_FB:%u S1:%d S1_US:%d M2_US:%d M4_US:%d M3_US:%d "
+      "Roll:%.2f Pitch:%.2f GyroX:%.2f GyroY:%.2f GyroZ:%.2f "
+      "R_PID:%.4f P_PID:%.4f "
+      "PROTO:%u D2:%u D3:%u D4:%u LOOP_US:%lu LOOP_MAX_US:%lu WORK_MAX_US:%lu OVERRUN:%lu\n",
+      (unsigned)crsfInputChannelsUs[0], (unsigned)crsfInputChannelsUs[1],
+      (unsigned)crsfInputChannelsUs[2], (unsigned)crsfInputChannelsUs[3],
+      (unsigned)crsfInputChannelsUs[4], (unsigned)crsfInputChannelsUs[5],
+      (unsigned)crsfLinkUp, (unsigned)crsfFailsafe, (unsigned)crsfChannelsReady,
+      (unsigned)armedFly, (unsigned)tricopter::fullRangeBenchTest,
+      (unsigned)tricopter::yawFeedbackEnabled,
+      s1_command_PWM, servoUs, m2_command_PWM, m4_command_PWM, m3_command_PWM,
+      (double)roll_IMU, (double)pitch_IMU, (double)GyroX, (double)GyroY, (double)GyroZ,
+      (double)roll_PID, (double)pitch_PID,
+      (unsigned)(DREHM_ESC_DSHOT_RATE / 1000), d2, d3, d4,
+      (unsigned long)loopPeriodUs, (unsigned long)maxLoopPeriodUs,
+      (unsigned long)maxLoopWorkUs, (unsigned long)loopOverruns);
+#else
+  const int length = snprintf(line, sizeof(line),
+      "THR:%lu ROLL:%lu PITCH:%lu YAW:%lu CUT:%lu AUX:%lu S1:%d S1_US:%d "
+      "M2_US:%d M4_US:%d M3_US:%d GyroX:%.2f GyroY:%.2f GyroZ:%.2f\n",
+      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm,
+      s1_command_PWM, servoUs, m2_command_PWM, m4_command_PWM, m3_command_PWM,
+      (double)GyroX, (double)GyroY, (double)GyroZ);
+#endif
+  if (length > 0 && length < (int)sizeof(line)) Serial.write((const uint8_t *)line, length);
 }
 
 void printAccelData() {

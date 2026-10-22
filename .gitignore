@@ -1,0 +1,71 @@
+# Operating system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Arduino / Teensy / PlatformIO build output
+.arduino/
+arduino_build_*/
+arduino_cache_*/
+.pio/
+build/
+cmake-build-*/
+*.ino.cpp
+*.ino.elf
+*.ino.hex
+*.ino.map
+*.elf
+*.hex
+*.eep
+*.map
+*.lst
+*.bin
+*.uf2
+
+# C/C++ compiler and test artifacts
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+*.o
+*.obj
+*.a
+*.lib
+*.d
+*.gcda
+*.gcno
+*.gcov
+coverage/
+test-results/
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+
+# Local configuration and logs
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.bak
+*.orig
