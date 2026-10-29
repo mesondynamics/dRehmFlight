@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "id": "drehmflight-yaw-flight",
-  "revision": 3,
+  "revision": 4,
   "name": "dRehmFlight 完整动力学 Yaw 首飞",
   "data": {
     "kind": "application",
@@ -680,7 +680,7 @@
       },
       {
         "id": 32,
-        "name": "加速度原始绝对峰值（2g量程）",
+        "name": "加速度原始绝对峰值（8g量程）",
         "enabled": true,
         "unit": "LSB",
         "precision": 0,

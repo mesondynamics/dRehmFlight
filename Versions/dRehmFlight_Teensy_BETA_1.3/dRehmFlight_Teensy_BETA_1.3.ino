@@ -49,9 +49,9 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #define GYRO_2000DPS //Cyclone: headroom above the configured +/-360 deg/s limit
 
 //Uncomment only one full scale accelerometer range (G's)
-#define ACCEL_2G //Default
+//#define ACCEL_2G
 //#define ACCEL_4G
-//#define ACCEL_8G
+#define ACCEL_8G //Ground test reached the +/-2g raw rail; retain rail rejection.
 //#define ACCEL_16G
 
 
