@@ -72,6 +72,24 @@
     "user_confirmed_channels_and_directions":true,
     "input_waveform_coverage":"Roll movement observed; this stopped log does not independently contain full positive/negative movements of every axis."
   },
+  "four_axis_test": {
+    "recording_id":"18e30a9b4d1951d8-2d",
+    "state":"complete",
+    "user_reported_airborne_seconds_approx":46,
+    "counterweight_g_approx":250,
+    "tether_continuously_taut":true,
+    "actual_test_order":["throttle","yaw left","yaw right","pitch forward","roll right","roll left"],
+    "samples":21115,
+    "raw_sha256":"c772ebef4f7758396d60f025ad2f714942ce6e6a5538bc2f7450752244df1a87",
+    "control_faults":0,
+    "loop_overruns":0,
+    "maximum_work_us":297,
+    "maximum_period_us":500,
+    "parameters_unchanged":true,
+    "free_flight_parameter_fit_performed":false,
+    "report":"reports/yaw-four-axis-20261029.html",
+    "metrics":"reports/yaw-four-axis-20261029.json"
+  },
   "four_axis_test_preparation": {
     "recording_id":"18e30a9b4d1951d8-2d",
     "started_unix_ms":1793288738753,

@@ -44,3 +44,22 @@ Yaw特别比较中杆航向差、回中后的额外转角、角速度响应、PW
 停机录制`18e30a6d1fe25508-29`含6237样本、62个STATE包，目标66.498263–129.358263秒，周期500µs、最大工作281µs、超时及故障0，三电机命令均0，AccZ均值0.999717g。范围内缺50样本、相邻倒序84次，保留原始数据；Agent录制丢帧0、错误null。用户明确回复“通道和方向均正确”；这段波形明显记录了Roll动作，但未覆盖完整Yaw正反大幅拨杆，因此区分用户确认与日志覆盖。
 
 停机下以当前修订号1原子设置ID75=1、ID1=1，应用后revision2，保留ID14=0、ID2=0。正式录制`18e30a9b4d1951d8-2d`已于Unix毫秒1793288738753开始，并在录制内回读完整参数分页；实际参数与此前系留试飞相同。已通知用户按上述四轴顺序测试。此处仅记录准备完成，不提前宣称新版带动力性能。详细证据见[通道修正版下载记录](yaw-ch14-upload-verification.json)。
+
+## 正式测试完成与报告
+
+用户随后确认约46秒在空中，250g配重持续拉紧；实际顺序是油门→Yaw左/右→Pitch前向→Roll右/左，释放后的摆动影响主观反向判断。记录已于2026-10-29 23:49:09.705（Asia/Shanghai）停止并保存。共接收21,115条遥测，其中21,052个独立样本、63条时间及32路值完全相同的重复数据；211个STATE包，原始4,052,198字节。序号范围缺30样本、相邻到达倒序254次，CRC均有效，Agent录制丢帧0。重复发生于带动力区间之后，分析副本去重而原始记录不变。试后71项参数与试前完全一致。
+
+本轮故障及IMU拒绝计数均0，主周期/最大周期500µs、最大工作297µs、超时0。初始中杆370–376秒最大相对航向差20.42°，右转实测峰值−31.82°/s，说明在系留整体稳定基础上精确持向仍待改进；未进行自由飞行参数拟合或增益调整。
+
+已生成[HTML专业分析报告](reports/yaw-four-axis-20261029.html)，先说明模型与控制实现，再分析实测响应；[指标和参数](reports/yaw-four-axis-20261029.json)与报告内嵌内容一致。原始记录保留在RemoteMCU录制库。报告可离线阅读，图表全部内嵌，生成器为`tools/yaw/build_four_axis_report.py`，无需飞控通电。
+
+复现时在独立Python环境安装`tools/yaw/report-requirements.txt`，将本轮RemoteMCU原始记录、CSV、试前/试后参数GET和停止录制元数据作为输入。生成器严格校验本轮录制ID、Build/Profile、参数一致性、原始帧CRC、重复内容及中杆片段；只处理离线文件，不写MCU。示例：
+
+```sh
+python tools/yaw/build_four_axis_report.py \
+  --csv flight.csv --raw flight.rmplog \
+  --parameters before-parameters.json --after-parameters after-parameters.json \
+  --metadata stopped-recording.json --output report.html
+```
+
+HTML包含5组内嵌SVG图、模型/增益说明、实测指标表和完整参数JSON。独立无头Chrome核验图像解码、桌面1440px与手机390px无横向溢出、无脚本错误，并检查首页及Yaw图表截图；没有将生成图表的代码加入飞控。
