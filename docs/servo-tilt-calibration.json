@@ -74,8 +74,10 @@
     "hex_hash_is_remotemcu_aligned_image_hash": false,
     "remotemcu_application_revision": 3,
     "remotemcu_application_updated": true,
-    "hardware_timing_reverified": false
+    "hardware_timing_reverified": true,
+    "hardware_timing_scope": "100 Hz telemetry and read-only parameter synchronization while disarmed; closed-loop load not tested",
+    "upload_record": "yaw-calibration-upload-verification.json"
   },
-  "hardware_applied": false,
-  "hardware_status": "Ready for download; user powered the flight controller off and requested notification before power-on"
+  "hardware_applied": true,
+  "hardware_status": "Downloaded through RemoteMCU; new application identity, all three tilt tables, static mapping and disarmed timing verified; physical angle and closed-loop validation remain pending"
 }
