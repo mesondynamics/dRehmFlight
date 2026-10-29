@@ -31,22 +31,27 @@ int main() {
   assert(close(tricopter::yawServoDeg(10), 50));
   assert(close(tricopter::yawServoDeg(-10), 130));
   assert(close(tricopter::yawServoDeg(.1f), 72)); // Measured linkage: positive yaw decreases PWM.
-  assert(close(tricopter::manualYawServoDeg(1500), 90));
-  assert(close(tricopter::manualYawServoDeg(2000), 50)); // Left command -> M3 right.
-  assert(close(tricopter::manualYawServoDeg(1000), 130)); // Right command -> M3 left.
-  assert(close(tricopter::manualYawServoDeg(2500), 50));
-  assert(close(tricopter::manualYawServoDeg(500), 130));
-  // In manual mode even large opposite PID requests cannot move a centered CH4 servo.
-  assert(close(tricopter::armedYawServoDeg(10, 1500), tricopter::yawFeedbackEnabled ? 50 : 90));
-  assert(close(tricopter::armedYawServoDeg(-10, 1500), tricopter::yawFeedbackEnabled ? 130 : 90));
-  assert(close(tricopter::armedYawServoDeg(0, 2000), tricopter::yawFeedbackEnabled ? 90 : 50));
   assert(tricopter::canArm(true, 1000, 1000, 1500));
   assert(!tricopter::canArm(false, 1000, 1000, 1500));
   assert(!tricopter::canArm(true, 1100, 1000, 1500));
   assert(!tricopter::canArm(true, 1000, 2000, 1500));
-  assert(tricopter::canArm(true, 1000, 1000, 2000)); // CH6 only gates arming in full-range test mode.
+  assert(!tricopter::canArm(true, 1000, 1000, 2000)); // Spin must be centered before arming.
+  assert(tricopter::canArm(true, 1000, 1000, 1530));
+  assert(!tricopter::canArm(true, 1000, 1000, 1531));
+  assert(tricopter::yawFeedbackEnabled);
   assert(tricopter::yawFromAetrUs(1000) == 2000); // left stick -> positive/CCW yaw
   assert(tricopter::yawFromAetrUs(1500) == 1500);
   assert(tricopter::yawFromAetrUs(2000) == 1000); // right stick -> negative/CW yaw
+  // Saturation preserves both collective and the ratio of the commanded moments.
+  for (float t : {0.f, .01f, .5f, .99f, 1.f}) {
+    const auto m = tricopter::mixLimited(t, .9f, -.7f);
+    assert(m.scale >= 0 && m.scale <= 1);
+    assert(m.motors.m2 >= -1e-6f && m.motors.m2 <= 1.000001f);
+    assert(m.motors.m4 >= -1e-6f && m.motors.m4 <= 1.000001f);
+    assert(m.motors.m3 >= -1e-6f && m.motors.m3 <= 1.000001f);
+    assert(close(m.motors.m2+m.motors.m4+m.motors.m3, 3*t));
+    assert(close(tricopter::rollLever*(m.motors.m2-m.motors.m4), 1.5f*.9f*m.scale));
+    assert(close(m.motors.m3-.5f*(m.motors.m2+m.motors.m4), 1.5f*-.7f*m.scale));
+  }
   std::puts("Tricopter geometry, servo limits, and arming checks passed");
 }

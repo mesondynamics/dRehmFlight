@@ -43,10 +43,10 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 //#define USE_MPU9250_SPI
 
 //Uncomment only one full scale gyro range (deg/sec)
-#define GYRO_250DPS //Default
+//#define GYRO_250DPS
 //#define GYRO_500DPS
 //#define GYRO_1000DPS
-//#define GYRO_2000DPS
+#define GYRO_2000DPS //Cyclone: headroom above the configured +/-360 deg/s limit
 
 //Uncomment only one full scale accelerometer range (G's)
 #define ACCEL_2G //Default
@@ -66,6 +66,7 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include <SPI.h>      //SPI communication
 #include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
 #include "TricopterConfig.h"
+#include "CycloneControl.h"
 #if DREHM_ESC_DSHOT_RATE
   #include "DShotTeensy4.h"
 #endif
@@ -161,7 +162,7 @@ unsigned long channel_2_fs = 1500; //ail
 unsigned long channel_3_fs = 1500; //elev
 unsigned long channel_4_fs = 1500; //rudd
 unsigned long channel_5_fs = 2000; //gear, greater than 1500 = throttle cut
-unsigned long channel_6_fs = 1500; //aux1, centered bench servo on failsafe
+unsigned long channel_6_fs = 1500; //aux1, zero spin command on failsafe
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
 float B_madgwick = 0.04;  //Madgwick filter parameter
@@ -188,9 +189,9 @@ float GyroErrorZ = -0.54787786f;
 
 //Controller parameters (take note of defaults before modifying!): 
 float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
-float maxRoll = 30.0;     //Max roll angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode 
-float maxPitch = 30.0;    //Max pitch angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode
-float maxYaw = 160.0;     //Max yaw rate in deg/sec
+float maxRoll = tricopter::normalTiltDeg;     //Max roll angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode
+float maxPitch = tricopter::normalTiltDeg;    //Max pitch angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode
+float maxYaw = tricopter::pilotYawMaxDps;     //Max yaw rate in deg/sec
 
 float Kp_roll_angle = 0.2;    //Roll P-gain - angle mode 
 float Ki_roll_angle = 0.3;    //Roll I-gain - angle mode
@@ -208,9 +209,9 @@ float Kp_pitch_rate = 0.15;   //Pitch P-gain - rate mode
 float Ki_pitch_rate = 0.2;    //Pitch I-gain - rate mode
 float Kd_pitch_rate = 0.0002; //Pitch D-gain - rate mode (be careful when increasing too high, motors will begin to overheat!)
 
-float Kp_yaw = 0.3;           //Yaw P-gain
-float Ki_yaw = 0.05;          //Yaw I-gain
-float Kd_yaw = 0.00015;       //Yaw D-gain (be careful when increasing too high, motors will begin to overheat!)
+float Kp_yaw = tricopter::yawKp;           //Yaw P-gain
+float Ki_yaw = tricopter::yawKi;          //Yaw I-gain
+float Kd_yaw = tricopter::yawKd;       //Yaw D-gain (be careful when increasing too high, motors will begin to overheat!)
 
 
 
@@ -350,6 +351,10 @@ int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_P
 DShotTeensy4 dshotOutput;
 #endif
 bool armedFly = false;
+tricopter::CycloneControl flightControl;
+tricopter::ControlOutput flightOutput{};
+bool imuSampleHealthy = false;
+bool imuFusionHealthy = true;
 
 //========================================================================================================================//
 //                                                      VOID SETUP                                                        //                           
@@ -475,15 +480,14 @@ void loop() {
 
   //Get vehicle state
   getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
-  Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
+  imuFusionHealthy = imuSampleHealthy;
+  if (imuSampleHealthy)
+    Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt);
 
   //Compute desired state
   getDesState(); //Convert raw commands to normalized values based on saturated control limits
   
-  //PID Controller - SELECT ONE:
-  controlANGLE(); //Stabilize on angle setpoint
-  //controlANGLE2(); //Stabilize on angle setpoint using cascaded method. Rate controller must be tuned well first!
-  //controlRATE(); //Stabilize on rate setpoint
+  controlCyclone(); //Reference-frame tilt control and closed-loop heading rate
 
   //Actuator mixing and scaling to PWM values
   controlMixer(); //Mixes PID outputs to scaled actuator commands -- custom mixing assignments done here
@@ -503,7 +507,11 @@ void loop() {
   servo7.write(s7_command_PWM);
     
   // No periodic USB output. Consume at most one byte per loop; '?' requests a snapshot.
-  if (Serial.available() > 0 && Serial.read() == '?') printGyroData();
+  if (Serial.available() > 0) {
+    const int command = Serial.read();
+    if (command == '?') printGyroData();
+    else if (command == 'c') printCycloneData();
+  }
 
   const uint32_t workUs = (uint32_t)(micros() - current_time);
   if (workUs > maxLoopWorkUs) maxLoopWorkUs = workUs;
@@ -521,59 +529,50 @@ void loop() {
 
 
 
+void controlCyclone() {
+  const tricopter::PilotInput pilot = tricopter::pilotInput(
+      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_6_pwm,
+      flightControl.spinning());
+  const tricopter::ControlGains gains{
+    {0.01f*Kp_roll_angle, 0.01f*Ki_roll_angle, 0.01f*Kd_roll_angle},
+    {0.01f*Kp_pitch_angle, 0.01f*Ki_pitch_angle, 0.01f*Kd_pitch_angle},
+    {0.01f*Kp_yaw, 0.01f*Ki_yaw, 0.01f*Kd_yaw}};
+  flightOutput = flightControl.step(pilot, {q0,q1,q2,q3}, {GyroX,GyroY,GyroZ}, dt,
+      armedFly, channel_5_pwm >= 1500, imuSampleHealthy && imuFusionHealthy, gains);
+  if (flightOutput.fault) {
+    armedFly = false;
+#if defined USE_CRSF_RX
+    crsfChannelsReady = false; // Require a fresh low-throttle/SA-cut preparation.
+#endif
+  }
+  roll_PID = flightOutput.roll;
+  pitch_PID = flightOutput.pitch;
+  yaw_PID = flightOutput.yaw;
+  yaw_des = flightOutput.yawTarget;
+}
+
 void controlMixer() {
-  //DESCRIPTION: Mixes scaled commands from PID controller to actuator outputs based on vehicle configuration
-  /*
-   * Takes roll_PID, pitch_PID, and yaw_PID computed from the PID controller and appropriately mixes them for the desired
-   * vehicle configuration. For example on a quadcopter, the left two motors should have +roll_PID while the right two motors
-   * should have -roll_PID. Front two should have -pitch_PID and the back two should have +pitch_PID etc... every motor has
-   * normalized (0 to 1) thro_des command for throttle control. Can also apply direct unstabilized commands from the transmitter with 
-   * roll_passthru, pitch_passthru, and yaw_passthu. mX_command_scaled and sX_command scaled variables are used in scaleCommands() 
-   * in preparation to be sent to the motor ESCs and servos.
-   * 
-   *Relevant variables:
-   *thro_des - direct thottle control
-   *roll_PID, pitch_PID, yaw_PID - stabilized axis variables
-   *roll_passthru, pitch_passthru, yaw_passthru - direct unstabilized command passthrough
-   *channel_6_pwm - free auxillary channel, can be used to toggle things with an 'if' statement
-   */
-   
-  // Equal 120-degree arms. Top view: M2 front-left, M4 front-right, M3 rear.
-  // Positive roll increases the left motor; positive pitch increases the rear motor.
-  // Yaw is produced by the central servo, not differential motor torque.
-  const tricopter::MotorMix mixed = tricopter::mix(thro_des, roll_PID, pitch_PID);
+  // Mixer saturation and integrator feedback are computed together in the controller.
   m1_command_scaled = 0;
-  m2_command_scaled = mixed.m2;
-  m3_command_scaled = mixed.m3;
-  m4_command_scaled = mixed.m4;
+  m2_command_scaled = flightOutput.motors.m2;
+  m3_command_scaled = flightOutput.motors.m3;
+  m4_command_scaled = flightOutput.motors.m4;
   m5_command_scaled = 0;
   m6_command_scaled = 0;
-
-  //0.5 is centered servo, 0.0 is zero throttle if connecting to ESC for conventional PWM, 1.0 is max throttle
   s1_command_scaled = tricopter::servoCenterDeg / 180.0f;
-  s2_command_scaled = 0;
-  s3_command_scaled = 0;
-  s4_command_scaled = 0;
-  s5_command_scaled = 0;
-  s6_command_scaled = 0;
-  s7_command_scaled = 0;
-
+  s2_command_scaled = s3_command_scaled = s4_command_scaled = 0;
+  s5_command_scaled = s6_command_scaled = s7_command_scaled = 0;
+  if (armedFly) s1_command_scaled = flightOutput.servoDeg / 180.0f;
 #if defined USE_CRSF_RX
-  if (crsfChannelsReady && crsfLinkUp && !crsfFailsafe) {
-    if (channel_5_pwm >= 1500) {
-      // Requested temporary full-range test, only with motors cut.
-      s1_command_scaled = tricopter::benchServoDeg(channel_6_pwm) / 180.0f;
-    } else if (armedFly) {
-      s1_command_scaled = tricopter::armedYawServoDeg(yaw_PID, channel_4_pwm) / 180.0f;
-    }
-  }
-#else
-  if (armedFly) s1_command_scaled = tricopter::armedYawServoDeg(yaw_PID, channel_4_pwm) / 180.0f;
+  // Explicit props-off bench configuration only. CH6 is a spin command in flight.
+  if (tricopter::fullRangeBenchTest && !flightControl.faulted() &&
+      crsfChannelsReady && crsfLinkUp && !crsfFailsafe && channel_5_pwm >= 1500)
+    s1_command_scaled = tricopter::benchServoDeg(channel_6_pwm) / 180.0f;
 #endif
- 
 }
 
 void armedStatus() {
+  if (flightControl.faulted() || tricopter::fullRangeBenchTest) { armedFly = false; return; }
 #if DREHM_ESC_DSHOT_RATE
   if (!dshotOutput.ready()) { armedFly = false; return; }
 #endif
@@ -613,6 +612,11 @@ void IMUinit() {
     //do is set the desired fullscale ranges
     mpu6050.setFullScaleGyroRange(GYRO_SCALE);
     mpu6050.setFullScaleAccelRange(ACCEL_SCALE);
+    if (mpu6050.getFullScaleGyroRange() != GYRO_SCALE ||
+        mpu6050.getFullScaleAccelRange() != ACCEL_SCALE) {
+      Serial.println("IMU range configuration failed; motors remain stopped");
+      while (1) {}
+    }
     
   #elif defined USE_MPU9250_SPI
     int status = mpu9250.begin();    
@@ -647,13 +651,20 @@ void getIMUdata() {
    * the readings. The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
    * the constant errors found in calculate_IMU_error() on startup are subtracted from the accelerometer and gyro readings.
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX=0,MgY=0,MgZ=0;
+  int16_t AcX=0,AcY=0,AcZ=0,GyX=0,GyY=0,GyZ=0,MgX=0,MgY=0,MgZ=0;
+  imuSampleHealthy = false;
 
   #if defined USE_MPU6050_I2C
-    mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
+    if (!mpu6050.getMotion6Checked(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ)) return;
   #elif defined USE_MPU9250_SPI
     mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
   #endif
+
+  // Zero frames and sensor rails are unusable; never feed a stale frame to fusion.
+  if ((AcX == 0 && AcY == 0 && AcZ == 0) ||
+      abs((int)AcX) >= 32760 || abs((int)AcY) >= 32760 || abs((int)AcZ) >= 32760 ||
+      abs((int)GyX) >= 32760 || abs((int)GyY) >= 32760 || abs((int)GyZ) >= 32760) return;
+  imuSampleHealthy = true;
 
  //Accelerometer
   AccX = AcX / ACCEL_SCALE_FACTOR; //G's
@@ -914,85 +925,23 @@ void Madgwick(float gx, float gy, float gz, float ax, float ay, float az, float 
 }
 
 void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, float invSampleFreq) {
-  //DESCRIPTION: Attitude estimation through sensor fusion - 6DOF
-  /*
-   * See description of Madgwick() for more information. This is a 6DOF implimentation for when magnetometer data is not
-   * available (for example when using the recommended MPU6050 IMU for the default setup).
-   */
-  float recipNorm;
-  float s0, s1, s2, s3;
-  float qDot1, qDot2, qDot3, qDot4;
-  float _2q0, _2q1, _2q2, _2q3, _4q0, _4q1, _4q2 ,_8q1, _8q2, q0q0, q1q1, q2q2, q3q3;
-
-  //Convert gyroscope degrees/sec to radians/sec
-  gx *= 0.0174533f;
-  gy *= 0.0174533f;
-  gz *= 0.0174533f;
-
-  //Rate of change of quaternion from gyroscope
-  qDot1 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
-  qDot2 = 0.5f * (q0 * gx + q2 * gz - q3 * gy);
-  qDot3 = 0.5f * (q0 * gy - q1 * gz + q3 * gx);
-  qDot4 = 0.5f * (q0 * gz + q1 * gy - q2 * gx);
-
-  //Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-  if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
-    //Normalise accelerometer measurement
-    recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-    ax *= recipNorm;
-    ay *= recipNorm;
-    az *= recipNorm;
-
-    //Auxiliary variables to avoid repeated arithmetic
-    _2q0 = 2.0f * q0;
-    _2q1 = 2.0f * q1;
-    _2q2 = 2.0f * q2;
-    _2q3 = 2.0f * q3;
-    _4q0 = 4.0f * q0;
-    _4q1 = 4.0f * q1;
-    _4q2 = 4.0f * q2;
-    _8q1 = 8.0f * q1;
-    _8q2 = 8.0f * q2;
-    q0q0 = q0 * q0;
-    q1q1 = q1 * q1;
-    q2q2 = q2 * q2;
-    q3q3 = q3 * q3;
-
-    //Gradient decent algorithm corrective step
-    s0 = _4q0 * q2q2 + _2q2 * ax + _4q0 * q1q1 - _2q1 * ay;
-    s1 = _4q1 * q3q3 - _2q3 * ax + 4.0f * q0q0 * q1 - _2q0 * ay - _4q1 + _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * az;
-    s2 = 4.0f * q0q0 * q2 + _2q0 * ax + _4q2 * q3q3 - _2q3 * ay - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * az;
-    s3 = 4.0f * q1q1 * q3 - _2q1 * ax + 4.0f * q2q2 * q3 - _2q2 * ay;
-    recipNorm = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3); //normalise step magnitude
-    s0 *= recipNorm;
-    s1 *= recipNorm;
-    s2 *= recipNorm;
-    s3 *= recipNorm;
-
-    //Apply feedback step
-    qDot1 -= B_madgwick * s0;
-    qDot2 -= B_madgwick * s1;
-    qDot3 -= B_madgwick * s2;
-    qDot4 -= B_madgwick * s3;
+  tricopter::Quaternion q{q0,q1,q2,q3};
+  imuFusionHealthy = tricopter::updateImu(q, {gx,gy,gz}, {ax,ay,az}, invSampleFreq, B_madgwick);
+  if (!imuFusionHealthy) {
+    // Recover a gravity-aligned seed for the stopped fault-recovery interval.
+    const float an = ax*ax+ay*ay+az*az;
+    if (std::isfinite(an) && an > 1e-8f) {
+      const float roll = atan2f(ay,az)*.5f;
+      const float pitch = atan2f(-ax,sqrtf(ay*ay+az*az))*.5f;
+      q = {cosf(roll)*cosf(pitch), sinf(roll)*cosf(pitch),
+           cosf(roll)*sinf(pitch), -sinf(roll)*sinf(pitch)};
+    } else q = {1,0,0,0};
   }
-
-  //Integrate rate of change of quaternion to yield quaternion
-  q0 += qDot1 * invSampleFreq;
-  q1 += qDot2 * invSampleFreq;
-  q2 += qDot3 * invSampleFreq;
-  q3 += qDot4 * invSampleFreq;
-
-  //Normalise quaternion
-  recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-  q0 *= recipNorm;
-  q1 *= recipNorm;
-  q2 *= recipNorm;
-  q3 *= recipNorm;
-
-  //Compute angles
-  roll_IMU = atan2(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2)*57.29577951; //degrees
-  pitch_IMU = -asin(constrain(-2.0f * (q1*q3 - q0*q2),-0.999999,0.999999))*57.29577951; //degrees
-  yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
+  q0=q.w; q1=q.x; q2=q.y; q3=q.z;
+  const tricopter::Rotation r(q);
+  roll_IMU = atan2f(r.by.z,r.bz.z)*tricopter::degrees;
+  pitch_IMU = asinf(tricopter::clamp(r.bx.z,-1,1))*tricopter::degrees;
+  yaw_IMU = r.heading();
 }
 
 void getDesState() {
@@ -1005,9 +954,9 @@ void getDesState() {
    * yaw_passthru variables, to be used in commanding motors/servos with direct unstabilized commands in controlMixer().
    */
   thro_des = (channel_1_pwm - 1000.0)/1000.0; //Between 0 and 1
-  roll_des = (channel_2_pwm - 1500.0)/500.0; //Between -1 and 1
-  pitch_des = (channel_3_pwm - 1500.0)/500.0; //Between -1 and 1
-  yaw_des = (channel_4_pwm - 1500.0)/500.0; //Between -1 and 1
+  roll_des = tricopter::rollDirection*tricopter::centered(channel_2_pwm); //Between -1 and 1
+  pitch_des = tricopter::pitchDirection*tricopter::centered(channel_3_pwm); //Between -1 and 1
+  yaw_des = tricopter::centered(channel_4_pwm); //Between -1 and 1
   roll_passthru = roll_des/2.0; //Between -0.5 and 0.5
   pitch_passthru = pitch_des/2.0; //Between -0.5 and 0.5
   yaw_passthru = yaw_des/2.0; //Between -0.5 and 0.5
@@ -1232,7 +1181,7 @@ void scaleCommands() {
   m6_command_PWM = constrain(m6_command_PWM, 125, 250);
 
   //Scaled to 0-180 for servo library
-  s1_command_PWM = s1_command_scaled*180;
+  s1_command_PWM = tricopter::servoCommandDeg(s1_command_scaled*180.0f, s1_command_PWM);
   s2_command_PWM = s2_command_scaled*180;
   s3_command_PWM = s3_command_scaled*180;
   s4_command_PWM = s4_command_scaled*180;
@@ -1303,7 +1252,8 @@ void getCommands() {
     // Require a live link, a low throttle, and the project's throttle-cut switch before accepting controls.
     if (!crsfLinkUp || crsfFailsafe) {
       crsfChannelsReady = false;
-    } else if (!crsfChannelsReady && crsfChannelsUs[0] < 1060 && crsfChannelsUs[4] > 1500) {
+    } else if (!crsfChannelsReady && crsfChannelsUs[0] < 1050 && crsfChannelsUs[4] >= 1500 &&
+               tricopter::spinCentered(crsfChannelsUs[5]) && !flightControl.faulted()) {
       crsfChannelsReady = true;
     }
 
@@ -1753,6 +1703,27 @@ void printGyroData() {
       s1_command_PWM, servoUs, m2_command_PWM, m4_command_PWM, m3_command_PWM,
       (double)GyroX, (double)GyroY, (double)GyroZ);
 #endif
+  if (length > 0 && length < (int)sizeof(line)) Serial.write((const uint8_t *)line, length);
+}
+
+// Separate bounded snapshot to keep the existing motor-bench diagnostic format stable.
+void printCycloneData() {
+  static uint32_t lastPrint = 0;
+  if ((uint32_t)(current_time-lastPrint) < 50000) return;
+  lastPrint = current_time;
+  if (!Serial || Serial.availableForWrite() < 384) return;
+  char line[384];
+  const int length = snprintf(line, sizeof(line),
+      "MODE:%u IMU_OK:%u CTRL_FAULT:%u HEADING:%.2f REF:%.2f PHASE:%.2f "
+      "YAW_DES:%.2f YAW_RATE:%.2f Y_PID:%.4f MIX_SCALE:%.3f TILT_MAX:%.2f "
+      "Y_FILT:%.2f Y_GAIN:%.3f Y_REQ:%.4f Y_I:%.4f Y_SLEW:%u\n",
+      (unsigned)flightOutput.mode, (unsigned)(imuSampleHealthy && imuFusionHealthy),
+      (unsigned)flightOutput.fault, (double)flightOutput.heading, (double)flightOutput.reference,
+      (double)flightOutput.phase, (double)flightOutput.yawTarget, (double)flightOutput.yawRate,
+      (double)flightOutput.yaw, (double)flightOutput.mixScale, (double)flightOutput.tiltLimit,
+      (double)flightOutput.yawFilteredRate, (double)flightOutput.yawAuthority,
+      (double)flightOutput.yawRequested, (double)flightOutput.yawIntegral,
+      (unsigned)flightOutput.yawSlewLimited);
   if (length > 0 && length < (int)sizeof(line)) Serial.write((const uint8_t *)line, length);
 }
 

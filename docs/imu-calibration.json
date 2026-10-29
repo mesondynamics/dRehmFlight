@@ -1,0 +1,312 @@
+{
+  "recorded_at": "2026-10-15T22:49:05.192023+08:00",
+  "sensor": "MPU6050",
+  "method": "12000 stationary samples, 1 ms delay per sample; level installed frame; +Z up. Gyro mean and single-pose accelerometer offsets; not a six-position scale calibration.",
+  "hardware_state": "User confirmed calibration and flashing preparation with ESC main and servo power disconnected, props removed, current level pose stationary; Teensy USB restored. Calibration-only image produces no actuator PWM.",
+  "axis_order": [
+    "AccX",
+    "AccY",
+    "AccZ",
+    "GyroX",
+    "GyroY",
+    "GyroZ"
+  ],
+  "units": [
+    "g",
+    "g",
+    "g",
+    "deg/s",
+    "deg/s",
+    "deg/s"
+  ],
+  "measurements": {
+    "samples": 12000,
+    "mean": [
+      0.04727974,
+      -0.02008748,
+      0.92244963,
+      -3.01755089,
+      0.67561323,
+      -0.54787786
+    ],
+    "stddev": [
+      0.00341011,
+      0.00344193,
+      0.00416522,
+      0.10028848,
+      0.12823477,
+      0.10811378
+    ],
+    "first_half_mean": [
+      0.04731868,
+      -0.02011296,
+      0.92249882,
+      -3.01823664,
+      0.67562341,
+      -0.55065394
+    ],
+    "last_half_mean": [
+      0.0472408,
+      -0.02006201,
+      0.92240043,
+      -3.01686514,
+      0.67560305,
+      -0.54510178
+    ],
+    "temperature_c": [
+      30.412,
+      30.365
+    ]
+  },
+  "half_window_mean_absolute_difference": [
+    7.788000000000239e-05,
+    5.0949999999997525e-05,
+    9.839000000000375e-05,
+    0.001371499999999859,
+    2.0360000000052558e-05,
+    0.005552160000000028
+  ],
+  "stationarity_thresholds": {
+    "accel_stddev_max_g": 0.015,
+    "gyro_stddev_max_dps": 0.5,
+    "accel_half_difference_max_g": 0.005,
+    "gyro_half_difference_max_dps": 0.2
+  },
+  "stationarity_checks_passed": true,
+  "raw_mean_acceleration_norm_g": 0.9238788884666403,
+  "firmware_offsets": {
+    "AccErrorX": 0.04727974,
+    "AccErrorY": -0.02008748,
+    "AccErrorZ": -0.07755036999999998,
+    "GyroErrorX": -3.01755089,
+    "GyroErrorY": 0.67561323,
+    "GyroErrorZ": -0.54787786
+  },
+  "previous_calibrations": [
+    {
+      "recorded_at": "2026-10-15T16:21:56.231681+08:00",
+      "sensor": "MPU6050",
+      "method": "12000 stationary samples, 1 ms delay per sample; level installed frame; +Z up. Gyro mean and single-pose accelerometer offsets; not a six-position scale calibration.",
+      "hardware_state": "User confirmed ESC battery disconnected, propellers removed, frame level and stationary; Teensy powered by USB.",
+      "axis_order": [
+        "AccX",
+        "AccY",
+        "AccZ",
+        "GyroX",
+        "GyroY",
+        "GyroZ"
+      ],
+      "units": [
+        "g",
+        "g",
+        "g",
+        "deg/s",
+        "deg/s",
+        "deg/s"
+      ],
+      "measurements": {
+        "samples": 12000,
+        "mean": [
+          0.01664817,
+          -0.02369462,
+          0.92159487,
+          -3.03790649,
+          0.69561832,
+          -0.54993639
+        ],
+        "stddev": [
+          0.00339215,
+          0.00315951,
+          0.00405391,
+          0.07956832,
+          0.11926528,
+          0.09342071
+        ],
+        "first_half_mean": [
+          0.01664827,
+          -0.02365902,
+          0.92166695,
+          -3.03781298,
+          0.69461832,
+          -0.55248473
+        ],
+        "last_half_mean": [
+          0.01664807,
+          -0.02373022,
+          0.92152279,
+          -3.038,
+          0.69661832,
+          -0.54738804
+        ],
+        "temperature_c": [
+          29.848,
+          29.706
+        ]
+      },
+      "half_window_mean_absolute_difference": [
+        1.9999999999881224e-07,
+        7.120000000000043e-05,
+        0.00014415999999994877,
+        0.00018701999999981567,
+        0.0020000000000000018,
+        0.005096690000000015
+      ],
+      "stationarity_checks_passed": true,
+      "raw_mean_acceleration_norm_g": 0.9220497280470344,
+      "firmware_offsets": {
+        "AccErrorX": 0.01664817,
+        "AccErrorY": -0.02369462,
+        "AccErrorZ": -0.07840513000000005,
+        "GyroErrorX": -3.03790649,
+        "GyroErrorY": 0.69561832,
+        "GyroErrorZ": -0.54993639
+      },
+      "normal_firmware_verification": {
+        "rows": 201,
+        "stable_rows": 101,
+        "latest": {
+          "CH1": 1500.0,
+          "CH2": 1502.0,
+          "CH3": 1000.0,
+          "CH4": 1503.0,
+          "CH5": 2000.0,
+          "CH6": 1496.0,
+          "LINK": 1.0,
+          "FS": 0.0,
+          "READY": 1.0,
+          "ARM": 0.0,
+          "FULLTEST": 0.0,
+          "S1": 89.0,
+          "S1_US": 1492.0,
+          "M2_US": 120.0,
+          "M4_US": 120.0,
+          "M3_US": 120.0,
+          "Roll": 0.0,
+          "Pitch": 0.06,
+          "GyroX": 0.0,
+          "GyroY": -0.12,
+          "GyroZ": 0.0,
+          "LOOP_US": 500.0,
+          "LOOP_MAX_US": 500.0,
+          "WORK_MAX_US": 325.0,
+          "OVERRUN": 0.0
+        },
+        "stable_stats": {
+          "Roll": {
+            "mean": -0.011782178217821782,
+            "min": -0.1,
+            "max": 0.06
+          },
+          "Pitch": {
+            "mean": 0.0066336633663366335,
+            "min": -0.09,
+            "max": 0.09
+          },
+          "GyroX": {
+            "mean": -0.0033663366336633663,
+            "min": -0.08,
+            "max": 0.06
+          },
+          "GyroY": {
+            "mean": -0.013465346534653465,
+            "min": -0.18,
+            "max": 0.13
+          },
+          "GyroZ": {
+            "mean": 0.004158415841584159,
+            "min": -0.07,
+            "max": 0.07
+          },
+          "LOOP_US": {
+            "mean": 500.0,
+            "min": 500.0,
+            "max": 500.0
+          },
+          "LOOP_MAX_US": {
+            "mean": 500.0,
+            "min": 500.0,
+            "max": 500.0
+          },
+          "WORK_MAX_US": {
+            "mean": 324.2277227722772,
+            "min": 324.0,
+            "max": 325.0
+          },
+          "OVERRUN": {
+            "mean": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "normal_firmware_sha256": "535a26d00698eef23a486eb6a318e2422052dfd07d9b3fb98253c4f3ce8dcd0d"
+    }
+  ],
+  "normal_firmware_verification": {
+    "stable_mean": {
+      "Roll": -0.009655172413793104,
+      "Pitch": 0.0008620689655172415,
+      "GyroX": -0.001896551724137931,
+      "GyroY": -0.001724137931034483,
+      "GyroZ": 0.012758620689655173,
+      "R_PID": 1.7241379310344828e-05,
+      "P_PID": 1.896551724137931e-05
+    },
+    "stable_range": {
+      "Roll": [
+        -0.06,
+        0.06
+      ],
+      "Pitch": [
+        -0.06,
+        0.05
+      ]
+    },
+    "rows": 97,
+    "max": {
+      "LOOP_US": 500.0,
+      "LOOP_MAX_US": 500.0,
+      "WORK_MAX_US": 273.0,
+      "OVERRUN": 0.0
+    },
+    "last": {
+      "CH1": 1500.0,
+      "CH2": 1500.0,
+      "CH3": 1000.0,
+      "CH4": 1503.0,
+      "CH5": 2000.0,
+      "CH6": 1496.0,
+      "LINK": 1.0,
+      "FS": 0.0,
+      "READY": 1.0,
+      "ARM": 0.0,
+      "FULLTEST": 0.0,
+      "YAW_FB": 0.0,
+      "S1": 89.0,
+      "S1_US": 1492.0,
+      "M2_US": 120.0,
+      "M4_US": 120.0,
+      "M3_US": 120.0,
+      "Roll": 0.04,
+      "Pitch": -0.04,
+      "GyroX": -0.02,
+      "GyroY": -0.02,
+      "GyroZ": -0.01,
+      "R_PID": -0.0001,
+      "P_PID": 0.0001,
+      "PROTO": 300.0,
+      "D2": 0.0,
+      "D3": 0.0,
+      "D4": 0.0,
+      "LOOP_US": 500.0,
+      "LOOP_MAX_US": 500.0,
+      "WORK_MAX_US": 273.0,
+      "OVERRUN": 0.0,
+      "elapsed_s": 9.98930166696664
+    },
+    "firmware_hex_sha256": "fb7623dabbea5175c96429c9dcbf278a94487c3c654da07441d4bfc75c02b74b",
+    "build_path": "/tmp/drehmflight-recalibrated-manual-yaw-build",
+    "verification_scope": "Post-flash stationary disarmed verification; manual yaw independence and limits checked by host mixer tests, physical armed servo behavior not rechecked after this flash."
+  },
+  "normal_firmware_sha256": "fb7623dabbea5175c96429c9dcbf278a94487c3c654da07441d4bfc75c02b74b"
+}

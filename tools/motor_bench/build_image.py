@@ -88,6 +88,7 @@ void handleBenchUsb() {
   if (Serial.available() <= 0) return;
   const int command = Serial.read(); // At most one byte per control iteration.
   if (command == '?') printGyroData();
+  else if (command == 'c') printCycloneData();
   else if (command >= '2' && command <= '4')
     benchBeep.request(command - '0', benchBeepSafe(), current_time);
 }
@@ -109,7 +110,11 @@ void commandMotors() {
         if count != 1:
             raise RuntimeError("Cannot locate commandMotors")
         text = replace_once(text,
-                            "  if (Serial.available() > 0 && Serial.read() == '?') printGyroData();",
+                            "  if (Serial.available() > 0) {\n"
+                            "    const int command = Serial.read();\n"
+                            "    if (command == '?') printGyroData();\n"
+                            "    else if (command == 'c') printCycloneData();\n"
+                            "  }",
                             "  handleBenchUsb();")
         text = replace_once(text, "Serial.availableForWrite() < 512", "Serial.availableForWrite() < 640")
         text = replace_once(text, "char line[512];", "char line[640];")

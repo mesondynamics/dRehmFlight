@@ -1,0 +1,144 @@
+{
+  "date": "2026-10-22",
+  "board": "Teensy 4.0",
+  "fqbn": "teensy:avr:teensy40",
+  "upload_port": "usb:120000",
+  "serial_port": "/dev/cu.usbmodem160607901",
+  "profile": "Normal flight DShot300; closed-loop yaw; low-speed Cyclone; no bench cap/timer",
+  "firmware_sha256": "b1328fb71ba2f6899b20aa3a2ce140c79361afccdfe620d1ec35f881b4de43ca",
+  "source_sha256": {
+    "Versions/dRehmFlight_Teensy_BETA_1.3/dRehmFlight_Teensy_BETA_1.3.ino": "594eb41909d5d08241a80ea73da4ba60377438fc61924b758ed3330649149e7b",
+    "Versions/dRehmFlight_Teensy_BETA_1.3/TricopterConfig.h": "80689870f63fff2e7f3b0df681124b5bcf027cf9785c469e9f3804372fb1442d",
+    "Versions/dRehmFlight_Teensy_BETA_1.3/CycloneControl.h": "ad2474dffe0682f9c16a4e5a9352bd73c3ace3403aea3cf8adcbcfc6c7a647ef",
+    "Versions/dRehmFlight_Teensy_BETA_1.3/FlightMath.h": "31bfecff4ced44c106a30b98742d7b4bf6847ff45b2ff56919ab7dfb93666884",
+    "Versions/dRehmFlight_Teensy_BETA_1.3/src/MPU6050/MPU6050.cpp": "082bd93c430dceab964581a719ca8e7588ff743568ce1e9617f4f994ab067606",
+    "Versions/dRehmFlight_Teensy_BETA_1.3/src/MPU6050/MPU6050.h": "561525908396fe43bbf8c126e5b2a0617aecd6a5b8f30a6543ab8d5017fc7df8"
+  },
+  "upload_command_exit_code": 0,
+  "observation_seconds": 10,
+  "diagnostic_lines": 175,
+  "main_snapshots": 88,
+  "control_snapshots": 87,
+  "observed_ranges": {
+    "LINK": {
+      "min": 1.0,
+      "max": 1.0,
+      "last": 1.0
+    },
+    "FS": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "READY": {
+      "min": 1.0,
+      "max": 1.0,
+      "last": 1.0
+    },
+    "ARM": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "CH3": {
+      "min": 1000.0,
+      "max": 1000.0,
+      "last": 1000.0
+    },
+    "CH5": {
+      "min": 2000.0,
+      "max": 2000.0,
+      "last": 2000.0
+    },
+    "CH6": {
+      "min": 1503.0,
+      "max": 1503.0,
+      "last": 1503.0
+    },
+    "YAW_FB": {
+      "min": 1.0,
+      "max": 1.0,
+      "last": 1.0
+    },
+    "FULLTEST": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "S1": {
+      "min": 90.0,
+      "max": 90.0,
+      "last": 90.0
+    },
+    "D2": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "D3": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "D4": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "MODE": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "IMU_OK": {
+      "min": 1.0,
+      "max": 1.0,
+      "last": 1.0
+    },
+    "CTRL_FAULT": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    },
+    "Roll": {
+      "min": 4.75,
+      "max": 4.92,
+      "last": 4.78
+    },
+    "Pitch": {
+      "min": 2.3,
+      "max": 2.41,
+      "last": 2.32
+    },
+    "GyroZ": {
+      "min": -0.37,
+      "max": 0.13,
+      "last": 0.04
+    },
+    "LOOP_US": {
+      "min": 500.0,
+      "max": 500.0,
+      "last": 500.0
+    },
+    "LOOP_MAX_US": {
+      "min": 500.0,
+      "max": 500.0,
+      "last": 500.0
+    },
+    "WORK_MAX_US": {
+      "min": 273.0,
+      "max": 308.0,
+      "last": 308.0
+    },
+    "OVERRUN": {
+      "min": 0.0,
+      "max": 0.0,
+      "last": 0.0
+    }
+  },
+  "limitations": [
+    "Observed while disarmed with SA cut and low throttle; no arming, motor actuation or flight test performed.",
+    "Reported DShot values are software commands, not measured motor speed.",
+    "Timing is for disarmed operation with diagnostic queries, not active flight control."
+  ]
+}
