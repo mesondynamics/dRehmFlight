@@ -3,6 +3,11 @@
 // Proven on the connected RuiBet 65A: 300000 = DShot300, 600000 = DShot600,
 // 0 = legacy OneShot125. Digital output is restricted to Teensy 4.0 pins 1/2/3.
 #define DREHM_ESC_DSHOT_RATE 300000
+// USB CDC speaks RemoteMCU RMP by default. Legacy capped motor-bench images
+// explicitly select 0 and keep their existing text command interface.
+#ifndef DREHM_REMOTE_MCU
+#define DREHM_REMOTE_MCU 1
+#endif
 static_assert(DREHM_ESC_DSHOT_RATE == 0 || DREHM_ESC_DSHOT_RATE == 300000 ||
               DREHM_ESC_DSHOT_RATE == 600000, "Unsupported ESC protocol");
 
@@ -41,7 +46,8 @@ constexpr float yawServoLimitDeg = 40.0f; // PWMServo units: +/-60 deg at a line
 constexpr bool yawFeedbackEnabled = true;
 
 // Explicit props-off servo test: CH6 scans the full range with SA cut.
-// This configuration inhibits all arming; normal flight holds neutral when cut.
+// This configuration inhibits all arming. Normal cut-state calibration uses
+// the already configured 50..130 logical range, without enabling full travel.
 constexpr bool fullRangeBenchTest = false;
 
 inline float clamp(float value, float low, float high) {
@@ -51,6 +57,31 @@ inline float clamp(float value, float low, float high) {
 inline float benchServoDeg(float ch6Us) {
   const float input = clamp((ch6Us - 1500.0f) / 500.0f, -1.0f, 1.0f);
   return servoCenterDeg + input * (fullRangeBenchTest ? 90.0f : yawServoLimitDeg);
+}
+
+// Calibration requires an explicit SA cut, not merely a failed arm request.
+// The receiver's normal low-throttle/centered-CH6 preparation still applies.
+inline bool benchServoActive(bool receiverReady, bool armed, unsigned cutUs, bool fault) {
+  return receiverReady && !armed && cutUs >= 1500 && !fault;
+}
+
+// PWMServo endpoint quantization; estimate only, not a pulse measurement.
+inline int servoPulseEstimateUs(int logicalDeg) {
+  return servoMinUs + (servoEffectiveMaxUs-servoMinUs)*logicalDeg/180;
+}
+
+// Flight/calibration output uses integer microseconds and 16-bit PWM duty,
+// avoiding PWMServo's integer logical degrees and 12-bit duty quantization.
+inline int servoPulseCommandUs(float logicalDeg) {
+  return static_cast<int>(servoMinUs+(servoEffectiveMaxUs-servoMinUs)*
+      clamp(logicalDeg,0,180)/180.0f+.5f);
+}
+inline float quantizedServoLogical(float logicalDeg) {
+  return (servoPulseCommandUs(logicalDeg)-servoMinUs)*180.0f/
+      (servoEffectiveMaxUs-servoMinUs);
+}
+inline unsigned servoDuty16(float logicalDeg) {
+  return static_cast<unsigned>(servoPulseCommandUs(logicalDeg)*65536.0f/20000.0f+.5f);
 }
 
 inline float yawServoDeg(float yawPid) {

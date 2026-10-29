@@ -1,0 +1,12 @@
+{
+  "format_version": 1,
+  "id": "drehmflight-tricopter",
+  "revision": 1,
+  "name": "三旋翼 Teensy 4.0 / ESP32 192.168.0.62",
+  "data": {
+    "kind": "device",
+    "target_profile": "teensy40-usb",
+    "application_profile": "drehmflight-yaw-calibration",
+    "gateway_ip": "192.168.0.62"
+  }
+}

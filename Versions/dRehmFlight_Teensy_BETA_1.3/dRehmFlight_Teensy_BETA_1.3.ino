@@ -67,6 +67,8 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
 #include "TricopterConfig.h"
 #include "CycloneControl.h"
+#include "RemoteMcuTelemetry.h"
+#include "FlightParameters.h"
 #if DREHM_ESC_DSHOT_RATE
   #include "DShotTeensy4.h"
 #endif
@@ -355,6 +357,14 @@ tricopter::CycloneControl flightControl;
 tricopter::ControlOutput flightOutput{};
 bool imuSampleHealthy = false;
 bool imuFusionHealthy = true;
+remote_mcu::Telemetry remoteTelemetry;
+bool servoCalibrationActive = false;
+tricopter::FlightParameters flightParameters;
+tricopter::NormalYawControl normalYaw;
+tricopter::NormalYawOutput normalYawOutput;
+bool normalYawFaultLatched = false;
+uint32_t previousLoopWorkUs = 0, maxRemoteWorkUs = 0, maxAllocationWorkUs = 0;
+uint32_t skippedRemotePolls = 0;
 
 //========================================================================================================================//
 //                                                      VOID SETUP                                                        //                           
@@ -362,6 +372,9 @@ bool imuFusionHealthy = true;
 
 void setup() {
   Serial.begin(500000); //USB serial
+  remoteTelemetry.setDeviceId(HW_OCOTP_MAC0);
+  flightParameters.begin();
+  remoteTelemetry.setParameters(handleRemoteParameters, nullptr, tricopter::FlightParameters::count);
   delay(500);
   
   //Initialize all pins
@@ -413,7 +426,7 @@ void setup() {
   //calculate_IMU_error(); //Calibration parameters printed to serial monitor. Paste these in the user specified variables section, then comment this out forever.
 
   //Arm servo channels
-  servo1.write((int)tricopter::servoCenterDeg);
+  writeYawServo(tricopter::servoCenterDeg);
   servo2.write(0); //Set these to 90 for servos if you do not want them to briefly max out on startup
   servo3.write(0); //Keep these at 0 if you are using servo outputs for motors
   servo4.write(0);
@@ -498,7 +511,7 @@ void loop() {
 
   //Command actuators
   commandMotors(); //Send the configured ESC protocol (DShot300 on this airframe).
-  servo1.write(s1_command_PWM); //Writes PWM value to servo object
+  writeYawServo(DREHM_REMOTE_MCU ? s1_command_scaled*180.0f : s1_command_PWM);
   servo2.write(s2_command_PWM);
   servo3.write(s3_command_PWM);
   servo4.write(s4_command_PWM);
@@ -506,14 +519,20 @@ void loop() {
   servo6.write(s6_command_PWM);
   servo7.write(s7_command_PWM);
     
-  // No periodic USB output. Consume at most one byte per loop; '?' requests a snapshot.
+  // RemoteMCU traffic runs after actuator output, with bounded receive work.
+#if DREHM_REMOTE_MCU
+  serviceRemoteMcu();
+#else
+  // Legacy text diagnostics for isolated motor-bench images.
   if (Serial.available() > 0) {
     const int command = Serial.read();
     if (command == '?') printGyroData();
     else if (command == 'c') printCycloneData();
   }
+#endif
 
   const uint32_t workUs = (uint32_t)(micros() - current_time);
+  previousLoopWorkUs = workUs;
   if (workUs > maxLoopWorkUs) maxLoopWorkUs = workUs;
   if (workUs > 500) ++loopOverruns;
 
@@ -530,8 +549,12 @@ void loop() {
 
 
 void controlCyclone() {
+  unsigned spinUs=channel_6_pwm;
+#if DREHM_REMOTE_MCU
+  if (!flightParameters.config().spinEnabled) spinUs=1500;
+#endif
   const tricopter::PilotInput pilot = tricopter::pilotInput(
-      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_6_pwm,
+      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, spinUs,
       flightControl.spinning());
   const tricopter::ControlGains gains{
     {0.01f*Kp_roll_angle, 0.01f*Ki_roll_angle, 0.01f*Kd_roll_angle},
@@ -545,6 +568,29 @@ void controlCyclone() {
     crsfChannelsReady = false; // Require a fresh low-throttle/SA-cut preparation.
 #endif
   }
+#if DREHM_REMOTE_MCU
+  const uint32_t allocationStarted=micros();
+  const bool normalActive=armedFly && channel_5_pwm<1500 && pilot.throttle>=.06f &&
+      flightOutput.mode==tricopter::FlightMode::Normal && !flightOutput.fault;
+  normalYawOutput=normalYaw.step(flightParameters.config(),flightOutput.motors,
+      flightOutput.heading,flightOutput.yawRate,pilot.yaw,dt,normalActive);
+  const uint32_t allocationWork=(uint32_t)(micros()-allocationStarted);
+  if (allocationWork>maxAllocationWorkUs) maxAllocationWorkUs=allocationWork;
+  if (normalYawOutput.fault) {
+    normalYawFaultLatched=true; armedFly=false; flightOutput.motors={0,0,0};
+#if defined USE_CRSF_RX
+    crsfChannelsReady=false;
+#endif
+  } else if (normalActive) {
+    flightOutput.motors=normalYawOutput.motors;
+    flightOutput.servoDeg=normalYawOutput.servoDeg;
+    flightOutput.yawTarget=normalYawOutput.rateTarget;
+    flightOutput.yawFilteredRate=normalYawOutput.rateFiltered;
+    flightOutput.yawIntegral=normalYawOutput.integral;
+    flightOutput.yaw=(normalYawOutput.servoDeg-tricopter::servoCenterDeg)/
+        (tricopter::yawServoDirection*180.0f);
+  }
+#endif
   roll_PID = flightOutput.roll;
   pitch_PID = flightOutput.pitch;
   yaw_PID = flightOutput.yaw;
@@ -563,15 +609,104 @@ void controlMixer() {
   s2_command_scaled = s3_command_scaled = s4_command_scaled = 0;
   s5_command_scaled = s6_command_scaled = s7_command_scaled = 0;
   if (armedFly) s1_command_scaled = flightOutput.servoDeg / 180.0f;
+  servoCalibrationActive = false;
 #if defined USE_CRSF_RX
-  // Explicit props-off bench configuration only. CH6 is a spin command in flight.
-  if (tricopter::fullRangeBenchTest && !flightControl.faulted() &&
-      crsfChannelsReady && crsfLinkUp && !crsfFailsafe && channel_5_pwm >= 1500)
+  // SA cut: CH6 directly positions the linkage within the configured range.
+  // Armed: CH6 retains its existing spin-mode meaning and cannot bypass PID.
+  servoCalibrationActive = tricopter::benchServoActive(
+      crsfChannelsReady && crsfLinkUp && !crsfFailsafe,
+      armedFly, channel_5_pwm, flightControl.faulted() || normalYawFaultLatched);
+  if (servoCalibrationActive)
     s1_command_scaled = tricopter::benchServoDeg(channel_6_pwm) / 180.0f;
 #endif
 }
 
+void serviceRemoteMcu() {
+  // Leave headroom in the 500 us loop. Telemetry is expendable; control is not.
+  if ((uint32_t)(micros()-current_time)>350) { ++skippedRemotePolls; return; }
+  const uint32_t started=micros();
+  unsigned d2=0,d4=0,d3=0;
+  bool motorsStopped=m2_command_PWM<=120 && m4_command_PWM<=120 && m3_command_PWM<=120;
+#if DREHM_ESC_DSHOT_RATE
+  d2=dshotOutput.last[0]; d3=dshotOutput.last[1]; d4=dshotOutput.last[2];
+  motorsStopped=d2==0 && d3==0 && d4==0;
+#endif
+  remote_mcu::Snapshot sample{};
+#if defined USE_CRSF_RX
+  sample.values[0]=crsfInputChannelsUs[5];
+  sample.values[18]=crsfInputChannelsUs[2]; sample.values[19]=crsfInputChannelsUs[3];
+  sample.state[18]=!crsfLinkUp || crsfFailsafe;
+#else
+  sample.values[0]=channel_6_pwm; sample.values[18]=channel_1_pwm;
+  sample.values[19]=3000-channel_4_pwm;
+#endif
+  const float servoLogical=s1_command_scaled*180.0f;
+  sample.values[1]=tricopter::quantizedServoLogical(servoLogical);
+  sample.values[2]=tricopter::servoPulseCommandUs(servoLogical);
+  for (unsigned i=0;i<3;++i)
+    sample.values[3+i]=flightParameters.config().ready ?
+        tricopter::physicalTilt(flightParameters.config().model.rotor[i],sample.values[1]) : 0;
+  sample.values[6]=flightOutput.heading; sample.values[7]=normalYawOutput.headingTarget;
+  sample.values[8]=flightOutput.yawTarget; sample.values[9]=flightOutput.yawRate;
+  sample.values[10]=normalYawOutput.rateFiltered; sample.values[11]=normalYawOutput.torqueRequested;
+  sample.values[12]=normalYawOutput.torqueEstimated; sample.values[13]=normalYawOutput.residual;
+  sample.values[14]=normalYawOutput.integral; sample.values[15]=roll_IMU;
+  sample.values[16]=pitch_IMU; sample.values[17]=GyroZ;
+  for (unsigned i=0;i<3;++i) sample.values[20+i]=normalYawOutput.thrust[i];
+  sample.values[23]=d2; sample.values[24]=d4; sample.values[25]=d3;
+  sample.values[26]=normalYawOutput.lift; sample.values[27]=normalYawOutput.liftScale;
+  sample.values[28]=loopPeriodUs; sample.values[29]=previousLoopWorkUs;
+  sample.values[30]=maxLoopWorkUs; sample.values[31]=maxLoopPeriodUs;
+  sample.state[0]=armedFly; sample.state[1]=servoCalibrationActive;
+  sample.state[3]=imuSampleHealthy && imuFusionHealthy;
+  sample.state[5]=flightControl.faulted() || normalYawFaultLatched;
+  sample.state[8]=flightParameters.config().ready;
+  sample.state[9]=flightParameters.config().flightEnabled;
+  sample.state[10]=(uint32_t)flightOutput.mode; sample.state[11]=flightParameters.revision();
+  sample.state[12]=normalYawOutput.limited; sample.state[13]=normalYawFaultLatched;
+  sample.state[14]=maxRemoteWorkUs; sample.state[15]=maxAllocationWorkUs;
+  sample.state[16]=loopOverruns; sample.state[17]=skippedRemotePolls;
+  sample.safeToFlash=!armedFly && motorsStopped && channel_5_pwm>=1500 &&
+      channel_1_pwm<1050 && tricopter::spinCentered(channel_6_pwm);
+  sample.safeToConfigure=!armedFly && motorsStopped && channel_5_pwm>=1500 && channel_1_pwm<1050;
+  const uint32_t oldSession=remoteTelemetry.session();
+  remoteTelemetry.poll(Serial,sample,micros());
+  if (oldSession!=remoteTelemetry.session()) flightParameters.newSession();
+  const uint32_t used=(uint32_t)(micros()-started);
+  if (used>maxRemoteWorkUs) maxRemoteWorkUs=used;
+}
+
+size_t handleRemoteParameters(const rmp_frame_t *frame,uint8_t *reply,bool stopped,void *) {
+  return flightParameters.handle(frame->type,frame->payload,frame->payload_length,stopped,reply);
+}
+
+void writeYawServo(float logical) {
+#if DREHM_REMOTE_MCU
+  static int previousPulse=-1;
+  const int pulse=tricopter::servoPulseCommandUs(logical);
+  if (pulse==previousPulse) return;
+  // attach() already configured the pin's hardware PWM to 50 Hz. Restore the
+  // global resolution so other PWMServo outputs keep their expected scaling.
+  uint32_t interruptState;
+  __asm__ volatile("mrs %0, primask" : "=r"(interruptState) :: "memory");
+  __disable_irq();
+  const uint32_t oldResolution=analogWriteResolution(16);
+  analogWrite(servo1Pin,tricopter::servoDuty16(logical));
+  analogWriteResolution(oldResolution);
+  if (!interruptState) __enable_irq();
+  previousPulse=pulse;
+#else
+  servo1.write(static_cast<int>(logical));
+#endif
+}
+
 void armedStatus() {
+#if DREHM_REMOTE_MCU
+  if (channel_5_pwm>=1500 && channel_1_pwm<1050) normalYawFaultLatched=false;
+  if (!flightParameters.config().flightEnabled || !flightParameters.config().ready || normalYawFaultLatched) {
+    armedFly=false; return;
+  }
+#endif
   if (flightControl.faulted() || tricopter::fullRangeBenchTest) { armedFly = false; return; }
 #if DREHM_ESC_DSHOT_RATE
   if (!dshotOutput.ready()) { armedFly = false; return; }
@@ -1674,8 +1809,7 @@ void printGyroData() {
 #if DREHM_ESC_DSHOT_RATE
   d2 = dshotOutput.last[0]; d3 = dshotOutput.last[1]; d4 = dshotOutput.last[2];
 #endif
-  const int servoUs = tricopter::servoMinUs +
-      (tricopter::servoEffectiveMaxUs - tricopter::servoMinUs) * s1_command_PWM / 180;
+  const int servoUs = tricopter::servoPulseEstimateUs(s1_command_PWM);
 #if defined USE_CRSF_RX
   const int length = snprintf(line, sizeof(line),
       "CH1:%u CH2:%u CH3:%u CH4:%u CH5:%u CH6:%u LINK:%u FS:%u READY:%u "

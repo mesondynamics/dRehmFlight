@@ -1,0 +1,41 @@
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/TricopterConfig.h"
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/CycloneControl.h"
+#include <cassert>
+#include <cstdio>
+#include <initializer_list>
+
+int main() {
+  using namespace tricopter;
+  // Every gate matters: an arm request denied for another reason must not
+  // accidentally hand CH6's airborne spin command directly to the servo.
+  for (bool ready : {false,true}) for (bool armed : {false,true})
+    for (bool fault : {false,true}) for (unsigned cut : {1000u,1499u,1500u,2000u})
+      assert(benchServoActive(ready,armed,cut,fault)==
+             (ready && !armed && !fault && cut>=1500));
+  assert(!fullRangeBenchTest);
+  const int channels[]={1000,1125,1250,1375,1500,1625,1750,1875,2000};
+  int last=0;
+  for (int i=0;i<9;++i) {
+    const float angle=benchServoDeg(channels[i]);
+    assert(angle==50+10*i);
+    const int applied=servoCommandDeg(angle,last);
+    assert(applied==50+10*i);
+    assert(servoPulseEstimateUs(applied)>=1063 && servoPulseEstimateUs(applied)<=1944);
+    last=applied;
+  }
+  assert(servoPulseEstimateUs(90)==1504);
+  assert(servoPulseCommandUs(90)==1504 && servoPulseCommandUs(50)==1063 && servoPulseCommandUs(130)==1945);
+  assert(servoPulseCommandUs(90.1f)!=servoPulseCommandUs(90));
+  assert(servoDuty16(90)<65536 && servoDuty16(50)<servoDuty16(130));
+  assert(benchServoDeg(800)==50 && benchServoDeg(2200)==130);
+  // Stopped controller outputs stay zero even when the spin knob is displaced.
+  const ControlGains gains{{.01f,0,0},{.01f,0,0},defaultYawGains()};
+  CycloneControl controller;
+  for (int ch6 : channels) {
+    const auto pilot=pilotInput(1000,1500,1500,1500,ch6,false);
+    const auto out=controller.step(pilot,{1,0,0,0},{0,0,0},.0005f,false,true,true,gains);
+    assert(out.motors.m2==0 && out.motors.m4==0 && out.motors.m3==0);
+    assert(!canArm(true,1000,2000,ch6));
+  }
+  std::puts("SA-cut CH6 calibration gates, nine-point mapping, pulse estimates and motor stop passed");
+}

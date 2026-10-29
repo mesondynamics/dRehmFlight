@@ -37,9 +37,12 @@ def main():
     shutil.copytree(source, destination, dirs_exist_ok=True)
     bitrate = {"oneshot125": 0, "dshot300": 300000, "dshot600": 600000}[args.protocol]
     config = destination / "TricopterConfig.h"
-    config.write_text(replace_once(config.read_text(),
+    config_text = replace_once(config.read_text(),
                                   "#define DREHM_ESC_DSHOT_RATE 300000",
-                                  f"#define DREHM_ESC_DSHOT_RATE {bitrate}"))
+                                  f"#define DREHM_ESC_DSHOT_RATE {bitrate}")
+    config_text = replace_once(config_text, "#define DREHM_REMOTE_MCU 1",
+                               "#define DREHM_REMOTE_MCU 0")
+    config.write_text(config_text)
     shutil.copy2(Path(__file__).with_name("MotorBenchSafety.h"), destination)
     sketch = destination / (source.name + ".ino")
     text = sketch.read_text()
