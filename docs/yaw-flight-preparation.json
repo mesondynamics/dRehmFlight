@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-29",
+  "base_commit": "9abca1f",
+  "build_id": "drehm-yaw-model-flight-20261029",
+  "status": "Prepared and host-tested; pending RemoteMCU upload and hardware checks",
+  "control_path": "Heading outer loop -> rate PI -> requested torque -> full three-rotor dynamics allocation",
+  "initial_model": "yaw-first-flight-model.json",
+  "model_verified": false,
+  "default_flight_enabled": false,
+  "default_initial_model_enabled": false,
+  "host_validation": {
+    "cpp_command": "python3 tools/run_host_tests.py --sanitize",
+    "cpp_programs_passed": 15,
+    "sanitizers": ["address", "undefined"],
+    "initial_model_uncertainty_cases": 27,
+    "uncertainty_case_final_heading_error_max_deg": 6.20,
+    "uncertainty_case_peak_rate_deg_s": 18.07,
+    "synthetic_results_are_hardware_evidence": false,
+    "python_command": "python3 -m unittest discover -s tests -p '*_test.py' -v",
+    "python_tests_passed": 4,
+    "all_71_defaults_compared_with_initial_manifest": true
+  },
+  "firmware": {
+    "fqbn": "teensy:avr:teensy40:usb=serial",
+    "build_command": "arduino-cli compile --fqbn teensy:avr:teensy40:usb=serial --build-path /private/tmp/drehmflight-yaw-model-flight-20261029 Versions/dRehmFlight_Teensy_BETA_1.3",
+    "compiled": true,
+    "hex_path": "/private/tmp/drehmflight-yaw-model-flight-20261029/dRehmFlight_Teensy_BETA_1.3.ino.hex",
+    "hex_text_bytes": 339947,
+    "hex_text_sha256": "2dd05e241ca32ab8b47fae5d29ab1c626089728b203ab40db47b5f2aa23013fb",
+    "hash_is_remotemcu_aligned_image_hash": false,
+    "uploaded": false
+  },
+  "source_sha256": {
+    "FlightParameters.h": "bac95d1e8e79ae11f6222d68b07bfcc9958d1e0ae6287c4819aa8e221c196519",
+    "NormalYawControl.h": "40c98c6a6470e72407a215e50bfd0db1d321c6c6a311a0aafe21cd12c1104f9e",
+    "InitialYawModel.h": "4a960e3d2c6af3ff83871d208fa88d94c5174a43949bd9708a93a588ac0320f2",
+    "TricopterDynamics.h": "d430515d50ca170c8a99468aea74451706bea2546e78ec09f78d3d60a353901e",
+    "RemoteMcuTelemetry.h": "99046abe6c7d38c9ab28dd114a5b44368628e5019fb9a0b73045694e4d1e8e14",
+    "dRehmFlight_Teensy_BETA_1.3.ino": "0ec9071996032f27603da0b113ce67b7ef2c20479fb37588f6e87e52c6ae8ca6"
+  },
+  "remote_mcu": {
+    "gateway_ip": "192.168.0.62",
+    "application_id": "drehmflight-yaw-flight",
+    "application_revision": 2,
+    "device_profile_id": "drehmflight-model-flight",
+    "channels": 32,
+    "states": 22,
+    "parameters": 71,
+    "api_profile_readback_matches": true,
+    "old_calibration_selection_retained_until_new_firmware": true,
+    "target_connected_at_preparation": false,
+    "new_firmware_telemetry_verified": false
+  },
+  "timing": {
+    "target_loop_period_us": 500,
+    "target_yaw_solve_hz": 200,
+    "default_telemetry_hz": 100,
+    "planned_flight_telemetry_hz": 200,
+    "hardware_worst_case_verified_for_this_build": false,
+    "online_parameter_identification": false,
+    "flash_writes_in_control_loop": false
+  }
+}

@@ -589,6 +589,11 @@ void controlCyclone() {
     flightOutput.yawIntegral=normalYawOutput.integral;
     flightOutput.yaw=(normalYawOutput.servoDeg-tricopter::servoCenterDeg)/
         (tricopter::yawServoDirection*180.0f);
+  } else if (armedFly && flightParameters.config().ready &&
+             flightOutput.mode==tricopter::FlightMode::Normal) {
+    // At idle, preposition the linkage at its calibrated vertical direction.
+    // SA-cut CH6 calibration keeps the existing logical 90 degree midpoint.
+    flightOutput.servoDeg=normalYawOutput.servoDeg;
   }
 #endif
   roll_PID = flightOutput.roll;
@@ -652,9 +657,11 @@ void serviceRemoteMcu() {
   sample.values[12]=normalYawOutput.torqueEstimated; sample.values[13]=normalYawOutput.residual;
   sample.values[14]=normalYawOutput.integral; sample.values[15]=roll_IMU;
   sample.values[16]=pitch_IMU; sample.values[17]=GyroZ;
-  for (unsigned i=0;i<3;++i) sample.values[20+i]=normalYawOutput.thrust[i];
+  // First-flight profile: independent inertial observations for identification.
+  // Target motor thrust can be reconstructed from DShot + the parameter snapshot.
+  sample.values[20]=GyroX; sample.values[21]=GyroY; sample.values[22]=AccZ;
   sample.values[23]=d2; sample.values[24]=d4; sample.values[25]=d3;
-  sample.values[26]=normalYawOutput.lift; sample.values[27]=normalYawOutput.liftScale;
+  sample.values[26]=normalYawOutput.servoEstimated; sample.values[27]=normalYawOutput.liftScale;
   sample.values[28]=loopPeriodUs; sample.values[29]=previousLoopWorkUs;
   sample.values[30]=maxLoopWorkUs; sample.values[31]=maxLoopPeriodUs;
   sample.state[0]=armedFly; sample.state[1]=servoCalibrationActive;
@@ -666,6 +673,9 @@ void serviceRemoteMcu() {
   sample.state[12]=normalYawOutput.limited; sample.state[13]=normalYawFaultLatched;
   sample.state[14]=maxRemoteWorkUs; sample.state[15]=maxAllocationWorkUs;
   sample.state[16]=loopOverruns; sample.state[17]=skippedRemotePolls;
+  sample.state[19]=flightParameters.config().initialModelEnabled;
+  sample.state[20]=flightParameters.config().model.calibrated;
+  sample.state[21]=normalYawOutput.active;
   sample.safeToFlash=!armedFly && motorsStopped && channel_5_pwm>=1500 &&
       channel_1_pwm<1050 && tricopter::spinCentered(channel_6_pwm);
   sample.safeToConfigure=!armedFly && motorsStopped && channel_5_pwm>=1500 && channel_1_pwm<1050;

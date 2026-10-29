@@ -28,8 +28,8 @@ struct DynamicsModel {
   RotorModel rotor[3]; // M2, M4, M3
   float massKg=0, izz=0, tiltLimitDeg=30;
   bool calibrated=false;
-  bool valid() const {
-    if (!calibrated || !std::isfinite(massKg) || massKg<=0 ||
+  bool valid(bool requireVerified=true) const {
+    if ((requireVerified && !calibrated) || !std::isfinite(massKg) || massKg<=0 ||
         !std::isfinite(izz) || izz<=0 || !std::isfinite(tiltLimitDeg) ||
         tiltLimitDeg<=0 || tiltLimitDeg>45) return false;
     for (const auto &r : rotor) {

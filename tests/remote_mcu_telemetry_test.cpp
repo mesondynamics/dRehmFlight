@@ -61,13 +61,13 @@ static void controlIntegration() {
     assert(false); return {};
   };
   poll(4);
-  assert(payload(last(RMP_HELLO)).find("\"parameter_count\":69")!=std::string::npos);
+  assert(payload(last(RMP_HELLO)).find("\"parameter_count\":71")!=std::string::npos);
   uint64_t id=10000;
   std::vector<uint8_t> set(24); rmp_put_u64(set.data(),id++);
   rmp_put_u32(set.data()+8,params.revision()); set[12]=1;
   rmp_put_u16(set.data()+16,3); set[18]=RMP_PARAM_F32; rmp_put_f32(set.data()+20,2);
   enqueue(port,RMP_PARAM_SET,telemetry.session(),set); poll(10);
-  assert(last(RMP_PARAM_RESPONSE)[36]==RMP_UNSAFE && params.config().headingKp==1.5f);
+  assert(last(RMP_PARAM_RESPONSE)[36]==RMP_UNSAFE && params.config().headingKp==.8f);
   sample.safeToConfigure=true;
   rmp_put_u64(set.data(),id++);
   enqueue(port,RMP_PARAM_SET,telemetry.session(),set); poll(10);
@@ -81,7 +81,7 @@ static void controlIntegration() {
   std::vector<uint8_t> page(16); rmp_put_u64(page.data(),id++); page[14]=8;
   enqueue(port,RMP_PARAM_SCHEMA_PAGE,telemetry.session(),page); poll(10);
   const auto schema=last(RMP_PARAM_SCHEMA_RESPONSE);
-  assert(schema[36]==RMP_APPLIED && schema[38]==8 && rmp_get_u16(schema.data()+48)==69);
+  assert(schema[36]==RMP_APPLIED && schema[38]==8 && rmp_get_u16(schema.data()+48)==71);
 
   const auto command=[&](uint8_t op,uint32_t arg) {
     std::vector<uint8_t> q(16); rmp_put_u64(q.data(),id++); q[8]=op;
@@ -121,7 +121,7 @@ static void controlIntegration() {
   port.output.clear(); poll(2200);
   for (const auto &f : port.output) assert(f[5]!=RMP_TELEMETRY);
   auto state=last(17);
-  assert(state[32]==19 && rmp_get_u16(state.data()+52)==3 && state[54]==3);
+  assert(state[32]==22 && rmp_get_u16(state.data()+52)==3 && state[54]==3);
   assert(rmp_get_u32(state.data()+56)==0); // STATE ID 3 matches RemoteMCU's web badge.
   reply=command(1,1); assert(reply[36]==0 && reply[38]==1);
   state=last(17); assert(rmp_get_u32(state.data()+56)==1);
@@ -157,7 +157,7 @@ int main() {
   uint32_t now=1000;
   for (int i=0;i<50;++i,now+=500) telemetry.poll(port,sample,now);
   assert(port.output[0][5]==RMP_HELLO);
-  assert(payload(port.output[0]).find("drehm-yaw-cal-20261029")!=std::string::npos);
+  assert(payload(port.output[0]).find(remote_mcu::buildId)!=std::string::npos);
   assert(payload(port.output[0]).find("teensy40-1881bf")!=std::string::npos);
   assert(payload(port.output[0]).find("\"safe_to_flash\":true")!=std::string::npos);
   const uint32_t session=rmp_get_u32(port.output[0].data()+12);

@@ -1,6 +1,7 @@
 #pragma once
 #include "NormalYawControl.h"
 #include "ServoTiltCalibration.h"
+#include "InitialYawModel.h"
 #include "src/RemoteMcu/parameters.h"
 #include <cstdio>
 #include <cstring>
@@ -8,31 +9,32 @@
 namespace tricopter {
 class FlightParameters {
  public:
-  static constexpr unsigned count=69;
+  static constexpr unsigned count=71;
   void begin() {
     added_=0;
     add(1,"flight_enable",RMP_PARAM_BOOL,0,1,0);
     add(2,"spin_enable",RMP_PARAM_BOOL,0,1,0);
-    add(3,"heading_kp_1_s",RMP_PARAM_F32,.05,10,1.5);
-    add(4,"rate_kp_1_s",RMP_PARAM_F32,.05,30,4);
-    add(5,"rate_ki_1_s2",RMP_PARAM_F32,0,30,1.5);
-    add(6,"yaw_max_deg_s",RMP_PARAM_F32,1,160,30);
-    add(7,"yaw_accel_deg_s2",RMP_PARAM_F32,5,360,60);
+    add(3,"heading_kp_1_s",RMP_PARAM_F32,.05,10,.8);
+    add(4,"rate_kp_1_s",RMP_PARAM_F32,.05,30,1.5);
+    add(5,"rate_ki_1_s2",RMP_PARAM_F32,0,30,.4);
+    add(6,"yaw_max_deg_s",RMP_PARAM_F32,1,160,20);
+    add(7,"yaw_accel_deg_s2",RMP_PARAM_F32,5,360,30);
     add(8,"yaw_lpf_hz",RMP_PARAM_F32,1,50,12);
     add(9,"heading_error_max_deg",RMP_PARAM_F32,1,90,45);
     add(10,"anti_windup_1_s",RMP_PARAM_F32,0,20,2);
-    add(11,"servo_slew_logical_deg_s",RMP_PARAM_F32,1,120,60);
+    add(11,"servo_slew_logical_deg_s",RMP_PARAM_F32,1,120,40);
     add(12,"servo_lag_s",RMP_PARAM_F32,.01,.5,.08);
-    add(13,"physical_tilt_limit_deg",RMP_PARAM_F32,1,45,30);
+    add(13,"physical_tilt_limit_deg",RMP_PARAM_F32,1,45,15);
     add(14,"model_verified",RMP_PARAM_BOOL,0,1,0);
-    add(15,"mass_kg",RMP_PARAM_F32,0,20,0);
-    add(16,"izz_kg_m2",RMP_PARAM_F32,0,2,0);
+    add(15,"mass_kg",RMP_PARAM_F32,0,20,initial_model::massKg);
+    add(16,"izz_kg_m2",RMP_PARAM_F32,0,2,initial_model::izz);
     add(17,"yaw_i_accel_max_rad_s2",RMP_PARAM_F32,.01,20,2);
     add(18,"yaw_damping_Nm_s_rad",RMP_PARAM_F32,0,1,0);
     const char *geometry[]={"arm_M2_m","arm_M4_m","arm_M3_m","cg_x_m","cg_y_m",
       "rotor_height_from_cg_m","kappa_M2_m","kappa_M4_m","kappa_M3_m"};
     for (unsigned i=0;i<9;++i)
-      add(20+i,geometry[i],RMP_PARAM_F32,i>=3 && i<=5 ? -1 : 0,i<3 ? 2 : 1,0);
+      add(20+i,geometry[i],RMP_PARAM_F32,i>=3 && i<=5 ? -1 : 0,i<3 ? 2 : 1,
+          i<3 ? initial_model::armM : (i>=6 ? initial_model::kappaM : 0));
     const unsigned motors[]={2,4,3};
     for (unsigned r=0;r<3;++r) for (unsigned j=0;j<9;++j) {
       char name[48]; std::snprintf(name,sizeof(name),"M%u_tilt_at_servo_%u_deg",motors[r],50+10*j);
@@ -41,8 +43,12 @@ class FlightParameters {
     }
     for (unsigned r=0;r<3;++r) for (unsigned j=0;j<5;++j) {
       char name[48]; std::snprintf(name,sizeof(name),"M%u_thrust_at_%u_pct_N",motors[r],25*j);
-      add(60+5*r+j,name,RMP_PARAM_F32,0,100,0);
+      add(60+5*r+j,name,RMP_PARAM_F32,0,100,initial_model::thrustN[j]);
     }
+    // Provisional parameters use the full nonlinear allocator too. Never
+    // replace missing physical values with synthetic regression fixtures.
+    add(75,"model_initial_estimate",RMP_PARAM_BOOL,0,1,0);
+    add(76,"motor_lag_s",RMP_PARAM_F32,.005,.5,.04);
     rmp_params_init(&parameters_,definitions_,count,nullptr,nullptr);
     rebuild();
   }
@@ -95,7 +101,9 @@ class FlightParameters {
       c.tiltMappingReady[r]=tiltMappingValid(m);
       for (unsigned j=0;j<5;++j) m.thrustN[j]=number(v,54+5*r+j);
     }
-    c.ready=a>0 && b>0 && d>0 && c.model.valid();
+    c.initialModelEnabled=v[69]; c.motorLag=number(v,70);
+    c.ready=a>0 && b>0 && d>0 && c.model.valid(false) &&
+        (c.model.calibrated || c.initialModelEnabled);
     return c;
   }
   void rebuild() { config_=decode(parameters_.values); }

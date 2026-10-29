@@ -27,7 +27,9 @@ int main() {
   tricopter::FlightParameters p; p.begin();
   assert(!p.config().ready && !p.config().flightEnabled);
   assert(!p.config().spinEnabled && !p.config().model.calibrated);
-  assert(p.config().model.tiltLimitDeg==30);
+  assert(!p.config().initialModelEnabled && p.config().model.valid(false));
+  assert(p.config().model.tiltLimitDeg==15);
+  assert(p.config().model.massKg==.75f && p.config().model.izz==.0625f);
   for (unsigned rotor=0;rotor<3;++rotor) {
     assert(p.config().tiltMappingReady[rotor]);
     for (unsigned j=0;j<9;++j)
@@ -37,11 +39,19 @@ int main() {
   // Large bench angles remain valid calibration data, without enabling flight.
   assert(batch(p,{{48,55.9f},{56,-63.6f}})[8]==RMP_APPLIED);
   assert(batch(p,{{56,-85.1f}})[8]==RMP_OUT_OF_RANGE);
-  assert(batch(p,{{14,1,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
   assert(batch(p,{{1,1,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
+  // Initial estimates enter the full dynamics controller, without marking
+  // those estimates as verified. Switching the flag off cannot bypass readiness.
+  assert(batch(p,{{75,1,RMP_PARAM_BOOL},{1,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED);
+  assert(p.config().ready && p.config().flightEnabled && !p.config().model.calibrated);
+  assert(batch(p,{{75,0,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
+  assert(batch(p,{{16,0}})[8]==RMP_UNSAFE);
+  assert(batch(p,{{1,0,RMP_PARAM_BOOL},{75,0,RMP_PARAM_BOOL},{16,0}})[8]==RMP_APPLIED);
+  assert(batch(p,{{14,1,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
+  assert(batch(p,{{75,1,RMP_PARAM_BOOL},{1,1,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
   assert(batch(p,{{3,2}},false)[8]==RMP_UNSAFE);
   assert(batch(p,{{3,2},{4,-1}})[8]==RMP_OUT_OF_RANGE);
-  assert(p.config().headingKp==1.5f); // failed batch is atomic
+  assert(p.config().headingKp==.8f); // failed batch is atomic
   auto response=batch(p,{{3,1.7f}},true,9876); assert(response[8]==RMP_APPLIED);
   response=batch(p,{{3,2.5f}},true,9876);
   assert(response[8]==RMP_REQUEST_CONFLICT && p.config().headingKp==1.7f);
@@ -65,9 +75,9 @@ int main() {
   uint8_t q[16]={0},reply[RMP_PARAM_BYTES]; rmp_put_u64(q,nextId++); rmp_put_u32(q+8,p.revision());
   p.handle(RMP_PARAM_SAVE,q,sizeof(q),true,reply);
   assert(reply[8]==RMP_UNSAFE && rmp_get_u32(reply+16)==0);
-  // Metadata is paged, UTF-8 safe ASCII, and reports all 69 real parameters.
+  // Metadata is paged, UTF-8 safe ASCII, and reports all 71 real parameters.
   rmp_put_u64(q,nextId++); rmp_put_u32(q+8,0); q[14]=8;
   const size_t n=p.handle(RMP_PARAM_SCHEMA_PAGE,q,sizeof(q),true,reply);
-  assert(n>24 && reply[8]==RMP_APPLIED && rmp_get_u16(reply+20)==69 && reply[10]==8);
+  assert(n>24 && reply[8]==RMP_APPLIED && rmp_get_u16(reply+20)==71 && reply[10]==8);
   std::puts("Flight gate, paged parameters, atomic validation, conflict immunity and nonblocking save refusal passed");
 }
