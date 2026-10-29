@@ -2,7 +2,7 @@
   "date": "2026-10-29",
   "base_commit": "9abca1f",
   "build_id": "drehm-yaw-model-flight-20261029",
-  "status": "Prepared and host-tested; pending RemoteMCU upload and hardware checks",
+  "status": "Uploaded and ground-tested; base controller health fault stopped all motors before takeoff. See yaw-full-model-upload-verification.json and YAW_GROUND_STOP_DIAGNOSTICS.md for the pending diagnostic build.",
   "control_path": "Heading outer loop -> rate PI -> requested torque -> full three-rotor dynamics allocation",
   "initial_model": "yaw-first-flight-model.json",
   "model_verified": false,
@@ -28,7 +28,7 @@
     "hex_text_bytes": 339947,
     "hex_text_sha256": "2dd05e241ca32ab8b47fae5d29ab1c626089728b203ab40db47b5f2aa23013fb",
     "hash_is_remotemcu_aligned_image_hash": false,
-    "uploaded": false
+    "uploaded": true
   },
   "source_sha256": {
     "FlightParameters.h": "bac95d1e8e79ae11f6222d68b07bfcc9958d1e0ae6287c4819aa8e221c196519",
@@ -47,15 +47,18 @@
     "states": 22,
     "parameters": 71,
     "api_profile_readback_matches": true,
-    "old_calibration_selection_retained_until_new_firmware": true,
+    "old_calibration_selection_retained_until_new_firmware": false,
     "target_connected_at_preparation": false,
-    "new_firmware_telemetry_verified": false
+    "new_firmware_telemetry_verified": true
   },
   "timing": {
     "target_loop_period_us": 500,
     "target_yaw_solve_hz": 200,
     "default_telemetry_hz": 100,
     "planned_flight_telemetry_hz": 200,
+    "selected_ground_test_telemetry_hz": 100,
+    "observed_ground_maximum_work_us": 294,
+    "observed_ground_maximum_period_us": 500,
     "hardware_worst_case_verified_for_this_build": false,
     "online_parameter_identification": false,
     "flash_writes_in_control_loop": false

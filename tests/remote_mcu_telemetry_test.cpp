@@ -121,7 +121,7 @@ static void controlIntegration() {
   port.output.clear(); poll(2200);
   for (const auto &f : port.output) assert(f[5]!=RMP_TELEMETRY);
   auto state=last(17);
-  assert(state[32]==22 && rmp_get_u16(state.data()+52)==3 && state[54]==3);
+  assert(state[32]==remote_mcu::stateCount && rmp_get_u16(state.data()+52)==3 && state[54]==3);
   assert(rmp_get_u32(state.data()+56)==0); // STATE ID 3 matches RemoteMCU's web badge.
   reply=command(1,1); assert(reply[36]==0 && reply[38]==1);
   state=last(17); assert(rmp_get_u32(state.data()+56)==1);
@@ -150,6 +150,7 @@ int main() {
   remote_mcu::Telemetry telemetry;
   telemetry.setDeviceId(0x1881bf);
   remote_mcu::Snapshot sample{};
+  sample.state[22]=4; sample.state[33]=8;
   for (unsigned i=0;i<32;++i) sample.values[i]=i+.25f;
   sample.values[6]=90; sample.values[7]=1504; sample.values[18]=1; sample.values[19]=0;
   sample.values[20]=0; sample.values[21]=1; sample.values[27]=0;
@@ -173,6 +174,17 @@ int main() {
     assert(servo==90); ++samples;
   }
   assert(samples>=2);
+  bool sawDiagnostics=false;
+  for (const auto &f : port.output) if (f[5]==17) {
+    assert(f[32]==remote_mcu::stateCount);
+    for (unsigned index : {22u,33u}) {
+      const unsigned offset=28+8+8*index;
+      assert(rmp_get_u16(f.data()+offset)==index+1 && f[offset+2]==2);
+      assert(rmp_get_u32(f.data()+offset+4)==sample.state[index]);
+    }
+    sawDiagnostics=true;
+  }
+  assert(sawDiagnostics);
   // Safety state is advertised on the first poll after it changes.
   sample.safeToFlash=false;
   telemetry.poll(port,sample,now+=500);

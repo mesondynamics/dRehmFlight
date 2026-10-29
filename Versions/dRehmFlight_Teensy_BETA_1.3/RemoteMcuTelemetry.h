@@ -6,13 +6,14 @@
 
 namespace remote_mcu {
 constexpr unsigned channelCount = 32;
-constexpr const char *buildId = "drehm-yaw-model-flight-20261029";
+constexpr unsigned stateCount = 34;
+constexpr const char *buildId = "drehm-yaw-fault-diag-20261029";
 
 struct Snapshot {
   float values[channelCount];
   bool safeToFlash;
   bool safeToConfigure=false;
-  uint32_t state[22]{};
+  uint32_t state[stateCount]{};
 };
 
 // Cooperative RMP transport. No direct actuator or EEPROM/reset commands.
@@ -138,12 +139,12 @@ class Telemetry {
       if (send(port,RMP_HEARTBEAT,heartbeat,sizeof(heartbeat))) ++management_;
     } else {
       // State IDs match this firmware's supplied application profile only.
-      uint8_t state[8+22*8]={0};
-      rmp_put_u32(state,1); state[4]=22;
-      for (unsigned i=0;i<22;++i) {
+      uint8_t state[8+stateCount*8]={0};
+      rmp_put_u32(state,1); state[4]=stateCount;
+      for (unsigned i=0;i<stateCount;++i) {
         uint8_t *entry=state+8+8*i;
         rmp_put_u16(entry,i+1);
-        entry[2]=(i<6 || i==8 || i==9 || i==12 || i==13 || i>=18) ? 3 : 2;
+        entry[2]=(i<6 || i==8 || i==9 || i==12 || i==13 || (i>=18 && i<=21)) ? 3 : 2;
         uint32_t bits=s.state[i];
         if (i==2) bits=streamEnabled_; // Current RemoteMCU web expects STATE ID 3.
         if (i==4) bits=s.safeToFlash;

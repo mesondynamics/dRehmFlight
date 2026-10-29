@@ -168,6 +168,11 @@ static void faultsAndFusion() {
     if (which==6) q=attitude(0,90,0);
     auto o=c.step(input(),q,g,which==3 ? .1f : dt,true,false,which!=4,gains);
     assert(o.fault && o.motors.m2==0 && o.servoDeg==servoCenterDeg);
+    const uint32_t reasons[]={faultQuaternion,faultQuaternion,faultGyroscope,faultTime,
+                              faultSensor,faultInverted,faultHeadingSingularity};
+    assert(c.faultReason() & reasons[which]);
+    const uint32_t retainedReason=c.faultReason();
+    assert(c.faultCount()==1);
     for (int i=0;i<1000;++i) o=tick(c,input());
     assert(o.fault); // healthy data alone cannot resume flight
     for (int i=0;i<1000;++i)
@@ -176,8 +181,11 @@ static void faultsAndFusion() {
     for (int i=0;i<610;++i)
       o=c.step(input(1500,1500,1500,1500,false,1000),level,{0,0,0},dt,false,true,true,gains);
     assert(!o.fault && o.motors.m2==0);
+    assert(c.faultReason()==retainedReason && c.faultCount()==1);
     o=tick(c,input());
     assert(near(o.yaw,0) && o.mode==FlightMode::Normal);
+    o=c.step(input(),level,{0,0,0},dt,true,false,false,gains);
+    assert(o.fault && c.faultReason()==faultSensor && c.faultCount()==2);
   }
   Quaternion q=level;
   for (int i=0;i<20000;++i) assert(updateImu(q,{0,0,0},{0,0,1},dt,.04f));

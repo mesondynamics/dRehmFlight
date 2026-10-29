@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "id": "drehmflight-yaw-flight",
-  "revision": 2,
+  "revision": 3,
   "name": "dRehmFlight 完整动力学 Yaw 首飞",
   "data": {
     "kind": "application",
@@ -596,6 +596,114 @@
         "precision": 0,
         "warning_min": null,
         "warning_max": null
+      },
+      {
+        "id": 23,
+        "name": "最近控制故障原因位掩码（重启清零）",
+        "enabled": true,
+        "unit": "bits",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 24,
+        "name": "控制故障累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 25,
+        "name": "最近控制故障时刻（micros32）",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 26,
+        "name": "IMU 读取不完整累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 27,
+        "name": "IMU 加速度全零累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 28,
+        "name": "IMU 加速度原始值触顶累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 29,
+        "name": "IMU 陀螺原始值触顶累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 30,
+        "name": "姿态融合失败累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 31,
+        "name": "最近 IMU 拒绝原因位掩码",
+        "enabled": true,
+        "unit": "bits",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 32,
+        "name": "加速度原始绝对峰值（2g量程）",
+        "enabled": true,
+        "unit": "LSB",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 32759
+      },
+      {
+        "id": 33,
+        "name": "陀螺原始绝对峰值（2000°/s量程）",
+        "enabled": true,
+        "unit": "LSB",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 32759
+      },
+      {
+        "id": 34,
+        "name": "最近控制故障当帧 IMU 原因",
+        "enabled": true,
+        "unit": "bits",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
       }
     ],
     "parameters": [

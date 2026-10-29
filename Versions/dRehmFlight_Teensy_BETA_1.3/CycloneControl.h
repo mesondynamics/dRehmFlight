@@ -2,6 +2,7 @@
 #include "TricopterConfig.h"
 #include "FlightMath.h"
 #include "YawServoControl.h"
+#include <stdint.h>
 
 namespace tricopter {
 struct PilotInput {
@@ -18,6 +19,10 @@ inline PilotInput pilotInput(unsigned throttle, unsigned roll, unsigned pitch,
           spinDirection*centered(spin, spinExitUs), requested};
 }
 struct ControlGains { AxisGains roll, pitch, yaw; };
+enum ControlFaultReason : uint32_t {
+  faultSensor=1, faultTime=2, faultQuaternion=4, faultGyroscope=8,
+  faultPilotInput=16, faultHeadingSingularity=32, faultInverted=64
+};
 enum class FlightMode : unsigned { Normal=0, Spin=1, Braking=2, Aligning=3 };
 struct ControlOutput {
   MotorMix motors;
@@ -33,22 +38,35 @@ class CycloneControl {
  public:
   bool spinning() const { return spinSelected_; }
   bool faulted() const { return fault_; }
+  uint32_t faultReason() const { return faultReason_; }
+  uint32_t faultCount() const { return faultCount_; }
   ControlOutput step(PilotInput in, Quaternion q, Vec3 pilotGyro, float dt,
                      bool armed, bool cut, bool sensorHealthy, const ControlGains &gains) {
     ControlOutput out{};
     out.servoDeg = servoCenterDeg;
     out.mixScale = 1;
     const bool validTime = std::isfinite(dt) && dt > 0 && dt <= .01f;
-    bool healthy = sensorHealthy && validTime && q.normalize() && pilotGyro.finite() &&
-      std::isfinite(in.throttle) && std::isfinite(in.roll) && std::isfinite(in.pitch) &&
-      std::isfinite(in.yaw) && std::isfinite(in.spin);
+    const bool validQuaternion=q.normalize();
+    uint32_t reason=0;
+    if (!sensorHealthy) reason|=faultSensor;
+    if (!validTime) reason|=faultTime;
+    if (!validQuaternion) reason|=faultQuaternion;
+    if (!pilotGyro.finite()) reason|=faultGyroscope;
+    if (!std::isfinite(in.throttle) || !std::isfinite(in.roll) || !std::isfinite(in.pitch) ||
+        !std::isfinite(in.yaw) || !std::isfinite(in.spin)) reason|=faultPilotInput;
     // Heading is undefined when the forward axis is vertical. This upright-only
     // controller also rejects inversion (the antipodal thrust error has no unique axis).
-    if (healthy) {
+    if (validQuaternion) {
       const Rotation r(q);
-      healthy = 1-r.bx.z*r.bx.z > .01f && r.bz.z > 0;
+      if (!(1-r.bx.z*r.bx.z > .01f)) reason|=faultHeadingSingularity;
+      if (!(r.bz.z > 0)) reason|=faultInverted;
     }
-    if (!healthy) { fault_ = true; recoveryTime_ = 0; }
+    const bool healthy=reason==0;
+    if (!healthy) {
+      // Preserve the entry reason through subsequent healthy samples and cut recovery.
+      if (!fault_) { faultReason_=reason; ++faultCount_; }
+      fault_ = true; recoveryTime_ = 0;
+    }
     if (fault_) {
       if (healthy && cut && in.throttle < .05f && !in.spinRequested && in.spin == 0) {
         recoveryTime_ += dt;
@@ -202,5 +220,6 @@ class CycloneControl {
   float integralRoll_ = 0, integralPitch_ = 0;
   YawServoControl yawControl_;
   float recoveryTime_ = 0;
+  uint32_t faultReason_=0, faultCount_=0;
 };
 } // namespace tricopter

@@ -69,6 +69,7 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include "CycloneControl.h"
 #include "RemoteMcuTelemetry.h"
 #include "FlightParameters.h"
+#include "ImuDiagnostics.h"
 #if DREHM_ESC_DSHOT_RATE
   #include "DShotTeensy4.h"
 #endif
@@ -357,6 +358,8 @@ tricopter::CycloneControl flightControl;
 tricopter::ControlOutput flightOutput{};
 bool imuSampleHealthy = false;
 bool imuFusionHealthy = true;
+tricopter::ImuDiagnostics imuDiagnostics;
+uint32_t lastControlFaultTimeUs=0, lastControlFaultImuReason=0;
 remote_mcu::Telemetry remoteTelemetry;
 bool servoCalibrationActive = false;
 tricopter::FlightParameters flightParameters;
@@ -560,8 +563,13 @@ void controlCyclone() {
     {0.01f*Kp_roll_angle, 0.01f*Ki_roll_angle, 0.01f*Kd_roll_angle},
     {0.01f*Kp_pitch_angle, 0.01f*Ki_pitch_angle, 0.01f*Kd_pitch_angle},
     {0.01f*Kp_yaw, 0.01f*Ki_yaw, 0.01f*Kd_yaw}};
+  const uint32_t previousFaultCount=flightControl.faultCount();
   flightOutput = flightControl.step(pilot, {q0,q1,q2,q3}, {GyroX,GyroY,GyroZ}, dt,
       armedFly, channel_5_pwm >= 1500, imuSampleHealthy && imuFusionHealthy, gains);
+  if (flightControl.faultCount()!=previousFaultCount) {
+    lastControlFaultTimeUs=current_time;
+    lastControlFaultImuReason=imuDiagnostics.currentReason;
+  }
   if (flightOutput.fault) {
     armedFly = false;
 #if defined USE_CRSF_RX
@@ -676,6 +684,18 @@ void serviceRemoteMcu() {
   sample.state[19]=flightParameters.config().initialModelEnabled;
   sample.state[20]=flightParameters.config().model.calibrated;
   sample.state[21]=normalYawOutput.active;
+  sample.state[22]=flightControl.faultReason();
+  sample.state[23]=flightControl.faultCount();
+  sample.state[24]=lastControlFaultTimeUs;
+  sample.state[25]=imuDiagnostics.readFailures;
+  sample.state[26]=imuDiagnostics.zeroFrames;
+  sample.state[27]=imuDiagnostics.accelerationRails;
+  sample.state[28]=imuDiagnostics.gyroscopeRails;
+  sample.state[29]=imuDiagnostics.fusionFailures;
+  sample.state[30]=imuDiagnostics.lastReason;
+  sample.state[31]=imuDiagnostics.peakAccelerationRaw;
+  sample.state[32]=imuDiagnostics.peakGyroscopeRaw;
+  sample.state[33]=lastControlFaultImuReason;
   sample.safeToFlash=!armedFly && motorsStopped && channel_5_pwm>=1500 &&
       channel_1_pwm<1050 && tricopter::spinCentered(channel_6_pwm);
   sample.safeToConfigure=!armedFly && motorsStopped && channel_5_pwm>=1500 && channel_1_pwm<1050;
@@ -798,17 +818,18 @@ void getIMUdata() {
    */
   int16_t AcX=0,AcY=0,AcZ=0,GyX=0,GyY=0,GyZ=0,MgX=0,MgY=0,MgZ=0;
   imuSampleHealthy = false;
+  imuDiagnostics.beginSample();
 
   #if defined USE_MPU6050_I2C
-    if (!mpu6050.getMotion6Checked(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ)) return;
+    if (!mpu6050.getMotion6Checked(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ)) {
+      imuDiagnostics.readFailure(); return;
+    }
   #elif defined USE_MPU9250_SPI
     mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
   #endif
 
   // Zero frames and sensor rails are unusable; never feed a stale frame to fusion.
-  if ((AcX == 0 && AcY == 0 && AcZ == 0) ||
-      abs((int)AcX) >= 32760 || abs((int)AcY) >= 32760 || abs((int)AcZ) >= 32760 ||
-      abs((int)GyX) >= 32760 || abs((int)GyY) >= 32760 || abs((int)GyZ) >= 32760) return;
+  if (!imuDiagnostics.checkRaw(AcX,AcY,AcZ,GyX,GyY,GyZ)) return;
   imuSampleHealthy = true;
 
  //Accelerometer
@@ -1073,6 +1094,7 @@ void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, fl
   tricopter::Quaternion q{q0,q1,q2,q3};
   imuFusionHealthy = tricopter::updateImu(q, {gx,gy,gz}, {ax,ay,az}, invSampleFreq, B_madgwick);
   if (!imuFusionHealthy) {
+    imuDiagnostics.fusionFailure();
     // Recover a gravity-aligned seed for the stopped fault-recovery interval.
     const float an = ax*ax+ay*ay+az*az;
     if (std::isfinite(an) && an > 1e-8f) {
