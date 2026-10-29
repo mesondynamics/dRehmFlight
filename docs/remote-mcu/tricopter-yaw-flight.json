@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "id": "drehmflight-yaw-flight",
-  "revision": 4,
+  "revision": 5,
   "name": "dRehmFlight 完整动力学 Yaw 首飞",
   "data": {
     "kind": "application",
@@ -12,10 +12,11 @@
     "wave_windows": [
       {
         "id": "input",
-        "name": "标定输入与遥控通道",
+        "name": "四轴原始遥控输入与 S1",
         "channels": [
           0,
-          2,
+          4,
+          5,
           18,
           19
         ],
@@ -27,9 +28,8 @@
         "name": "舵机逻辑角与模型倾角",
         "channels": [
           1,
+          2,
           3,
-          4,
-          5,
           26
         ],
         "height": 320,
@@ -138,7 +138,7 @@
       },
       {
         "id": 3,
-        "name": "M2 标定倾角估算（指令映射）",
+        "name": "M3 标定倾角估算（指令映射）",
         "unit": "°",
         "precision": 2,
         "color": "#eb96b7",
@@ -147,18 +147,18 @@
       },
       {
         "id": 4,
-        "name": "M4 标定倾角估算（指令映射）",
-        "unit": "°",
-        "precision": 2,
+        "name": "CH4 Roll 原始输入",
+        "unit": "µs",
+        "precision": 0,
         "color": "#b6a4ed",
         "visible": true,
         "scale": 1
       },
       {
         "id": 5,
-        "name": "M3 标定倾角估算（指令映射）",
-        "unit": "°",
-        "precision": 2,
+        "name": "CH2 Pitch 原始输入",
+        "unit": "µs",
+        "precision": 0,
         "color": "#97c876",
         "visible": true,
         "scale": 1
@@ -282,7 +282,7 @@
       },
       {
         "id": 19,
-        "name": "CH4 左杆左右",
+        "name": "CH1 Yaw 原始输入",
         "unit": "µs",
         "precision": 0,
         "color": "#eb96b7",

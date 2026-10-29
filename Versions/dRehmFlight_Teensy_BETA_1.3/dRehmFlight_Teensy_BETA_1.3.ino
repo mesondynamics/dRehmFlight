@@ -298,13 +298,8 @@ unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channe
       crsfInputChannelsUs[i] = constrain(crsfReceiver.rcToUs(channels->value[i]), 1000, 2000);
     }
 
-    // TX16S AETR is mapped to this sketch's throttle, roll, pitch, yaw order.
-    crsfChannelsUs[0] = crsfInputChannelsUs[2];
-    crsfChannelsUs[1] = crsfInputChannelsUs[0];
-    crsfChannelsUs[2] = crsfInputChannelsUs[1];
-    crsfChannelsUs[3] = tricopter::yawFromAetrUs(crsfInputChannelsUs[3]);
-    crsfChannelsUs[4] = crsfInputChannelsUs[4];
-    crsfChannelsUs[5] = crsfInputChannelsUs[5];
+    // Raw CH1 yaw / CH4 roll; internal slots remain throttle, roll, pitch, yaw.
+    tricopter::mapCrsfChannels(crsfInputChannelsUs, crsfChannelsUs);
     crsfFailsafe = channels->failsafe;
     if (crsfFailsafe) crsfChannelsReady = false;
   }
@@ -647,18 +642,22 @@ void serviceRemoteMcu() {
   remote_mcu::Snapshot sample{};
 #if defined USE_CRSF_RX
   sample.values[0]=crsfInputChannelsUs[5];
-  sample.values[18]=crsfInputChannelsUs[2]; sample.values[19]=crsfInputChannelsUs[3];
+  sample.values[4]=crsfInputChannelsUs[tricopter::crsfRollChannelIndex];
+  sample.values[5]=crsfInputChannelsUs[1];
+  sample.values[18]=crsfInputChannelsUs[2];
+  sample.values[19]=crsfInputChannelsUs[tricopter::crsfYawChannelIndex];
   sample.state[18]=!crsfLinkUp || crsfFailsafe;
 #else
   sample.values[0]=channel_6_pwm; sample.values[18]=channel_1_pwm;
+  sample.values[4]=channel_2_pwm; sample.values[5]=channel_3_pwm;
   sample.values[19]=3000-channel_4_pwm;
 #endif
   const float servoLogical=s1_command_scaled*180.0f;
   sample.values[1]=tricopter::quantizedServoLogical(servoLogical);
   sample.values[2]=tricopter::servoPulseCommandUs(servoLogical);
-  for (unsigned i=0;i<3;++i)
-    sample.values[3+i]=flightParameters.config().tiltMappingReady[i] ?
-        tricopter::physicalTilt(flightParameters.config().model.rotor[i],sample.values[1]) : 0;
+  // One mapped tilt; the other derived channels now report actual pilot input.
+  sample.values[3]=flightParameters.config().tiltMappingReady[2] ?
+      tricopter::physicalTilt(flightParameters.config().model.rotor[2],sample.values[1]) : 0;
   sample.values[6]=flightOutput.heading; sample.values[7]=normalYawOutput.headingTarget;
   sample.values[8]=flightOutput.yawTarget; sample.values[9]=flightOutput.yawRate;
   sample.values[10]=normalYawOutput.rateFiltered; sample.values[11]=normalYawOutput.torqueRequested;
