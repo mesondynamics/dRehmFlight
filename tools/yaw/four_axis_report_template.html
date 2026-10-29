@@ -2,138 +2,260 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>三旋翼完整动力学 Yaw 控制与四轴系留试飞分析 · 2026-10-29</title>
+<title>三旋翼动力学、三轴控制与系留试飞分析 · 2026-10-29</title>
 <style>
-:root{--ink:#15263a;--muted:#526174;--line:#d9e2ec;--blue:#174b8d;--bg:#f2f5f9;--paper:#fff;--soft:#eaf2fb;--amber:#875310}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
-main{max-width:1160px;margin:32px auto 60px;background:var(--paper);padding:48px 56px;border:1px solid var(--line);border-radius:12px}
-.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--blue);font-weight:700}h1{font-size:32px;line-height:1.4;letter-spacing:-.02em;margin:10px 0 14px}h2{font-size:25px;margin:54px 0 18px;padding-top:10px;border-top:2px solid var(--blue)}h3{font-size:19px;margin:28px 0 10px}p{margin:12px 0}a{color:var(--blue)}.meta,.caption,small{color:var(--muted);font-size:13px}.meta{line-height:1.9}.tag{display:inline-block;padding:2px 10px;border-radius:20px;background:var(--soft);color:var(--blue);font-size:12px;margin:3px 6px 3px 0}
-nav{display:flex;flex-wrap:wrap;gap:7px 20px;margin:24px 0;padding:14px 0;border-block:1px solid var(--line);font-size:14px}nav a{text-decoration:none}.note{background:#f5f8fc;border-left:4px solid var(--blue);padding:14px 18px;margin:20px 0}.caution{border-color:#b67920;background:#fff8eb}.good{border-color:#178464;background:#effaf5}.equation{white-space:pre-wrap;background:#11283f;color:#eff7ff;padding:20px 24px;border-radius:8px;font:14px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.table-wrap{overflow-x:auto;margin:18px 0}table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.75}th{text-align:left;background:#eaf0f7;color:#183956;font-weight:650}th,td{padding:11px 13px;border:1px solid var(--line);vertical-align:top}tbody tr:nth-child(even){background:#f8fafc}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}.card{border:1px solid var(--line);border-radius:8px;padding:16px 18px}.card strong{display:block;font-size:27px;line-height:1.4;color:var(--blue)}.card span{font-size:13px;color:var(--muted)}figure{margin:26px 0 34px;padding:14px 10px 10px;border:1px solid var(--line);border-radius:8px;background:white}figure img{width:100%;height:auto;display:block}figcaption{padding:8px 10px;font-size:13px;color:var(--muted)}.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:14px;margin:20px 0}.flow div{background:var(--soft);padding:16px;border:1px solid #cdddf0;border-radius:7px}.flow b{display:block;color:var(--blue)}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em;background:#f0f3f7;padding:2px 4px;border-radius:3px;overflow-wrap:anywhere}details{margin:22px 0;border:1px solid var(--line);border-radius:7px;padding:12px 16px}summary{cursor:pointer;color:var(--blue)}pre{white-space:pre-wrap;font-size:11px;line-height:1.6;overflow-wrap:anywhere}ul,ol{padding-left:24px}li{margin:8px 0}.footer{margin-top:35px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}button{border:1px solid var(--line);padding:7px 13px;background:white;color:var(--blue);border-radius:5px;cursor:pointer;float:right}
-@media(max-width:760px){main{margin:0;padding:26px 19px;border:0;border-radius:0}h1{font-size:26px}h2{font-size:22px}.grid,.flow{grid-template-columns:1fr}table{font-size:12px}th,td{padding:8px}.equation{font-size:12px;padding:15px}.card strong{font-size:24px}}
-@media print{body{background:white;font-size:11pt}main{max-width:none;margin:0;padding:0;border:0}nav,button{display:none}h2{break-before:auto}h2,h3{break-after:avoid}figure,.card,tr,.equation{break-inside:avoid}.table-wrap{overflow:visible}figure{padding:0;border:0}details{display:none}a{color:inherit}h1{font-size:25pt}.grid{gap:8px}.caption,figcaption,.meta{font-size:9pt}}
+:root{--ink:#172b40;--muted:#53677c;--blue:#174b8d;--line:#d9e3ed;--soft:#eef4fb;--paper:#fff;--green:#14745b;--amber:#946019}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f1f5f9;color:var(--ink);font:16px/1.9 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:1160px;margin:32px auto 60px;padding:48px 56px;background:var(--paper);border:1px solid var(--line);border-radius:12px}h1{font-size:32px;line-height:1.45;margin:10px 0 18px}h2{font-size:26px;margin:58px 0 22px;padding-top:14px;border-top:2px solid var(--blue)}h3{font-size:20px;margin:30px 0 12px}h4{font-size:17px;margin:24px 0 10px}p{margin:13px 0}a{color:var(--blue)}.eyebrow{font-size:12px;letter-spacing:.12em;font-weight:700;color:var(--blue)}.meta,.caption,figcaption{font-size:13px;line-height:1.85;color:var(--muted)}.tag{display:inline-block;margin:4px 7px 4px 0;padding:2px 10px;background:var(--soft);color:var(--blue);font-size:12px;border-radius:18px}nav{display:flex;flex-wrap:wrap;gap:8px 22px;margin:26px 0;padding:16px 0;border-block:1px solid var(--line);font-size:14px}nav a{text-decoration:none}.lead{font-size:17px}.note{padding:15px 19px;margin:20px 0;border-left:4px solid var(--blue);background:#f2f7fc}.caution{border-color:var(--amber);background:#fff8eb}.good{border-color:var(--green);background:#eff9f5}.finding{padding:12px 16px;margin:18px 0;border:1px solid #cad9e7;border-radius:6px;background:#f6f9fc}.finding b{color:var(--blue)}.equation{display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:10px;margin:20px 0;padding:14px 13px 14px 20px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe;color:#172b40}.math-body{overflow-x:auto;min-width:0;padding:7px 2px;font-size:18px}.math-body mjx-container{display:block;min-width:100%;width:max-content;text-align:center}.math-body svg{vertical-align:middle;overflow:visible}.eq-number{text-align:right;color:var(--muted);font:13px Georgia,serif}.symbol{font-family:Georgia,"Times New Roman",serif;font-style:italic}.table-wrap{max-width:100%;overflow-x:auto;margin:18px 0}table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.8}th,td{padding:11px 13px;border:1px solid var(--line);vertical-align:top}th{text-align:left;color:#163b61;background:#eaf1f8}tbody tr:nth-child(even){background:#f8fafc}figure{margin:26px 0 32px;border:1px solid var(--line);border-radius:8px;padding:14px 10px;background:white}figure img{display:block;width:100%;height:auto}figcaption{padding:10px 12px 2px}.diagram{display:block;width:100%;height:auto}.diagram text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.architecture{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}.architecture section{border:1px solid #c7d9ec;border-radius:7px;padding:16px;background:#f4f8fd}.architecture section b{color:var(--blue)}.architecture .shared{grid-column:1/-1;background:#edf5f2;border-color:#c4ddd3;text-align:center}.arrow{text-align:center;color:var(--muted);font-size:19px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:24px 0}.card{padding:17px;border:1px solid var(--line);border-radius:7px}.card strong{display:block;color:var(--blue);font-size:27px;line-height:1.5}.card span{font-size:13px;color:var(--muted)}ul,ol{padding-left:24px}li{margin:10px 0}code{font:.86em ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;padding:2px 4px;background:#eef2f6;border-radius:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;line-height:1.65}details{margin:22px 0;padding:12px 16px;border:1px solid var(--line);border-radius:7px}summary{cursor:pointer;color:var(--blue)}.trace{font-size:12px;color:var(--muted);overflow-wrap:anywhere}.references{font-size:14px;line-height:1.9}.footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}button{float:right;border:1px solid var(--line);border-radius:5px;padding:8px 12px;color:var(--blue);background:white;cursor:pointer}
+.math-body mjx-container{width:100%;min-width:0;max-width:100%}.math-body > mjx-container > svg{max-width:100%;height:auto}
+@media(max-width:760px){main{margin:0;padding:26px 19px;border:0;border-radius:0}h1{font-size:26px}h2{font-size:22px}.grid,.architecture{grid-template-columns:1fr}.architecture .shared{grid-column:auto}.equation{padding:10px;grid-template-columns:minmax(0,1fr) 29px;gap:5px}.math-body{font-size:16px}table{font-size:12px}th,td{padding:8px}button{float:none;margin-bottom:16px}}
+@media print{body{background:white;font-size:11pt}main{margin:0;padding:0;border:0;max-width:none}nav,button{display:none}h1{font-size:25pt}h2,h3,h4{break-after:avoid}figure,.equation,.finding,tr{break-inside:avoid}.table-wrap,.math-body{overflow:visible}figure{padding:0;border:0}details{display:none}a{color:inherit}.math-body{font-size:15px}.meta,figcaption,.caption{font-size:9pt}}
 </style>
 </head>
 <body><main>
 <button onclick="window.print()" type="button">打印 / 保存 PDF</button>
-<div class="eyebrow">FLIGHT CONTROL ENGINEERING · TEST REPORT 01</div>
-<h1>三旋翼完整动力学 Yaw 控制<br>与四轴系留试飞分析</h1>
-<div class="meta">试验日期：2026-10-29，23:45–23:49（Asia/Shanghai，含停机录制）<br>报告生成：{{GENERATED}}<br>平台：Teensy 4.0 · MPU6050 · 三电机＋联动倾转舵机 · RemoteMCU 实机记录</div>
-<p><span class="tag">约 46 秒系留空中测试</span><span class="tag">250g 配重持续拉紧</span><span class="tag">CH1 Yaw / CH4 Roll 已纠正</span><span class="tag">初始动力参数，未辨识</span></p>
-<nav aria-label="报告目录"><a href="#model">01 当前物理模型</a><a href="#control">02 控制与分配</a><a href="#test">03 试验与数据质量</a><a href="#analysis">04 四轴数据分析</a><a href="#realtime">05 实时性与诊断</a><a href="#decision">06 判断与下一步</a></nav>
+<div class="eyebrow">FLIGHT CONTROL ENGINEERING · TEST REPORT 01 · REVISION 2</div>
+<h1>三旋翼动力学、三轴姿态控制<br>与系留试飞分析</h1>
+<div class="meta">试验：2026-10-29 23:45–23:49，Asia/Shanghai（含停机录制）<br>报告生成：{{GENERATED}}<br>平台：Teensy 4.0 · MPU6050 · 三电机与联动倾转机构 · RemoteMCU 实测</div>
+<p><span class="tag">模型 → 控制 → 试验 → 证据 → 结论</span><span class="tag">约46秒空中系留测试</span><span class="tag">250g配重持续拉紧</span><span class="tag">动力参数尚待辨识</span></p>
+<p class="lead">本报告回答三个问题：这架三旋翼如何产生并调节三轴力矩；当前固件如何实现Roll、Pitch与Yaw闭环；本轮试飞证实了什么、仍有哪些控制问题。以下先建立统一符号与方程，再逐项对照实测数据。</p>
+<nav aria-label="报告目录"><a href="#model">01 物理模型</a><a href="#control">02 三轴控制</a><a href="#test">03 试验与评价方法</a><a href="#analysis">04 响应分析</a><a href="#realtime">05 运行与诊断</a><a href="#decision">06 结论与下一步</a><a href="#references">参考与复核资料</a></nav>
 
-<h2 id="model">01 当前物理模型</h2>
-<h3>1.1 机构、坐标与角度</h3>
-<p>本机为三臂120°布置，中心舵机通过齿轮联动三个转子，使三个推力轴沿各自切向倾转。机体采用右手系 FLU：原点为重心，+X朝机头、+Y朝机体左侧、+Z朝机架上方。M2位于左前、M4位于右前、M3位于正后；俯视逆时针／左转为正Yaw。</p>
-<p>桨盘偏转角 δ 是“指向桨盘上方的推力轴”相对机架竖直方向的倾角，零度表示垂直机架。以每个转子径向单位向量 eᵣ 和正切向 eₜ=e𝓏×eᵣ 定义。对后方 M3，推力轴顶端向机体右侧倾为正。它与单片桨叶螺距、舵机逻辑角是不同物理量。</p>
-<div class="equation">nᵢ(s) = cosδᵢ(s) e𝓏 + sinδᵢ(s) eₜᵢ
-Fᵢ = Tᵢ nᵢ(s)
-r₂ = (0.250, +0.433, 0) m
-r₄ = (0.250, −0.433, 0) m
-r₃ = (−0.500, 0, 0) m</div>
-<p>用户首轮7点标定将原先“俯视M3向左为正”的读数取反后录入，三个转子共用同组测量。PWM 1063/1187/1327/1605/1687/1820/1945µs，对应 δ 为 +55.9/+39.9/+20.5/−16.0/−28.2/−49.6/−63.6°。固件将其重采样为9节点表并分段插值。原7点插值竖直位约1483.14µs；运行时9节点近似、整数µs量化会带来少量差异。</p>
-<div class="note">本轮没有角度位置传感器。报告中的舵机PWM是命令，δ是标定表映射，带滞后的舵角和推力是模型估计。它们不能证明执行器真实到位，也不能充当独立测量验证模型。</div>
+<h2 id="model">01 从机构与受力建立动力学模型</h2>
+<h3>1.1 建模对象、假设与坐标系</h3>
+<p>将机架、电池和电机整体视为刚体；三个转子对刚体施加推力及反扭矩。机臂按120°布置，中心舵机通过齿轮联动三个推力轴。先忽略机构弹性及转子陀螺瞬态，将它们与气动误差计入未建模力矩。初值还假设转子安装中心与重心同高，真实高度差尚待量测。系留试验另加入绳索外力与外力矩。</p>
+<p>建立地面惯性坐标系W及机体坐标系B。两者都采用右手系，机体B为FLU：X向机头、Y向左、Z向上。地面Z向上，地面X/Y取起始参考方向。旋转矩阵R将机体系向量变换至地面系；机体角速度记为ω，其三个分量为p、q、r。</p>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf v^{W}&amp;=R\mathbf v^{B},\qquad R^{\mathsf T}R=I_3,\\ \boldsymbol\omega^{B}&amp;=\begin{bmatrix}p&amp;q&amp;r\end{bmatrix}^{\mathsf T}.\end{aligned}</div><span class="eq-number">(1)</span></div>
+<div class="table-wrap"><table><thead><tr><th>量</th><th>物理意义／正方向</th><th>单位</th></tr></thead><tbody>
+<tr><td>φ：Roll</td><td>绕机体X轴的横滚角；右倾为正</td><td>rad；图表用°</td></tr>
+<tr><td>θ：Pitch</td><td>绕中间Y轴的俯仰角；前倾、机头向下为正</td><td>rad；图表用°</td></tr>
+<tr><td>ψ：Yaw</td><td>相对地面Z轴的航向角；俯视左转／逆时针为正</td><td>rad；图表用°</td></tr>
+<tr><td>p、q、r</td><td>机体角速度分量；倾斜时r不等于航向角速度</td><td>rad/s</td></tr>
+<tr><td>Tᵢ、δᵢ、s</td><td>第i电机推力、推力轴物理倾角、共同舵机逻辑位置</td><td>N、rad、logical°</td></tr>
+<tr><td>τₓ、τᵧ、τ𝓏</td><td>绕机体X/Y/Z轴的合力矩</td><td>N·m</td></tr>
+</tbody></table></div>
+<p class="caption">公式统一使用rad与SI单位，角度数值和曲线为便于阅读采用°。固件姿态融合内部使用前／右／下FRD；与本文FLU的换算为S=diag(1,−1,−1)，向量左乘S，旋转矩阵满足R<sub>FLU</sub>=S R<sub>FRD</sub> S，不能直接混用坐标符号。</p>
 
-<h3>1.2 推力、反扭矩和刚体方程</h3>
-<div class="equation">Fᴮ = Σ Tᵢ nᵢ(s)
-τᴮ = Σ [rᵢ × Tᵢ nᵢ(s) + σᵢ κᵢ Tᵢ nᵢ(s)]
-m aᵂ = Rᴮᵂ Fᴮ − mg e𝓏 + Fᵂtether
-I ω̇ + ω × Iω = τᴮ + rattach × Ftether + τrope_twist + τother</div>
-<p>κᵢ 是反扭矩与推力之比，σᵢ表示机体所受反扭矩符号。依据M2/M3转子逆时针、M4顺时针，按M2/M4/M3排列取 σ=[−1,+1,−1]。代码计算三轴力与三轴力矩，含倾转反扭矩对横滚、俯仰的耦合。气动阻力、转子陀螺瞬态及机构弹性仍属于未充分描述的效应。</p>
-<p>方程中的系留外力与绳索力矩用于描述本轮试验边界；固件没有对应的张力测量、估计或补偿输入。</p>
+<h3>1.2 机构几何与桨盘偏转角</h3>
+<figure>
+<svg class="diagram" viewBox="0 0 1000 405" role="img" aria-label="三旋翼俯视布局及桨盘倾角定义，M2左前M4右前M3后方，正倾角使M3推力水平分量向右">
+<defs><marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#174b8d"/></marker><marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#14745b"/></marker></defs>
+<text x="50" y="30" font-size="19" fill="#172b40">俯视：三臂120°，L=0.5m</text>
+<g stroke="#8fa7be" stroke-width="12"><path d="M260 195L115 111M260 195L405 111M260 195L260 362"/></g>
+<g fill="#eaf1f8" stroke="#174b8d" stroke-width="2"><circle cx="115" cy="111" r="36"/><circle cx="405" cy="111" r="36"/><circle cx="260" cy="362" r="36"/><circle cx="260" cy="195" r="23"/></g>
+<g font-size="18" text-anchor="middle" fill="#172b40"><text x="115" y="117">M2</text><text x="405" y="117">M4</text><text x="260" y="368">M3</text></g>
+<g stroke="#174b8d" stroke-width="2" marker-end="url(#arrow-blue)"><path d="M260 168V70"/><path d="M234 195H170"/><path d="M302 220A55 55 0 0 0 310 174" fill="none"/></g>
+<g font-size="15" fill="#174b8d"><text x="270" y="69">+X 前</text><text x="122" y="201">+Y 左</text><text x="318" y="210">+Yaw</text><text x="290" y="256">重心</text></g>
+<g stroke="#14745b" stroke-width="3" marker-end="url(#arrow-green)"><path d="M95 144L71 185"/><path d="M383 77L358 34"/><path d="M298 362H365"/></g>
+<g font-size="14" fill="#14745b"><text x="38" y="255">绿色箭头：δ&gt;0时的</text><text x="38" y="279">水平推力方向</text></g>
+<path d="M515 45V380" stroke="#d9e3ed"/>
+<text x="559" y="30" font-size="19" fill="#172b40">单转子切向剖面：倾的是推力轴</text>
+<path d="M645 330H927M695 350V81" stroke="#a4b3c2" stroke-width="2" stroke-dasharray="5 5"/>
+<path d="M695 330L818 116" stroke="#174b8d" stroke-width="4" marker-end="url(#arrow-blue)"/>
+<path d="M765 84L877 148" stroke="#14745b" stroke-width="9"/>
+<path d="M695 235A95 95 0 0 1 742 248" fill="none" stroke="#946019" stroke-width="2"/>
+<g font-size="16" fill="#172b40"><text x="661" y="70">+Z</text><text x="888" y="355">+eₜ</text><text x="821" y="210">推力 Tᵢnᵢ</text><text x="715" y="227" fill="#946019">δᵢ</text><text x="830" y="100" fill="#14745b">桨盘</text><text x="570" y="389">M3的+eₜ指向机体右侧；δ=0时推力轴竖直。</text></g>
+</svg>
+<figcaption>图A｜机构与符号。绿色箭头表示推力的切向分量，不表示桨叶自转方向；三电机由同一齿轮联动，但各自切向不同。</figcaption>
+</figure>
+<p>以重心为原点，第i个转子的安装位置为rᵢ，径向单位向量为eᵣᵢ，正切向为eₜᵢ。等长臂模型给出：</p>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf r_2&amp;=(L/2,\sqrt3L/2,0)^{\mathsf T},\\ \mathbf r_4&amp;=(L/2,-\sqrt3L/2,0)^{\mathsf T},\\ \mathbf r_3&amp;=(-L,0,0)^{\mathsf T},\qquad L=0.500\,\mathrm m.\end{aligned}</div><span class="eq-number">(2)</span></div>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf e_{r i}&amp;=\frac{\mathbf r_i}{L},\quad\mathbf e_{t i}=\mathbf e_z\times\mathbf e_{r i},\\ \mathbf n_i(s)&amp;=\cos\delta_i(s)\,\mathbf e_z+\sin\delta_i(s)\,\mathbf e_{t i}.\end{aligned}</div><span class="eq-number">(3)</span></div>
+<p>δᵢ是指向桨盘上方的推力轴相对机架竖直方向的倾角，沿正切向倾转为正。M3在后方，因此其推力轴顶端向机体右侧倾为正。这个量描述整个桨盘／电机的倾转，不是单片桨叶螺距，也不是舵机轴自身的角度。式(3)中的δᵢ(s)由标定表决定。</p>
+
+<h3>1.3 从单转子受力到整机合力与力矩</h3>
+<p>第i转子产生大小Tᵢ的推力，方向为nᵢ。它对重心的力矩包含两项：力臂与推力的叉乘，以及电机带动桨叶时传给机架的反扭矩。</p>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf F_i&amp;=T_i\mathbf n_i,\\ \boldsymbol\tau_i&amp;=\mathbf r_i\times\mathbf F_i+\sigma_i\kappa_i T_i\mathbf n_i.\end{aligned}</div><span class="eq-number">(4)</span></div>
+<div class="equation"><div class="math-source">\mathbf F^{B}=\sum_{i\in\{2,4,3\}}\mathbf F_i,\qquad \boldsymbol\tau^{B}=\sum_{i\in\{2,4,3\}}\boldsymbol\tau_i</div><span class="eq-number">(5)</span></div>
+<p>κᵢ是反扭矩与推力之比，单位为m；σᵢ取±1，描述机架所受反扭矩的方向。按M2/M4/M3顺序，当前模型为σ=[−1,+1,−1]，对应M2/M3桨叶俯视逆时针、M4顺时针。κ是待辨识的动力参数。</p>
+<p>当三推力轴竖直时，式(4)可展开成下面的混控几何关系：</p>
+<div class="equation"><div class="math-source">\begin{bmatrix}F_z\\\tau_x\\\tau_y\end{bmatrix}=\begin{bmatrix}1&amp;1&amp;1\\ \sqrt3 L/2&amp;-\sqrt3 L/2&amp;0\\ -L/2&amp;-L/2&amp;L\end{bmatrix}\begin{bmatrix}T_2\\T_4\\T_3\end{bmatrix}</div><span class="eq-number">(6)</span></div>
+<p>这说明：M2相对M4增加推力会产生右倾Roll力矩；后电机M3相对两前电机增加推力会产生前倾Pitch力矩。油门主要改变总推力。Yaw还需要克服不对称反扭矩，并借助共同倾转产生切向推力。</p>
+<div class="equation"><div class="math-source">\tau_z=\sum_i L T_i\sin\delta_i+\sum_i\sigma_i\kappa_i T_i\cos\delta_i</div><span class="eq-number">(7)</span></div>
+<p>式(7)中，第一项是倾转推力绕重心产生的Yaw力矩，第二项是反扭矩在Z轴上的投影。即使Yaw杆回中，舵机也可能需要保持非零倾角来抵消反扭矩。因此“舵机回到机械中点”与“机体不再偏航”不是同一个控制目标。</p>
+
+<h3>1.4 刚体运动方程及其物理含义</h3>
+<p>按牛顿—欧拉方法，先在地面系写平动方程，再在机体系写转动方程。质心位置、速度分别记为pᵂ、vᵂ，惯量矩阵记为J。文献[1]采用的刚体建模方法可用于理解这一结构；本文的轴向、倾转机构与外力项按本机重新定义。</p>
+<div class="equation"><div class="math-source">\begin{aligned}\dot{\mathbf p}^{W}&amp;=\mathbf v^{W},\\ m\dot{\mathbf v}^{W}&amp;=R\mathbf F^{B}-mg\mathbf e_z+\mathbf F_{\mathrm{tether}}^{W},\\ \dot R&amp;=R[\boldsymbol\omega^{B}]_\times.\end{aligned}</div><span class="eq-number">(8)</span></div>
+<div class="equation"><div class="math-source">J\dot{\boldsymbol\omega}^{B}+\boldsymbol\omega^{B}\times(J\boldsymbol\omega^{B})=\boldsymbol\tau^{B}+\boldsymbol\tau_{\mathrm{ext}}^{B}</div><span class="eq-number">(9)</span></div>
+<p>式(8)将推力转换到地面坐标后，与重力和绳索拉力相加，决定质心加速度。式(9)表示力矩改变角动量；叉乘项描述刚体转动中的轴间耦合。绳索挂点相对重心偏移时，外力矩包含挂点力臂与拉力的叉乘，以及绳索扭转等效力矩。</p>
+<div class="equation"><div class="math-source">\begin{aligned}\boldsymbol\tau_{\mathrm{ext}}^{B}&amp;=\mathbf r_a^{B}\times(R^{\mathsf T}\mathbf F_{\mathrm{tether}}^{W})\\ &amp;\quad+\boldsymbol\tau_{\mathrm{twist}}^{B}+\boldsymbol\tau_{\mathrm{other}}^{B}.\end{aligned}</div><span class="eq-number">(10)</span></div>
+<p>若坐标轴近似为惯性主轴，J为对角阵。Yaw轴的转动方程可写为：</p>
+<div class="equation"><div class="math-source">J_z\dot r+(J_y-J_x)pq=\tau_z+\tau_{\mathrm{ext},z}</div><span class="eq-number">(11)</span></div>
+<p>机体接近水平、Roll/Pitch角速度较小时，可近似使用J𝓏ψ̈≈τ𝓏。这是当前Yaw率环采用的设计近似。完整三轴受力与力矩仍用于执行器分配；固件没有辨识并补偿完整惯量矩阵，也没有绳索张力反馈。</p>
+<p>航向采用Z–Y–X角度约定R=R𝓏(ψ)Rᵧ(θ)Rₓ(φ)，因此机体角速度与航向角速度满足：</p>
+<div class="equation"><div class="math-source">\dot\psi=\frac{q\sin\phi+r\cos\phi}{\cos\theta}</div><span class="eq-number">(12)</span></div>
+<p>式(12)解释了为什么倾斜时不能直接把GyroZ当作Yaw变化率。固件由四元数姿态与陀螺计算航向率，并对接近奇异姿态设置健康门控。</p>
+
+<h3>1.5 标定、执行器模型与参数可信度</h3>
+<p>用户提供7组PWM与桨盘倾角，原记录“俯视M3向左为正”，录入时已按本文定义取反；M2/M4/M3共用同组标定。固件将7点重采样为9节点、分段线性插值，三路使用同一舵机命令。原7点插值的竖直位约1483.14µs。</p>
+<div class="table-wrap"><table><thead><tr><th>PWM命令 / µs</th><th>1063</th><th>1187</th><th>1327</th><th>1605</th><th>1687</th><th>1820</th><th>1945</th></tr></thead><tbody><tr><td>物理倾角 / °</td><td>+55.9</td><td>+39.9</td><td>+20.5</td><td>−16.0</td><td>−28.2</td><td>−49.6</td><td>−63.6</td></tr></tbody></table></div>
+<p>静态标定只能给出命令与倾角的对应关系。动态预测另外用一阶惯性近似舵机和电机响应：</p>
+<div class="equation"><div class="math-source">\begin{aligned}t_s\dot{\hat s}+\hat s&amp;=s_{\mathrm{cmd}},\\ t_m\dot{\hat T}_i+\hat T_i&amp;=f_i(u_{i,\mathrm{cmd}}).\end{aligned}</div><span class="eq-number">(13)</span></div>
+<p>tₛ、tₘ分别为舵机和电机时间常数，fᵢ是电机命令到推力的查表函数。固件按离散一阶低通更新，并计入PWM整数µs及电机命令量化。帽号表示模型估计；本轮没有舵位、转速或推力传感器。</p>
 {{MODEL_TABLE}}
-<p>750g、0.5m力臂、居中重心、2750KV电机、5寸三叶桨、4S电池由用户提供。KV、桨尺寸和电池倍率没有被当作厂家推力数据；Izz、κ、推力曲线和执行器滞后仍为可追溯的初始假设。</p>
+<p>750g总重、0.5m力臂、重心居中、2750KV电机、5寸三叶桨、4S电池由用户提供。KV与桨尺寸本身不能给出准确推力曲线。初始J<sub>z</sub>采用mL²/3粗估，相当于均匀径向质量分布；真实集中质量未必满足该假设。当前推力表、J<sub>z</sub>、κ及时间常数均是初值；“完整动力学分配路径已经运行”与“动力参数已经验证”需要分开表述。</p>
 
-<h3>1.3 本轮系留边界</h3>
-<p>用户确认约250g水瓶配重使顶部挂绳全程拉紧。若机构接近一比一、瓶子近静止、拉力近竖直且摩擦可忽略，拉力约2.45N，约占750g机重三分之一；稳态转子竖直推力可能约4.91N，而自由悬停需约7.36N。滑轮倍率、绳角、摩擦和配重加速度尚未知，这些数值是条件估算。机体质量与惯量仍按750g机体考虑。</p>
-<p>绳索会施加外力；挂点偏心、绳索偏斜或扭转还可能产生外力矩。该试验可用于检查操纵和闭环在现有约束下的响应，不能直接用 mg/Fz 拟合推力尺度，也不能据此独立确定自由飞行的Izz、κ或阻尼。</p>
+<h2 id="control">02 从控制目标到Roll、Pitch、Yaw闭环</h2>
+<h3>2.1 控制结构与各轴职责</h3>
+<p>飞行控制先决定希望施加怎样的作用，再由分配器计算电机与舵机命令。Roll/Pitch控制推力轴朝向，Yaw控制相对航向及其变化率，油门给出集体动力请求。当前没有高度、位置或地速闭环。</p>
+<div class="architecture" role="img" aria-label="三轴闭环结构：Roll Pitch姿态控制和Yaw航向角速度控制汇入共同动力学分配器，经执行器机体IMU形成反馈">
+<section><b>Roll / Pitch 分支</b><br>CH4 / CH2 → 目标推力方向<br>↓<br>与IMU推力方向比较 → 姿态P＋积分＋角速度阻尼<br>↓<br>名义三电机混控 → 总竖直力与Roll/Pitch力矩请求</section>
+<section><b>Yaw 分支</b><br>CH1 → 航向目标／回中停止方向<br>↓<br>航向P外环 → 角速度目标 → 角速度PI内环<br>↓<br>惯量换算 → Yaw力矩请求</section>
+<section class="shared"><b>共同动力学分配器</b><br>输入[F𝓏，τₓ，τᵧ，τ𝓏] → 三电机推力＋共同舵机倾转 → DShot / PWM → 执行器与机体</section>
+<section class="shared"><b>反馈</b><br>MPU6050 → 四元数姿态、推力方向、相对航向、航向率 → 回到各轴误差计算</section>
+</div>
+<p>接收映射为CH1→Yaw、CH4→Roll、CH2→Pitch、CH3→油门、CH5→SA、CH6→S1。原始Yaw通道经反向转换后，左转为正。每轴20µs死区用于抑制中杆噪声，死区外归一化至[−1,1]。</p>
 
-<h2 id="control">02 当前控制方案与 Yaw 分配</h2>
-<h3>2.1 闭环范围与执行链路</h3>
-<div class="flow"><div><b>① 驾驶输入</b>CH1→Yaw；CH4→Roll<br>CH2→Pitch；CH3→油门<br>CH5→SA；CH6→S1</div><div><b>② 姿态与航向反馈</b>MPU6050四元数融合<br>相对航向＋姿态换算航向率<br>Roll/Pitch保留姿态控制</div><div><b>③ 执行器分配</b>需求Yaw力矩→倾转模型<br>三电机＋共同舵机<br>保持Fz与Roll/Pitch力矩</div></div>
-<p>正常模式中，进入有效油门后锁存当前相对航向。Yaw杆形成航向变化指令；回中时按当前滤波航向率与允许减速度计算一次停止航向，随后保持该目标。角度差按±180°最短路径计算。油门低于有效控制阈值、停机、故障或退出普通模式会复位航向保持状态。</p>
-<div class="equation">ψsp：随Yaw杆积分；回中时捕获可达停止方向
-ψ̇cmd = 限速 / 限加速度 [杆量 × ωmax + Kψ wrap(ψsp − ψ)]
-eω = (ψ̇cmd − ψ̇filtered) × π/180
-τz,req = Izz (Kω eω + 积分状态) + D ψ̇filtered
-积分更新：Ki eω；分配受限时条件积分＋有限反算</div>
-<p>当前Yaw率环使用近水平的标量Izz设计；完整三轴力/力矩模型用于控制分配。Roll/Pitch通过推力方向误差、角速度阻尼与积分生成混控请求，沿用现有姿态控制，并保持2kHz电机分配。当前闭环范围是姿态与相对航向，没有高度、位置或地速控制。</p>
+<h3>2.2 Roll/Pitch：目标推力方向与姿态误差</h3>
+<p>对这两个轴，驾驶员拨杆请求机体倾斜，回中则请求恢复水平。固件以推力轴的空间方向构造误差，避免直接把两条欧拉角误差当成在任何姿态下都独立的量。</p>
+<p>令归一化Roll/Pitch输入为aᵣ、aₚ，正常模式倾角尺度γ为30°。先对二维输入作径向限制，防止对角满杆超出设定范围：</p>
+<div class="equation"><div class="math-source">\begin{aligned}k&amp;=\frac{\gamma}{\max(1,\sqrt{a_r^2+a_p^2})},\\ \phi_d&amp;=k a_r,\qquad\theta_d=k a_p.\end{aligned}</div><span class="eq-number">(14)</span></div>
+<p>在当前航向ψ上定义地面水平前向f与左向l。姿态控制以机架向上轴作为方向参考，目标方向由输入倾角生成，实际机架向上轴为n=Re𝓏；桨盘相对机架的倾转另由动力学分配计算。</p>
+<div class="equation"><div class="math-source">\mathbf f=\begin{bmatrix}\cos\psi\\\sin\psi\\0\end{bmatrix},\quad\boldsymbol\ell=\begin{bmatrix}-\sin\psi\\\cos\psi\\0\end{bmatrix},\quad\mathbf n=R\mathbf e_z</div><span class="eq-number">(15)</span></div>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf n_d&amp;=\mathbf f\sin\theta_d\cos\phi_d-\boldsymbol\ell\sin\phi_d\\ &amp;\quad+\mathbf e_z\cos\theta_d\cos\phi_d.\end{aligned}</div><span class="eq-number">(16)</span></div>
+<p>正Roll使推力朝机体右侧偏转，正Pitch使推力朝机头方向偏转。推力轴方向误差取旋转轴n×n<sub>d</sub>，幅值取两个方向的夹角；投影到f、l后分别得到Roll/Pitch误差。</p>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf a&amp;=\mathbf n\times\mathbf n_d,\quad\beta=\operatorname{atan2}(\|\mathbf a\|,\mathbf n\cdot\mathbf n_d),\\ \mathbf e_n&amp;=\frac{180}{\pi}\frac{\beta}{\|\mathbf a\|}\mathbf a,\\ e_r&amp;=\mathbf e_n\cdot\mathbf f,\qquad e_p=\mathbf e_n\cdot\boldsymbol\ell.\end{aligned}</div><span class="eq-number">(17)</span></div>
+<p class="caption">式(17)误差以°表示，零夹角取连续极限。它只控制推力方向，不把绕推力轴自转当成倾斜误差；倒置及不适用姿态由健康逻辑拒绝。</p>
+
+<h3>2.3 Roll/Pitch：P、积分、角速度阻尼与电机混控</h3>
+<p>比例项使机体向目标倾角恢复；积分项补偿持续的小偏置；角速度负反馈提供阻尼，抑制过快回摆。这与教材中的PID作用对应[2]，但当前实现使用姿态几何误差和陀螺反馈，输出是归一化混控修正，尚未直接按完整惯量矩阵输出物理力矩。</p>
+<p>正常模式的参考水平轴随航向旋转。阻尼量先扣除参考航向转动，再投影到垂直推力轴的平面，避免把单纯Yaw旋转当成Roll/Pitch摆动：</p>
+<div class="equation"><div class="math-source">\boldsymbol\Omega_{\perp}^{W}=\frac{180}{\pi}(I_3-\mathbf n\mathbf n^{\mathsf T})(R\boldsymbol\omega^{B}-\dot\psi\mathbf e_z)</div><span class="eq-number">(18)</span></div>
+<div class="equation"><div class="math-source">\begin{aligned}c_r&amp;=K_{Pr}e_r+z_r-K_{Dr}(\boldsymbol\Omega_{\perp}^{W}\cdot\mathbf f),\\ c_p&amp;=K_{Pp}e_p+z_p-K_{Dp}(\boldsymbol\Omega_{\perp}^{W}\cdot\boldsymbol\ell),\\ \dot z_r&amp;=K_{Ir}g e_r,\qquad\dot z_p=K_{Ip}g e_p,\\ \eta&amp;=\min(|\dot\psi|/\omega_{\mathrm{spin}},1),\qquad g=\frac{1}{1+9\eta^2}.\end{aligned}</div><span class="eq-number">(19)</span></div>
+<p>cᵣ、cₚ是参考轴下的混控修正。当前两轴有效P/I/D分别为0.002、0.003、0.0005，角度与速率使用°和°/s；这些数值不是N·m单位的力矩增益。积分按参考轴旋转输运，限幅±0.075；系数g随航向率增加而降低，其中ω<sub>spin</sub>=360°/s（即2π rad/s），沿用现有旋转模式兼容设计。正常模式小航向率时g接近1。</p>
+<p>修正向量旋回机体系，得到cₓ、cᵧ，然后与集体油门u<sub>c</sub>混合：</p>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf c^{B}&amp;=R^{\mathsf T}(\mathbf f c_r+\boldsymbol\ell c_p),\\ c_x&amp;=\mathbf c^{B}_x,\qquad c_y=\mathbf c^{B}_y.\end{aligned}</div><span class="eq-number">(20)</span></div>
+<div class="equation"><div class="math-source">\begin{bmatrix}\bar u_2\\\bar u_4\\\bar u_3\end{bmatrix}=\begin{bmatrix}1&amp;\sqrt3/2&amp;-1/2\\1&amp;-\sqrt3/2&amp;-1/2\\1&amp;0&amp;1\end{bmatrix}\begin{bmatrix}u_c\\c_x\\c_y\end{bmatrix}</div><span class="eq-number">(21)</span></div>
+<p>名义混控把电机命令限制在[0,1]，必要时同比缩小Roll/Pitch修正，积分回退以减小饱和积累。此后还会经过动力学分配；后级分配的限幅尚未对Roll/Pitch积分形成完整联合反馈。故障诊断时需要区分这两级限制。</p>
+
+<h3>2.4 Yaw：航向外环、回中策略与角速度内环</h3>
+<p>Yaw的操纵含义与Roll/Pitch不同：拨杆请求转向，回中后保持新的方向，不要求返回起飞方向。正常闭环在已使能且有效油门达到6%时初始化，将当时航向作为参考。</p>
+<p>设Yaw杆量为aᵧ，最大转向率为ω<sub>max</sub>。拨杆期间航向目标持续积分，同时将目标相对反馈的超前角限制在允许范围内：</p>
+<div class="equation"><div class="math-source">\begin{aligned}\dot\psi_d&amp;=a_y\omega_{\max},\\ \tilde e_\psi&amp;=\operatorname{wrap}_{[-\pi,\pi)}(\psi_d-\psi),\\ e_\psi&amp;=\operatorname{clip}(\tilde e_\psi,\,\pm e_{\max}).\end{aligned}</div><span class="eq-number">(22)</span></div>
+<p>回中瞬间，若仍有角速度，就不能期望机体立即静止。固件以滤波航向率估算可达停止角，并只捕获一次停止方向：</p>
+<div class="equation"><div class="math-source">\psi_d\leftarrow\psi+\operatorname{clip}\!\left(\frac{\dot\psi_f|\dot\psi_f|}{2\alpha_{\max}},\,\pm e_{\max}\right)</div><span class="eq-number">(23)</span></div>
+<p>式(23)来自恒定减速度下的停止距离关系，是目标整形近似；真实停止过程仍由反馈决定。其结果允许回中后继续转过一个小角度，随后保持这个停止目标。</p>
+<div class="equation"><div class="math-source">\begin{aligned}\omega^{*}&amp;=\operatorname{clip}(a_y\omega_{\max}+K_\psi e_\psi,\,\pm\omega_{\max}),\\ \omega_{d,k+1}&amp;=\omega_{d,k}+\operatorname{clip}(\omega^{*}-\omega_{d,k},\,\pm\alpha_{\max}\Delta t).\end{aligned}</div><span class="eq-number">(24)</span></div>
+<p>航向误差通过比例外环生成追赶速率，再与杆量前馈相加，经角速度和加速度限制得到内环目标。内环用角速度PI计算角加速度请求，乘以J𝓏得到Yaw力矩：</p>
+<div class="equation"><div class="math-source">\begin{aligned}e_\omega&amp;=\omega_d-\dot\psi_f,\\ \dot z_\omega&amp;=K_{I\omega}e_\omega,\\ \tau_{z,d}&amp;=J_z(K_{P\omega}e_\omega+z_\omega)+D\dot\psi_f.\end{aligned}</div><span class="eq-number">(25)</span></div>
+<p>式(25)速率使用rad/s；D是可配置等效阻尼补偿，本轮为0。航向率经过12Hz低通。积分具有限幅，并在分配受限时采用条件积分和有限反算；反算使用分配器可实现的力矩差，而不把普通执行器滞后全部当成幅值饱和。</p>
 {{GAINS_TABLE}}
-<p>实际航向率由四元数姿态与陀螺换算，倾斜时不直接等同于机体系GyroZ。只有六轴IMU，长期相对航向仍可能漂移；没有独立地面方向测量时，报告只评价IMU反馈与目标之间的关系。</p>
+<p>MPU6050只有陀螺与加速度计，没有绝对航向观测。当前控制保持的是IMU相对航向，长期漂移仍需独立地面方向参照确认。停机、低油门或故障退出时重置保持状态。</p>
 
-<h3>2.2 共同倾转分配</h3>
-<p>四个执行器（三电机、一个共同舵机）用于分配 [Fz, τx, τy, τz]。对候选舵机位置，先解3×3方程以保持竖直力和横滚/俯仰力矩，再通过有界Newton修正满足Yaw力矩；每次Yaw求解最多5次模型评估，频率200Hz。两次舵机求解之间，电机仍每500µs更新。</p>
-<div class="equation">等倾角、水平等高臂时的解释式：
-τz = Σ Lᵢ Tᵢ sinδ + Σ σᵢ κᵢ Tᵢ cosδ
-Fz = Σ Tᵢ cosδ
-若先给定各电机竖直分力：
-δ = atan[(τz,req − Σ σᵢ κᵢ Fzᵢ) / Σ Lᵢ Fzᵢ]</div>
-<p>软件保留物理倾角±15°、舵机逻辑限速40°/s、非负推力和电机上限。电机解达到上限时作共同缩放并报告liftScale；缩放会损失升力和姿态控制幅值。分配受限也可能来自舵机限速或Yaw力矩残差，单个受限标志不能证明电机已顶到最大输出。</p>
-<p>舵机50Hz硬件PWM使用整数µs指令；指令模型含80ms舵机和40ms电机一阶滞后，并考虑电机命令量化。健康检测、SA停机、失联保护及故障恢复门控保留。此前±2g原始触顶停机已通过±8g量程修正；没有绕过触顶拒绝。</p>
+<h3>2.5 三电机与共同倾转舵机的动力学分配</h3>
+<p>将式(21)的名义命令通过推力表转换为T̄ᵢ，按竖直推力几何构造总竖直力及Roll/Pitch力矩请求：</p>
+<div class="equation"><div class="math-source">\begin{aligned}\bar T_i&amp;=f_i(\bar u_i),\\ \mathbf b&amp;=\begin{bmatrix}\sum_i\bar T_i\\\sum_i y_i\bar T_i\\-\sum_i x_i\bar T_i\end{bmatrix}=\begin{bmatrix}F_{z,d}\\\tau_{x,d}\\\tau_{y,d}\end{bmatrix}.\end{aligned}</div><span class="eq-number">(26)</span></div>
+<p>对一个候选舵机位置s，式(4)给出每1N推力对应的力矩向量kᵢ。固定s之后，分配成为三元线性方程：</p>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf k_i(s)&amp;=\mathbf r_i\times\mathbf n_i(s)+\sigma_i\kappa_i\mathbf n_i(s),\\ A(s)&amp;=\begin{bmatrix}n_{2z}&amp;n_{4z}&amp;n_{3z}\\k_{2x}&amp;k_{4x}&amp;k_{3x}\\k_{2y}&amp;k_{4y}&amp;k_{3y}\end{bmatrix}.\end{aligned}</div><span class="eq-number">(27)</span></div>
+<div class="equation"><div class="math-source">\begin{aligned}\mathbf T(s)&amp;=A(s)^{-1}\mathbf b,\\ h(s)&amp;=\sum_i k_{iz}(s)T_i(s)-\tau_{z,d}.\end{aligned}</div><span class="eq-number">(28)</span></div>
+<p>先解三电机推力以尽量保持F𝓏、τₓ、τᵧ，再调整s，使Yaw残差h(s)尽量接近0。当前求解为有界Newton修正，每次最多5次模型评估，200Hz更新舵机求解；两次求解之间，电机仍以2kHz按当前舵位重新分配。</p>
+<p>用三路等倾角且没有饱和的情形，可以直接看出控制分配的含义。令vᵢ=Tᵢcosδ为各电机竖直分力，式(7)得到：</p>
+<div class="equation"><div class="math-source">\tan\delta=\frac{\tau_{z,d}-\sum_i\sigma_i\kappa_i v_i}{\sum_i L v_i}</div><span class="eq-number">(29)</span></div>
+<p>需要更多Yaw力矩时增加切向倾转；油门改变时，相同Yaw力矩所需倾角也会改变。式(29)用于解释原理，固件实际按式(27)–(28)计算，包含倾转反扭矩对Roll/Pitch的耦合。</p>
+<p>分配同时受物理倾角±15°、舵机逻辑限速40°/s、非负推力及电机上限约束。电机超上限时共同缩放推力并报告liftScale；舵机限速或Yaw残差也会报告“分配受限”。这四个执行器用于四个量[F𝓏,τₓ,τᵧ,τ𝓏]，水平合力不属于独立分配目标。</p>
 
-<h2 id="test">03 试验配置、实际顺序与数据质量</h2>
-<p>飞行前已下载新Build并回读确认，用户停机拨杆检查回复“通道和方向均正确”。正式录制时，初始模型许可与飞行许可为1，模型已验证标志为0，旋转模式关闭。试前与试后71项参数完全一致，本轮没有在线调参。</p>
-<p>用户确认约46秒在空中，250g配重全程拉紧。实际顺序为油门→Yaw左转→Yaw右转→前倾→横滚左右。用户感受到前后左右释放后的来回摆动，无法仅凭观感区分反向操纵。本报告用原始通道重建操纵次序。</p>
-{{QUALITY_TABLE}}
-<div class="note">电机非零区间为目标时钟367.968264–414.548263秒，跨度46.58秒，与用户约46秒空中描述相符。未提供同步视频或精确离地/落地时刻，因此保留边界不确定性，不把电机起转自动认定为离地。图表使用目标时钟；目标时钟与电脑时钟没有同步。</div>
-<p>原始到达顺序、缺样和乱序均保留。63条重复数据的Boot、序号、目标时间及32路数值完全一致，且位于带动力区间之后；绘图与统计对这些重复只计一次，使用时间排序副本，原始文件不变。图中序号缺口处断线，不插值补齐。管理STATE约1Hz，故障计数与原始峰值由2kHz固件累计，覆盖遥测采样间隙；普通瞬态标志仍受1Hz采样限制。100Hz回传与已有低通不能支持对高于50Hz振动成因的判定。</p>
-<figure><img src="{{FIG_OVERVIEW}}" alt="正式试飞全段四轴输入、姿态、相对航向与航向率"><figcaption>图1｜全段操纵与响应。所有曲线来自实机；约376–392秒先进行偏航，397–399秒进行俯仰，407–411秒进行横滚。</figcaption></figure>
-
-<h2 id="analysis">04 四轴实测分析</h2>
-<h3>4.1 输入辨识与油门阶段</h3>
-<p>机动识别条件为原始输入离中位1500µs超过20µs、持续超过0.15秒，并结合三电机非零。表中持续时间含手动拨杆过渡，不能视为理想方波阶跃。原始输入未经接收端反向处理，Yaw数值减小表示左转。</p>
+<h2 id="test">03 试验条件与评价方法</h2>
+<h3>3.1 系留条件决定本轮结论的适用范围</h3>
+<p>用户确认约46秒在空中，顶部挂绳由约250g水瓶配重全程拉紧。若为近一比一竖直拉力、配重近静止且摩擦可忽略，则上拉力约2.45N，转子稳态竖直推力可能只需4.91N；自由悬停则约需7.36N。机体质量仍是750g，不能改成500g。</p>
+<p>绳长、倍率、角度、挂点位置及张力动态未知。它们会改变平动、倾斜和Yaw响应。因此本轮用于检查系留条件下的操纵、恢复及健康状态，不用于辨识自由飞行推力尺度、J𝓏、κ或阻尼。</p>
+<h3>3.2 记录、时间轴与有效数据</h3>
+<p>本轮固件为<code>drehm-yaw-ch14-20261029</code>，CH1/CH4映射已纠正，用户停机确认通道和方向正确。正式测试中初始模型许可与飞行许可为1，已验证标志为0，旋转模式关闭；试前试后71项参数完全一致。</p>
+<div class="note"><b>统一时间轴：</b> 下文图表及操纵表的t=0取三电机首次均非零的样本，即目标时钟367.968264秒。t与目标时钟只相差这个常数，未与电脑时钟同步；t=0不等于经过独立测量的离地时刻。电机非零跨度46.58秒，和用户约46秒空中描述相符。</div>
+<p>共接收21,115条遥测，去除63条完全相同的重复后有21,052个独立样本。序号范围内缺30样本，约0.142%；相邻到达倒序254次。全部原始帧CRC有效，Agent录制丢帧0。分析仅对副本排序去重，图中缺口断线、不插值；原始文件不变。</p>
+<p>机动识别条件为原始输入离1500µs超过20µs并持续超过0.15秒，且三电机均非零。该规则用于分段，不把手动缓慢拨杆当作标准阶跃。原始Roll/Pitch目标及混控内部误差没有完整回传，因此不计算它们的精确跟踪误差、带宽或标准阶跃超调。</p>
 {{EVENT_TABLE}}
-<p>油门带动力范围1042–1323µs，机动主体基本保持1274µs附近。三电机数字命令在127–703范围内，未见运行中三电机突然归零。414.558263秒原始油门降至1037µs时，三电机均为0，符合收油停止过程。没有高度、速度和电流/电压记录，不能由本轮计算升降率、悬停效率或电量相关推力曲线。</p>
-<p>日志明确检出一次持续前倾输入，没有同等时长、超过死区的独立后倾输入；横滚存在约0.92秒右倾和约0.84秒左倾输入。因此至少部分左向横滚响应含驾驶员反向输入；前后摆动不能直接解释为存在后退指令。</p>
+<figure><img src="{{FIG_OVERVIEW}}" alt="全段操纵与响应，顺序为油门Yaw左转右转Pitch前倾Roll右倾左倾"><figcaption>图1｜先看操纵顺序与整体响应。航向及姿态曲线需结合原始输入阅读；输入方向、回中时刻与机体摆动不能混为一谈。</figcaption></figure>
 
-<h3>4.2 Yaw 转向、回中与中杆保持</h3>
-<figure><img src="{{FIG_YAW}}" alt="偏航输入、相对航向、航向差和角速度跟踪"><figcaption>图2｜Yaw详细响应。正为俯视逆时针。左转回中后目标捕获一次停止航向；右转中实测航向率出现超过20°/s指令限值的瞬态。</figcaption></figure>
-<p>CH1左转输入约376.118–381.408秒，右转约386.108–392.188秒。两次输入均持续5秒以上，长于原计划的小幅1–2秒输入。机体转向方向与指令一致，能够左右转向并在回中后进入保持。右转阶段实测航向率峰值约−31.82°/s，左转阶段正向率峰值较小，响应存在方向差异。</p>
-<p>20°/s是目标航向率限值，不是实际速率硬限制；实际达到31.82°/s表明存在瞬态跟踪偏差。当前数据无法独立区分推力/反扭矩参数误差、惯量初值、执行器滞后、积分状态和系留外力矩的贡献，不能把单一因素直接认定为根因。</p>
-<p>以原始CH1首次回到±20µs死区为回中参考，左转回中后3秒内，航向相对回中时仍变化约{{LEFT_RELEASE_MIN}}至{{LEFT_RELEASE_MAX}}°；右转回中后3秒内约{{RIGHT_RELEASE_MIN}}至{{RIGHT_RELEASE_MAX}}°。这些区间没有叠加下一次机动，反映回中后仍有继续转动及往返响应；不把它们当作标准阶跃超调百分比。</p>
-<p>以下片段按Yaw、Pitch、Roll均在±20µs死区且电机非零的条件选取，分别覆盖初始、偏航回中及姿态机动后的恢复。它们包含过渡和外扰，不统一称为稳态。航向差是目标与IMU相对航向的最短角差绝对值。</p>
+<h2 id="analysis">04 按控制目标逐项分析实测响应</h2>
+<p>分析分为四步：先确认动力与记录是否正常，再检查操纵方向，然后评价回中与持向，最后判断现有数据能否支持原因定位。每一项都将观测事实、工程判断与证据边界分开。</p>
+<div class="table-wrap"><table><thead><tr><th>评价问题</th><th>主要证据</th><th>本轮判断</th></tr></thead><tbody>
+<tr><td>运行中是否再次突然停机？</td><td>三路实际DShot、油门、锁存故障与IMU计数</td><td>本轮未复现，末尾归零符合收油</td></tr>
+<tr><td>Roll/Pitch能否按指令响应？</td><td>原始CH4/CH2与对应姿态曲线</td><td>方向及有限幅度机动已支持；精度与回中阻尼仍需专门验证</td></tr>
+<tr><td>Yaw能否中杆持向并稳定转向？</td><td>航向目标、反馈、角速度及回中后额外转角</td><td>左右转向已支持；持向偏差与速率瞬态仍明显</td></tr>
+<tr><td>能否据此确定动力参数或根因？</td><td>模型预测、执行器命令与系留条件</td><td>不能唯一辨识，需增加独立测量与可重复试验</td></tr>
+</tbody></table></div>
+
+<h3>4.1 油门与起降过程：先确认动力没有异常中断</h3>
+<p><b>事实。</b> 带动力阶段油门为1042–1323µs，主体约1274µs。三电机DShot命令整体在127–703范围，非零区间t=0至46.58秒。t≈46.59秒油门降至1037µs时，三电机均为0。健康故障、IMU拒绝与失联计数均为0。</p>
+<div class="finding"><b>判断：</b> 本轮支持“此前突然停机现象未复现”。末尾停转与收油一致。由于没有高度或垂向速度数据，只能结合用户描述确认约46秒空中测试，不能从电机曲线推算悬停高度、升降率或效率。</div>
+
+<h3>4.2 Yaw：分开评价持向、转向和回中</h3>
+<figure><img src="{{FIG_YAW}}" alt="偏航输入航向目标反馈航向差与角速度，阴影为左右转向输入"><figcaption>图2｜从上到下依次是“驾驶员要求什么、航向是否跟上、偏差多大、内环角速度是否跟上”。阴影为Yaw输入离开死区的阶段。</figcaption></figure>
+<h4>① 中杆持向：起转后存在明显相对航向偏差</h4>
+<p>选取三轴均在±20µs死区、电机非零的片段，计算目标与IMU相对航向的最短角差。初始t≈2.03–8.03秒内，平均绝对差15.90°、最大20.42°；后续回中片段平均约3.51–5.71°，最大约8.56–10.18°。</p>
+<p>初始中杆阶段，外环已给出正向纠偏速率，但反馈仍一度为负向转动。记录中的Yaw杆始终在死区内，因此这段偏差不能解释为驾驶员主动转向；应优先复核起转配平、实际纠偏能力与系留外扰。</p>
 {{HOLD_TABLE}}
-<p class="caption">统计按实际收到的样本计算；P95取排序后索引 floor[0.95×(n−1)]。均值、P95与最大值均未通过补样平滑。本表区间在离线查看输入后选定，用于透明描述不同阶段，不属于试前预注册验收窗口。</p>
-<div class="note caution"><b>精确持向仍需改进。</b> 初始370–376秒三轴回中期间最大航向差20.42°；后续中杆片段最大差约8.56–10.18°。本轮没有足够长、明确无扰动的连续10秒中杆片段，也没有独立地面航向参照，不能宣布达到“10秒方向偏差≤5°”目标。稳定离地与精确锁头属于两个应分别评价的结果。</div>
+<p class="caption">P95采用排序后floor[0.95(n−1)]索引；按实际收到的独立样本统计，未补样。窗口在查看输入后选定，并非试前预注册验收区间；其中含恢复过程和外扰，不统一称为稳态。</p>
+<div class="finding"><b>判断：</b> Yaw持向仍未达到精确锁头要求。中杆情况下目标与反馈已相差20.42°，这一结果足以指出改进需求；同时，缺少连续10秒安静中杆及独立方向参照，本轮不能完成“10秒≤5°”的验收，也不能量化绝对地面航向漂移。</div>
+<h4>② 左右转向：方向正确，角速度跟踪不对称</h4>
+<p>左转输入约t=8.15–13.44秒，右转约t=18.14–24.22秒，两次持续5秒以上。两段机体转向与输入一致；右转实测航向率最低−31.82°/s，超过20°/s目标限幅的幅值。</p>
+{{YAW_RATE_TABLE}}
+<p>左转期间，目标率平均约+18.53°/s，实测平均约+10.14°/s，主要表现为欠跟随；右转期间，平均目标与实测接近，但负向峰值更大。两段分别体现了持续跟踪不足和瞬态偏快，不能简单地将一侧概括为全面优于另一侧。</p>
+<p>表中RMS为整段手动机动期间“率目标减实测率”的均方根，包含输入过渡，不代表频域带宽或标准阶跃性能。左右输入幅值及持续时间也不完全相同，因此不把两段数值差直接等同为执行器固有方向增益差。</p>
+<div class="finding"><b>判断：</b> 左右转向能力已得到支持，但内环仍有明显瞬态跟踪偏差。20°/s限制作用于目标，不会强制真实机体始终低于该速率；右转达到31.82°/s需要作为后续阻尼、力矩配平及模型验证的观察重点。</div>
+<h4>③ 杆回中：能进入保持，但仍有继续转动和往返响应</h4>
+<p>以CH1首次回到±20µs死区为参考，随后3秒内：左转后航向相对回中时变化{{LEFT_RELEASE_MIN}}至{{LEFT_RELEASE_MAX}}°；右转后变化{{RIGHT_RELEASE_MIN}}至{{RIGHT_RELEASE_MAX}}°。两个观察窗均没有叠加下一次机动。</p>
+<p>回中目标按式(23)包含停止角，因此“回中后继续转动”本身并不自动等于控制错误。应同时检查停止目标、真实航向、角速度是否收敛。右转后可见更大的继续转动及往返，说明需要改善并复核停止过程；上述额外转角不是相对固定目标的标准超调百分比。</p>
+<div class="finding"><b>Yaw总判断：</b> 当前已具备转向与保持闭环，但精确持向、率跟踪及回中恢复仍是下一阶段重点。现有数据不足以把问题唯一归因于某个增益、惯量、κ、舵机滞后或绳索扭矩。</div>
 
-<h3>4.3 Pitch / Roll 响应与系留摆动</h3>
-<figure><img src="{{FIG_TILT}}" alt="俯仰横滚输入、姿态响应、角速度和偏航耦合"><figcaption>图3｜姿态机动及回中。原始指令与IMU角度同时展示，避免将绳索约束下的往返摆动误标为反向拨杆。</figcaption></figure>
-<p>前倾输入最大1641µs，机动期间俯仰角最高约+9.37°，方向一致。回中后约3秒内俯仰角约−4.44至+5.79°，表现为明显跨过中位的往返响应；没有持续的独立反向Pitch输入可解释全部反向姿态。它与用户描述的系留摆动相符，但缺少位置/绳角数据，尚不能将其全部归因于悬挂摆动，也不能单凭此断定姿态环阻尼不足。</p>
-<p>横滚右向输入最大1673µs，对应Roll峰值约+10.27°；随后1370µs附近的反向输入对应最低约−5.28°。右向回中至反向操纵之间仅约1秒，不能从整段计算独立的右向回中稳定时间。最后回中后姿态仍有往返变化，报告将其作为系留条件下的恢复响应。</p>
-<p>Pitch/Roll机动期间相对Yaw也有变化。它可能包含倾转力/反扭矩耦合、姿态换算、系留外力矩及正常反馈响应。当前没有完整姿态目标快照和绳索力测量，不把手动杆值直接线性换算为精确内环目标角，也不据此报告虚假的跟踪误差或控制带宽。</p>
+<h3>4.3 Pitch：前倾方向正确，回中后有跨零摆动</h3>
+<figure><img src="{{FIG_PITCH}}" alt="俯仰输入姿态角速度及Yaw耦合，前倾回中后出现反向俯仰"><figcaption>图3｜单独观察Pitch。持续前倾指令约t=29.60–30.83秒；输入回中后姿态跨过水平，不能据此认定驾驶员给了后退指令。</figcaption></figure>
+<p><b>事实。</b> CH2前倾输入最高1641µs，机动期间Pitch最高约+9.37°。回中后约3秒内，Pitch范围约−4.44至+5.79°。按分段规则没有检出独立、持续超过0.15秒的后倾输入。</p>
+<p><b>解释。</b> 正向前倾与操纵一致；回中后发生反向姿态，支持用户感受到“来回摆动”的描述。顶部拉绳可能参与机体平移与倾斜耦合，姿态控制本身的恢复过程也可能参与，现有记录无法将两者分离。</p>
+<div class="finding"><b>判断：</b> Pitch前倾操纵已验证，回中恢复需要更清晰的对照。不能把这段反向姿态当作已验证的主动后退，也不能在缺少目标方向及绳角的情况下，直接判定姿态环阻尼不足或给出精确超调率。</div>
 
-<h3>4.4 舵机、动力分配与IMU观测</h3>
-<figure><img src="{{FIG_ACTUATORS}}" alt="舵机命令、模型力矩、电机数字命令和加速度"><figcaption>图4｜舵机PWM为命令，力矩为模型预测；AccZ经过飞控低通。它们不能替代实测舵角、扭矩或高频振动测试。</figcaption></figure>
-<p>本轮带动力舵机PWM范围1449–1486µs，围绕反扭矩配平位置调节，整体行程较小。日志支持“指令没有大幅全行程往返”，但没有实际舵位传感器，无法量化真实机械抖动、死区或齿隙。不能把模型力矩与需求力矩接近视为实测模型准确。</p>
-<p>三路DShot未接近2047最大命令，liftScale始终1；未观察到分配共同缩小升力。STATE记录到分配受限，这也可能来自有限舵机变化率或Yaw残差。仅凭1Hz标志和模型残差，尚不能确定每次受限的细分类别。</p>
-<p>本轮累计原始加速度任一轴绝对峰值为29186LSB，约7.125g，触顶拒绝计数为0。这个新峰值首次出现在414.831–415.833秒的STATE报告窗口，晚于414.558秒电机归零；此前累计峰值为11787LSB，约2.878g。该时序支持将7.125g与停机后的阶段分开记录，不能直接归为带动力振动，也不能仅凭时序确认具体碰撞或搬动原因。</p>
+<h3>4.4 Roll：右倾后确有左倾输入，不能把全段都视为自由回摆</h3>
+<figure><img src="{{FIG_ROLL}}" alt="横滚输入姿态角速度及Yaw耦合，先右倾输入后左倾输入"><figcaption>图4｜单独观察Roll。两处阴影分别是右倾与左倾输入；两次机动之间只有约1秒回中，无法独立评估完整的右倾回中稳定时间。</figcaption></figure>
+<p><b>事实。</b> CH4右倾输入最大1673µs，Roll最高约+10.27°。随后约0.84秒的左倾输入为1367–1478µs，机动期间Roll最低约−5.28°。右倾回中到左倾指令之间约1秒。</p>
+<p><b>解释。</b> 左右两个方向的响应均与输入对应。由于反向输入很快加入，右倾后的负向姿态同时受到驾驶员左倾操纵和恢复动态影响，不能全部归为绳索摆动或闭环超调。</p>
+<div class="finding"><b>判断：</b> Roll双向操纵已得到支持；要评价回中阻尼，应在单次机动后保持更长中杆窗口。Pitch/Roll机动期间也有Yaw变化，但现有数据无法独立拆分动力学耦合、参考换算与绳索外力矩。</div>
 
-<h2 id="realtime">05 实时性、健康状态与可追溯性</h2>
-<div class="grid"><div class="card"><strong>500 µs</strong><span>主周期与累计最大周期；2kHz保持</span></div><div class="card"><strong>297 µs</strong><span>本轮累计最大工作；不含等待</span></div><div class="card"><strong>0</strong><span>超时、控制故障、IMU拒绝、失联</span></div></div>
-<figure><img src="{{FIG_TIMING}}" alt="全记录主循环周期、累计最大周期和工作耗时"><figcaption>图5｜覆盖全录制的周期与工作预算。累计最大值由固件保留；本轮观察不能替代任意总线故障或全负载条件下的最坏执行时间证明。</figcaption></figure>
-<p>297µs占500µs预算59.4%，本轮观察到至少203µs工作余量。RemoteMCU累计最大工作47µs，Yaw累计最大25µs，主循环超时和预算不足跳过通讯计数均为0。新增四轴输入复用了32路中的两个模型估算通道，没有增加数据帧长度、100Hz回传频率或管理发送频率。</p>
-<p>211个STATE包中，IMU健康始终为1；控制故障、Yaw故障、IMU不完整读取、全零加速度、加速度触顶、陀螺触顶、融合失败及接收失联计数均为0。正常模式运行，模型已验证标志始终为0。本轮健康停机问题未复现。</p>
-<div class="equation">Recording  18e30a9b4d1951d8-2d
-Build      drehm-yaw-ch14-20261029
-Boot       2653446569
-Source     463dcf5（CH1/CH4调换及四轴输入回传）
-Prior fix  b2d14de（±8g量程与系留复测证据）
-HEX SHA256 06ccc0040f92bb287fa1829c160248b6c58c5ebbcc7ab8b2c178e9111b90e124
-Raw SHA256 {{RAW_SHA}}
-CSV SHA256 {{CSV_SHA}}
-Params     {{PARAM_SHA}}</div>
-<p>原始RMPLOG及CSV保存在本机RemoteMCU录制库，报告只嵌入分析结果和图表。固件由网关完成下载并以新应用Build确认，未进行Flash逐字节回读。报告计算和绘图完全在电脑离线进行，不进入飞控主循环。</p>
+<h2 id="realtime">05 执行器、健康状态与实时性：排查共同约束</h2>
+<h3>5.1 执行器命令能说明什么</h3>
+<figure><img src="{{FIG_ACTUATORS}}" alt="舵机PWM模型Yaw力矩实际DShot命令与低通机体加速度"><figcaption>图5｜先看实际发送的PWM/DShot，再看模型量。需求力矩与预测力矩接近，只能说明模型内部计算接近，不能证明物理力矩准确。</figcaption></figure>
+<p>带动力舵机PWM为1449–1486µs，未出现大幅全行程来回扫动。三电机数字命令未接近2047最大值，liftScale始终为1，未观察到共同缩小升力。STATE仍出现分配受限标志，该标志还可能由舵机限速或Yaw残差触发；现有1Hz标志无法定位每次限制的类别。</p>
+<p>因此，本轮不支持“电机输出顶满造成所有问题”，也不能证明“舵机没有机械抖动”。后者需要中位附近双向回差、真实舵位或视频测量；命令行程小与机构实际到位是不同证据。</p>
+<h3>5.2 IMU峰值的时序，避免错归因</h3>
+<p>累计原始加速度任一轴绝对峰值29186LSB，约7.125g，触顶拒绝计数0。新峰值首次报告在目标时钟414.831–415.833秒窗口，即相对t≈46.86–47.86秒，晚于t≈46.59秒电机归零；此前累计峰值约2.878g。</p>
+<div class="finding"><b>判断：</b> 应把7.125g列为停机后阶段事件，不能直接归为带动力振动；仅凭时序也不能确认具体碰撞或搬动原因。AccZ是含重力响应的机体轴向低通观测，100Hz回传与现有滤波不足以进行高频振动归因。</div>
+<h3>5.3 主循环与故障记录</h3>
+<div class="grid"><div class="card"><strong>500µs</strong><span>主周期及累计最大周期，2kHz</span></div><div class="card"><strong>297µs</strong><span>累计最大工作，不含等待</span></div><div class="card"><strong>0</strong><span>超时、控制故障、IMU拒绝、失联</span></div></div>
+<figure><img src="{{FIG_TIMING}}" alt="全记录主循环周期累计最大周期及工作耗时"><figcaption>图6｜全录制时段的实时性。负时间表示正式带动力前的录制；累计最大值由固件保存，覆盖100Hz遥测样本之间的工作峰值。</figcaption></figure>
+<p>最大工作占周期59.4%，本轮观察有203µs余量；RemoteMCU累计最大工作47µs，Yaw累计最大25µs。主循环超时及预算不足跳过通讯计数为0。211个STATE包中IMU健康始终为1，控制/Yaw故障及IMU读取、零帧、触顶、融合失败计数均为0。</p>
+<div class="finding"><b>判断：</b> 本轮支持“遥测与当前闭环在2kHz预算内运行”，未见周期超时导致响应异常的证据。这是当前记录的观察，不是任意总线故障及全部极端负载下的最坏执行时间证明。</div>
 
-<h2 id="decision">06 工程判断与下一步</h2>
-<div class="note good"><b>本轮已支持的结论：</b> CH1/CH4对应修正通过用户停机确认；在约250g配重持续拉紧条件下，完成约46秒空中操纵，左右Yaw及Pitch/Roll均有对应响应；未复现健康停机，2kHz主周期保持。</div>
-<div class="note caution"><b>仍未完成的目标：</b> 相对Yaw持向存在可量化偏差和方向不同的瞬态响应，精确锁头尚未达到既定目标。系留外力、未知真实动力参数和缺少独立航向参照，限制了本轮对自由飞行性能及模型准确性的证明。</div>
-<ol>
-<li><b>先形成可重复的Yaw对照。</b> 保持同一系留配置，记录不少于10秒三轴中杆，再进行左右对称、小幅、短时Yaw输入及每次不少于5秒回中；同步固定地面方向参照，标注起飞/落地。保留同一增益作为基线。</li>
-<li><b>量化系留边界。</b> 测量绳长、挂点相对重心位置、拉力方向与张力；补充视频区分机体平移摆动和姿态摆动。确认约束条件后，再讨论降低配重影响的下一轮试验。</li>
-<li><b>分别校准执行器与动力。</b> 中位附近补测双向倾角/回差及舵机动态，补充推力台或转速/电压数据；用独立惯量资料减小推力尺度与Izz之间的不可辨识性。当前不从配重悬停反推推力曲线。</li>
-<li><b>针对重复问题调整。</b> 优先验证起转配平建立、Yaw角速度跟踪和回中阻尼；每轮只改变可解释的少数参数，并保留试前试后快照。不根据本轮一次往返摆动直接增大积分或重新定义模型惯量。</li>
+<h2 id="decision">06 工程结论与下一步验证</h2>
+<h3>6.1 将结论与证据逐项对应</h3>
+<div class="table-wrap"><table><thead><tr><th>项目</th><th>明确结论</th><th>证据边界</th></tr></thead><tbody>
+<tr><td>动力与健康</td><td>本轮未复现突然停机，2kHz周期保持</td><td>结论适用于本轮配置与记录</td></tr>
+<tr><td>Roll/Pitch操纵</td><td>所执行的前倾及左右横滚方向正确，可完成有限机动</td><td>未完成独立后倾试验，也未验证精确姿态跟踪</td></tr>
+<tr><td>Yaw保持</td><td>仍需改善；初始中杆最大相对航向差20.42°</td><td>无独立绝对航向参照，未满足完整持向验收条件</td></tr>
+<tr><td>Yaw转向／回中</td><td>左右转向可用；左转欠跟随，右转峰值与回中波动较大</td><td>手动输入不完全对称，不能直接识别单一方向增益</td></tr>
+<tr><td>动力学参数</td><td>三轴受力／力矩分配已运行，实际参数仍为初值</td><td>250g配重持续拉紧，不能据此确定自由飞行参数</td></tr>
+</tbody></table></div>
+<div class="note caution"><b>本轮总体结论：</b> 系留条件下的离地与三轴操纵已经跑通，健康停机问题本轮未复现；下一步的核心是改善Yaw持向与回中响应，并把Pitch/Roll回摆中的指令、姿态控制及绳索影响分开。</div>
+<h3>6.2 按能够消除的不确定性安排后续工作</h3>
+<div class="table-wrap"><table><thead><tr><th>优先级</th><th>要回答的问题</th><th>下一轮应增加的证据</th><th>据此能做的决定</th></tr></thead><tbody>
+<tr><td>1</td><td>Yaw初始偏差是否稳定复现？左右回中差异有多大？</td><td>同配置至少10秒三轴中杆；左右小幅短输入后各≥5秒回中；同步地面方向参照</td><td>区分起转配平、率跟踪及停止策略问题</td></tr>
+<tr><td>2</td><td>Pitch/Roll回摆是姿态误差还是平移摆动？</td><td>分别单轴操纵；每次≥5秒回中；记录目标推力方向、姿态误差、绳角与固定机位视频</td><td>再决定是否调整姿态阻尼，而非根据观感直接改D</td></tr>
+<tr><td>3</td><td>“分配受限”到底限制在哪里？</td><td>分别记录物理倾角、舵机变化率、非负推力、电机上限与残差限制原因；保留两级混控缩放</td><td>定位执行器约束，判断是否需要联合抗积分饱和</td></tr>
+<tr><td>4</td><td>模型中的物理参数是否准确？</td><td>中位双向角度／回差及舵机动态；独立推力、转速／电压、惯量资料；测绳长、挂点、张力</td><td>有依据地更新推力表、时间常数、J𝓏与κ</td></tr>
+</tbody></table></div>
+<p>先保留当前增益形成可重复基线，再按证据改变少数参数。此次报告优化没有调整飞控增益、动力参数、保护门限或待机鸣叫行为。</p>
+
+<h2 id="references">参考资料与复核附件</h2>
+<p>教材式方程和反馈作用说明用于解释原理；当前控制是否实现、如何限幅以及运行值，以本仓库对应固件源码和本轮记录为准。本文没有声称实现文献中的完整位置／全姿态控制器。</p>
+<ol class="references">
+<li>Russ Tedrake，<i>Underactuated Robotics</i>，MIT课程讲义“Quadrotors”及三维刚体建模。用于牛顿—欧拉建模框架；本文按FLU、三旋翼共同倾转机构重新写出力与力矩。<a href="https://underactuated.mit.edu/acrobot.html#section3">MIT原始讲义</a>。</li>
+<li>Karl J. Åström、Richard M. Murray，<i>Feedback Systems</i>，第10章“PID Control”，尤其PID作用及Integrator Windup。用于P/I/阻尼与抗积分饱和的概念说明。<a href="https://www.cds.caltech.edu/~murray/books/AM05/pdf/am08-pid_19Jul11.pdf">作者公开教材章节</a>。</li>
 </ol>
-<p>本报告生成期间没有更改控制增益、动力参数、保护门限或待机鸣叫行为。</p>
-<details><summary>展开可复核的指标、实际参数与边界说明（JSON）</summary><pre>{{METRICS_JSON}}</pre></details>
-<div class="footer">资料依据：本仓库 TricopterConfig.h、CycloneControl.h、NormalYawControl.h、TricopterDynamics.h、ServoTiltCalibration.h 与本轮 RemoteMCU 实测记录。报告以源代码中的实际实现为模型说明依据；无外部文献结论替代实机测量。所有图表离线嵌入，无CDN或联网依赖。</div>
+<p class="caption">外部资料核对日期：2026-10-30。本文推导和控制表达式均针对当前固件整理，没有用外部示例代替本机实现。</p>
+<details><summary>查看记录质量、版本与哈希</summary>
+{{QUALITY_TABLE}}
+<p class="trace">Recording：18e30a9b4d1951d8-2d<br>Build：drehm-yaw-ch14-20261029；Boot：2653446569<br>固件提交：463dcf5；此前±8g修复：b2d14de<br>HEX SHA256：06ccc0040f92bb287fa1829c160248b6c58c5ebbcc7ab8b2c178e9111b90e124<br>Raw SHA256：{{RAW_SHA}}<br>CSV SHA256：{{CSV_SHA}}<br>参数 SHA256：{{PARAM_SHA}}</p>
+<p>原始RMPLOG及CSV保存在本机RemoteMCU录制库。63条重复的Boot、序号、时间及32路值完全一致，全部出现在带动力之后；仅分析副本去重。原始记录不变。STATE约1Hz；故障及原始峰值由2kHz固件累计，普通瞬态标志仍受1Hz观察限制。</p>
+<p>网关完成下载后以新Build/Boot确认，未逐字节回读Flash。此次新增图表、公式与分析均在电脑离线生成，不进入飞控主循环。</p>
+</details>
+<details><summary>展开完整指标、实际参数和试验边界（JSON）</summary><pre>{{METRICS_JSON}}</pre></details>
+<div class="footer">实现依据：TricopterConfig.h、FlightMath.h、CycloneControl.h、NormalYawControl.h、TricopterDynamics.h、ServoTiltCalibration.h及本轮RemoteMCU记录。公式采用构建时MathJax SVG排版；所有公式与图表均内嵌，正文离线阅读不依赖字体下载、CDN或联网服务。</div>
 </main></body></html>

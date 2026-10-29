@@ -53,13 +53,17 @@ Yaw特别比较中杆航向差、回中后的额外转角、角速度响应、PW
 
 已生成[HTML专业分析报告](reports/yaw-four-axis-20261029.html)，先说明模型与控制实现，再分析实测响应；[指标和参数](reports/yaw-four-axis-20261029.json)与报告内嵌内容一致。原始记录保留在RemoteMCU录制库。报告可离线阅读，图表全部内嵌，生成器为`tools/yaw/build_four_axis_report.py`，无需飞控通电。
 
-复现时在独立Python环境安装`tools/yaw/report-requirements.txt`，将本轮RemoteMCU原始记录、CSV、试前/试后参数GET和停止录制元数据作为输入。生成器严格校验本轮录制ID、Build/Profile、参数一致性、原始帧CRC、重复内容及中杆片段；只处理离线文件，不写MCU。示例：
+复现时在独立Python环境安装`tools/yaw/report-requirements.txt`；用Node安装`tools/yaw/package.json`中的固定版本MathJax（可安装到临时目录），用于构建时预渲染公式。图表需可用的中文字体，本机使用Arial Unicode MS，其他系统可提供Noto Sans CJK SC。将本轮RemoteMCU原始记录、CSV、试前/试后参数GET和停止录制元数据作为输入。生成器严格校验本轮录制ID、Build/Profile、参数一致性、原始帧CRC、重复内容及中杆片段；只处理离线文件，不写MCU。示例：
 
 ```sh
+# 在工具目录安装公式构建依赖，或在临时目录安装后传入 --mathjax-root。
+npm install --prefix tools/yaw
 python tools/yaw/build_four_axis_report.py \
   --csv flight.csv --raw flight.rmplog \
   --parameters before-parameters.json --after-parameters after-parameters.json \
   --metadata stopped-recording.json --output report.html
 ```
 
-HTML包含5组内嵌SVG图、模型/增益说明、实测指标表和完整参数JSON。独立无头Chrome核验图像解码、桌面1440px与手机390px无横向溢出、无脚本错误，并检查首页及Yaw图表截图；没有将生成图表的代码加入飞控。
+报告第二版按“坐标与受力→牛顿—欧拉方程→Roll/Pitch几何姿态反馈→Yaw航向/角速度双环→执行器分配→逐轴数据与结论”重写。29组公式通过MathJax构建时转换为内嵌SVG，不依赖浏览器加载公式库或字体；6组中文图表将Pitch/Roll分开，统一以三电机首次非零为相对时间原点，未将其等同于精确离地时刻。新增Yaw机动期间目标/实测率范围及率跟踪差RMS，原有指标和71项参数保持不变。
+
+HTML包含机构示意图、控制结构、模型/增益说明、实测指标表、参考教材及完整参数JSON。独立无头Chrome在断网模式核验公式/图像渲染、桌面1440px与手机390px无页面横向溢出、无脚本错误，并检查公式、矩阵及Yaw/Pitch图表截图；没有将生成图表或公式的代码加入飞控。

@@ -1,0 +1,8 @@
+{
+  "name": "drehmflight-offline-report-math",
+  "private": true,
+  "description": "Build-time TeX-to-SVG rendering; no browser dependency in the report",
+  "dependencies": {
+    "mathjax-full": "3.2.2"
+  }
+}

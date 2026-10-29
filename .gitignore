@@ -61,6 +61,9 @@ env/
 ENV/
 *.egg-info/
 
+# Offline HTML report build dependencies
+node_modules/
+
 # Local configuration and logs
 .env
 .env.*

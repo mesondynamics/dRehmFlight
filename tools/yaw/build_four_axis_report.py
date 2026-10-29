@@ -16,8 +16,10 @@ import io
 import json
 import math
 from pathlib import Path
+import re
 import statistics
 import struct
+import subprocess
 from zoneinfo import ZoneInfo
 import zlib
 
@@ -111,6 +113,8 @@ def excursion_events(rows):
                      during_roll=describe([r['v'][15] for r in during]),
                      during_pitch=describe([r['v'][16] for r in during]),
                      during_heading_rate=describe([r['v'][9] for r in during]),
+                     during_rate_target=describe([r['v'][8] for r in during]),
+                     during_rate_error=describe([r['v'][8]-r['v'][9] for r in during]),
                      post_roll=describe([r['v'][15] for r in after]),
                      post_pitch=describe([r['v'][16] for r in after]),
                      post_heading_change=describe([(r['v'][6]-release['v'][6]+180)%360-180 for r in after]))
@@ -170,6 +174,8 @@ def analyze(args):
                   parameter_values=before['values'], parameter_snapshot_sha256=sha(args.parameters),
                   generated_at=datetime.now(ZoneInfo('Asia/Shanghai')).isoformat(timespec='seconds'),
                   source_commit='463dcf5', test_local_start=datetime.fromtimestamp(metadata['started_unix_ms']/1000,ZoneInfo('Asia/Shanghai')).isoformat(),
+                  report_revision=2,
+                  time_origin='First telemetry sample with all three nonzero motor commands; not a measured liftoff timestamp.',
                   test_local_end=datetime.fromtimestamp(metadata['ended_unix_ms']/1000,ZoneInfo('Asia/Shanghai')).isoformat(),
                   quality=quality, state_ranges=state_ranges,
                   recording_target_s=[rows[0]['t'],rows[-1]['t']],
@@ -211,78 +217,100 @@ def charts(rows, states):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib import font_manager
     import numpy as np
-    plt.rcParams.update({'font.family':'DejaVu Sans','font.size':10,'axes.spines.top':False,
+    # Embed glyph outlines so plots remain readable on an offline machine.
+    font = Path('/System/Library/Fonts/Supplemental/Arial Unicode.ttf')
+    if font.exists():
+        font_manager.fontManager.addfont(str(font))
+    cjk = font_manager.FontProperties(fname=str(font)).get_name() if font.exists() else 'Noto Sans CJK SC'
+    font_manager.findfont(font_manager.FontProperties(family=cjk),fallback_to_default=False)
+    plt.rcParams.update({'font.family':[cjk,'DejaVu Sans'],'font.size':10,'axes.spines.top':False,
                          'axes.spines.right':False,'axes.grid':True,'grid.alpha':.2,
-                         'svg.fonttype':'none','svg.hashsalt':'drehm-four-axis-20261029',
+                         'svg.fonttype':'path','svg.hashsalt':'drehm-four-axis-20261029',
                          'path.simplify':False})
     colors = ['#1d4ed8','#b45309','#047857','#be185d','#6d28d9']
+    origin = next(r['t'] for r in rows if is_running(r))
+    events = excursion_events(rows)
 
-    def plot(panels, begin, end):
+    def plot(panels, begin, end, highlight=()):
         selected = [r for r in rows if begin<=r['t']<=end]
         xx, yy = [], []
         previous = None
         for r in selected:
             if previous and (r['seq']-previous['seq'] != 1 or r['t']-previous['t']>.015):
                 xx.append(math.nan); yy.append([math.nan]*32)
-            xx.append(r['t']); yy.append(r['v']); previous=r
+            xx.append(r['t']-origin); yy.append(r['v']); previous=r
         xx, yy = np.array(xx), np.array(yy)
         fig, axes = plt.subplots(len(panels),1,figsize=(11,2.15*len(panels)),sharex=True,squeeze=False,layout='constrained')
         for axis, (title, lines, unit) in zip(axes[:,0],panels):
             for j,(channel,label) in enumerate(lines):
                 values = yy[:,channel] if channel>=0 else (yy[:,7]-yy[:,6]+180)%360-180
                 axis.plot(xx,values,label=label,color=colors[j],lw=1.05)
-            axis.set(title=title,ylabel=unit,xlim=(begin,end))
+            axis.set(title=title,ylabel=unit,xlim=(begin-origin,end-origin))
+            for event in events:
+                if event['axis'] in highlight:
+                    axis.axvspan(event['start']-origin,event['end']-origin,color='#c8d9ee',alpha=.35,zorder=0)
             axis.legend(loc='upper right',ncol=min(4,len(lines)),fontsize=8,framealpha=.92)
-        axes[-1,0].set_xlabel('Target clock (s) - not synchronized to PC time')
+        axes[-1,0].set_xlabel('相对时间 t (s)：0 为三电机首次非零，非精确离地时刻')
         output=io.StringIO(); fig.savefig(output,format='svg',metadata={'Date':None}); plt.close(fig)
         return 'data:image/svg+xml;base64,'+base64.b64encode(output.getvalue().encode()).decode()
 
     return {
       'overview':plot([
-          ('Pilot inputs',[(18,'Throttle CH3'),(19,'Yaw CH1'),(5,'Pitch CH2'),(4,'Roll CH4')],'us'),
-          ('Attitude',[(15,'Roll'),(16,'Pitch')],'deg'),
-          ('Relative heading',[(6,'IMU heading'),(7,'Heading target')],'deg'),
-          ('Heading rate',[(8,'Rate target'),(9,'Measured rate'),(10,'Filtered rate')],'deg/s')],366,416),
+          ('操纵顺序：先油门，再偏航、俯仰、横滚',[(18,'油门 CH3'),(19,'Yaw CH1'),(5,'Pitch CH2'),(4,'Roll CH4')],'µs'),
+          ('姿态响应',[(15,'Roll 右倾为正'),(16,'Pitch 前倾为正')],'°'),
+          ('相对航向',[(6,'IMU 航向'),(7,'航向目标')],'°'),
+          ('航向角速度',[(8,'角速度目标'),(9,'实测角速度')],'°/s')],366,416),
       'yaw':plot([
-          ('Yaw input',[(19,'Raw CH1')],'us'),
-          ('Relative heading',[(6,'IMU heading'),(7,'Heading target')],'deg'),
-          ('Heading error = target - measured',[(-1,'Heading error')],'deg'),
-          ('Heading rate',[(8,'Rate target'),(9,'Measured rate')],'deg/s')],369,397),
-      'tilt':plot([
-          ('Pilot pitch and roll inputs',[(5,'Pitch CH2'),(4,'Roll CH4')],'us'),
-          ('Attitude response',[(16,'Pitch'),(15,'Roll')],'deg'),
-          ('Filtered body gyro observations',[(20,'GyroX'),(21,'GyroY'),(17,'GyroZ')],'deg/s'),
-          ('Relative yaw coupling',[(6,'IMU heading'),(7,'Heading target')],'deg')],396,414),
+          ('Yaw 输入：数值减小为左转，阴影为离开死区',[(19,'原始 CH1')],'µs'),
+          ('航向目标与反馈',[(6,'IMU 航向'),(7,'航向目标')],'°'),
+          ('航向差：目标减反馈，按最短角度计算',[(-1,'航向差')],'°'),
+          ('内环跟踪：20°/s 为目标限幅',[(8,'角速度目标'),(9,'实测角速度')],'°/s')],369,397,('Yaw',)),
+      'pitch':plot([
+          ('Pitch 输入：阴影为持续前倾指令',[(5,'Pitch CH2')],'µs'),
+          ('俯仰姿态：回中后跨过水平位置',[(16,'Pitch 前倾为正')],'°'),
+          ('角速度观测',[(21,'GyroY')],'°/s'),
+          ('同时观察 Yaw 耦合',[(6,'IMU 航向'),(7,'航向目标')],'°')],396,407,('Pitch',)),
+      'roll':plot([
+          ('Roll 输入：右倾后有独立左倾指令',[(4,'Roll CH4')],'µs'),
+          ('横滚姿态',[(15,'Roll 右倾为正')],'°'),
+          ('角速度观测',[(20,'GyroX')],'°/s'),
+          ('同时观察 Yaw 耦合',[(6,'IMU 航向'),(7,'航向目标')],'°')],406,414,('Roll',)),
       'actuators':plot([
-          ('Servo command (not measured position)',[(2,'Servo PWM')],'us'),
-          ('Yaw torque estimates (not measured torque)',[(11,'Requested'),(12,'Model prediction'),(13,'Difference')],'N m'),
-          ('Actual transmitted motor commands',[(23,'M2'),(24,'M4'),(25,'M3')],'DShot'),
-          ('Body-axis accelerometer after low-pass (gravity included)',[(22,'AccZ: about 1 g at rest')],'g')],366,416),
+          ('舵机 PWM 命令：并非实测位置',[(2,'PWM')],'µs'),
+          ('Yaw 力矩：需求与模型预测，不是实测扭矩',[(11,'需求'),(12,'模型预测'),(13,'差值')],'N·m'),
+          ('实际发送的电机命令',[(23,'M2'),(24,'M4'),(25,'M3')],'DShot'),
+          ('机体 Z 轴低通加速度：含重力响应',[(22,'AccZ，静止约 1g')],'g')],366,416),
       'timing':plot([
-          ('Control-loop period and retained maximum',[(28,'Period'),(31,'Max period')],'us'),
-          ('Work budget: no waiting time included',[(29,'Previous work'),(30,'Max work')],'us')],rows[0]['t'],rows[-1]['t'])}
+          ('主循环周期与累计最大值',[(28,'周期'),(31,'累计最大周期')],'µs'),
+          ('工作耗时：不含等待时间',[(29,'上一周期工作'),(30,'累计最大工作')],'µs')],rows[0]['t'],rows[-1]['t'])}
 
 
 def render(result, figures, template):
     r=result; q=r['quality']; p={int(v['id']):v['value'] for v in r['parameter_values']}
+    origin=r['motor_interval_s'][0]
     event_rows=[]
     directions=['左转','右转','前倾','右倾','左倾']
     for label,event in zip(directions,r['events']):
         axis=event['axis']; response=event['during_heading_rate'] if axis=='Yaw' else event['during_pitch'] if axis=='Pitch' else event['during_roll']
-        event_rows.append([axis+' '+label,f"{event['start']:.3f}–{event['end']:.3f}",
+        event_rows.append([axis+' '+label,f"{event['start']-origin:.2f}–{event['end']-origin:.2f}",
                            f"{event['end']-event['start']:.2f}",
                            f"{event['raw']['minimum']:.0f}–{event['raw']['maximum']:.0f}",
                            f"{response['minimum']:.2f}–{response['maximum']:.2f}"+(' °/s' if axis=='Yaw' else ' °')])
-    hold_rows=[[h['label'],f"{h['start']}–{h['end']}",h['n'],f"{h['error']['mean']:.2f}",
+    hold_rows=[[h['label'],f"{h['start']-origin:.2f}–{h['end']-origin:.2f}",h['n'],f"{h['error']['mean']:.2f}",
                 f"{h['error']['p95']:.2f}",f"{h['error']['maximum']:.2f}",f"{h['absolute_rate']['maximum']:.2f}"] for h in r['holds']]
     data={
       'GENERATED':html.escape(r['generated_at']),
-      'EVENT_TABLE':table(['机动','目标时钟 s','持续 s','原始输入 µs','机动期间响应范围'],event_rows),
-      'HOLD_TABLE':table(['中杆片段','目标时钟 s','样本','平均绝对差 °','P95 °','最大绝对差 °','最大|航向率| °/s'],hold_rows),
+      'EVENT_TABLE':table(['机动','相对时间 t / s','持续 / s','原始输入 / µs','机动期间响应范围'],event_rows),
+      'HOLD_TABLE':table(['中杆片段','相对时间 t / s','样本','平均绝对差 / °','P95 / °','最大绝对差 / °','最大|航向率| / °/s'],hold_rows),
+      'YAW_RATE_TABLE':table(['Yaw机动','目标率范围 / °/s','实测率范围 / °/s','率跟踪差 RMS / °/s'],[
+          [label,f"{event['during_rate_target']['minimum']:.2f}–{event['during_rate_target']['maximum']:.2f}",
+           f"{event['during_heading_rate']['minimum']:.2f}–{event['during_heading_rate']['maximum']:.2f}",
+           f"{event['during_rate_error']['rms']:.2f}"] for label,event in zip(directions[:2],r['events'][:2])]),
       'MODEL_TABLE':table(['参数','本机运行值','证据／限制'],[
           ['质量 / 臂长',f"{p[15]:.3f} kg / 0.500 m",'用户提供，水平重心居中'],
-          ['Izz',f"{p[16]:.4f} kg·m²",'mR²/3初值，非实测'],
+          ['Jz（固件Izz）',f"{p[16]:.4f} kg·m²",'mL²/3粗估初值，非实测'],
           ['κ₂ / κ₄ / κ₃','0.010 / 0.010 / 0.010 m','反扭矩/推力比初值，非辨识结果'],
           ['每电机推力表','0 / 0.4598 / 1.8394 / 4.1386 / 7.3575 N','u=0/.25/.5/.75/1；假设总推重比3'],
           ['舵机 / 电机滞后',f"{p[12]:.3f} / {p[76]:.3f} s",'一阶估算，未测真实位置或转速'],
@@ -316,20 +344,40 @@ def render(result, figures, template):
     for key,value in figures.items(): data['FIG_'+key.upper()]=value
     output=Path(template).read_text()
     for key,value in data.items(): output=output.replace('{{'+key+'}}',str(value))
-    if '{{' in output: raise ValueError('Unfilled template field')
+    if re.search(r'\{\{[A-Z_]+\}\}',output): raise ValueError('Unfilled template field')
     return output
+
+
+def render_math(output, root):
+    if not (Path(root)/'js/mathjax.js').is_file():
+        raise ValueError('Install mathjax-full@3.2.2 with npm install --prefix tools/yaw '
+                         'or pass its directory via --mathjax-root')
+    pattern=re.compile(r'<div class="math-source">(.*?)</div>',re.S)
+    expressions=[html.unescape(tex) for tex in pattern.findall(output)]
+    completed=subprocess.run(['node',str(Path(__file__).with_name('render_report_math.cjs')),str(root)],
+        input=json.dumps(expressions),text=True,capture_output=True)
+    if completed.returncode:
+        raise ValueError('TeX-to-SVG rendering failed: '+completed.stderr)
+    rendered=json.loads(completed.stdout)
+    if len(expressions)!=len(rendered) or not rendered:
+        raise ValueError('Formula rendering did not produce one SVG per expression')
+    iterator=iter(rendered)
+    return pattern.sub(lambda _: '<div class="math-body">'+next(iterator)+'</div>',output)
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ('csv','raw','parameters','after-parameters','metadata','output'):
         parser.add_argument('--'+name,required=True)
+    parser.add_argument('--mathjax-root',type=Path,
+                        default=Path(__file__).with_name('node_modules')/'mathjax-full',
+                        help='Build-time mathjax-full@3.2.2 directory (report stays offline)')
     args=parser.parse_args()
     result,rows,states=analyze(args)
     template=Path(__file__).with_name('four_axis_report_template.html')
     output=Path(args.output); output.parent.mkdir(parents=True,exist_ok=True)
     figures=charts(rows,states)
-    output.write_text(render(result,figures,template))
+    output.write_text(render_math(render(result,figures,template),args.mathjax_root))
     output.with_suffix('.json').write_text(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False)+'\n')
     print(json.dumps(dict(output=str(output),bytes=output.stat().st_size,samples=result['quality']['samples'],
                           sha256=sha(output)),ensure_ascii=False))
