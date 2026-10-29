@@ -1,6 +1,8 @@
 #include "yaw_model_fixture.h"
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/ServoTiltCalibration.h"
 #include <cassert>
 #include <cstdio>
+#include <initializer_list>
 
 int main() {
   using namespace tricopter;
@@ -58,6 +60,20 @@ int main() {
   assert(!invalid.valid());
   invalid=m; invalid.izz=0; assert(!invalid.valid());
   invalid=m; invalid.rotor[0].thrustN[2]=0; assert(!invalid.valid());
+  // Measured mechanical travel may exceed 45 degrees; flight never inherits it.
+  auto measured=m; measured.tiltLimitDeg=30;
+  for (auto &rotor : measured.rotor)
+    for (unsigned i=0;i<9;++i) rotor.tiltDeg[i]=servo_calibration::defaultTilt(i);
+  assert(measured.valid());
+  assert(!allocateAt(measured,{12,0,0},0,50).valid);
+  assert(!allocateAt(measured,{12,0,0},0,130).valid);
+  for (float yaw : {-100.f,0.f,100.f}) {
+    const auto limited=allocateYaw(measured,{12,0,0},yaw,90,80);
+    assert(limited.valid);
+    for (const auto &rotor : measured.rotor)
+      assert(std::fabs(physicalTilt(rotor,limited.servoDeg))<=30.001f);
+  }
+  measured.rotor[0].tiltDeg[0]=85.1f; assert(!measured.valid());
   const Vec3 accel=angularAcceleration({1,2,3},{0,0,0},{1,2,3});
   assert(accel.x==1 && accel.y==1 && accel.z==1);
   std::puts("Measured-angle geometry, reaction signs, nonlinear inverse thrust, exact allocation and limits passed");

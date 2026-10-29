@@ -4,12 +4,26 @@
 
 namespace tricopter {
 constexpr unsigned tiltPoints=9, thrustPoints=5;
+// Calibration may cover large bench travel; flight remains limited separately
+// to at most 45 degrees (30 degrees by default) in allocateAt/allocateYaw.
+constexpr float maxCalibratedTiltDeg=85;
 struct RotorModel {
   Vec3 position, tangent;
   float reactionSign, kappa;
   float tiltDeg[tiltPoints]; // logical 50,60,...,130; physical, positive CCW tangent
   float thrustN[thrustPoints]; // normalized motor command 0,.25,.5,.75,1
 };
+inline bool tiltMappingValid(const RotorModel &r) {
+  const bool increasing=r.tiltDeg[tiltPoints-1]>r.tiltDeg[0];
+  for (unsigned i=0;i<tiltPoints;++i) {
+    if (!std::isfinite(r.tiltDeg[i]) || std::fabs(r.tiltDeg[i])>maxCalibratedTiltDeg)
+      return false;
+    if (i && (increasing ? r.tiltDeg[i]-r.tiltDeg[i-1] :
+                          r.tiltDeg[i-1]-r.tiltDeg[i])<.01f) return false;
+  }
+  return std::fmin(r.tiltDeg[0],r.tiltDeg[tiltPoints-1])<=0 &&
+         std::fmax(r.tiltDeg[0],r.tiltDeg[tiltPoints-1])>=0;
+}
 struct DynamicsModel {
   RotorModel rotor[3]; // M2, M4, M3
   float massKg=0, izz=0, tiltLimitDeg=30;
@@ -25,15 +39,7 @@ struct DynamicsModel {
           (r.reactionSign!=1 && r.reactionSign!=-1) || r.thrustN[0]!=0) return false;
       for (unsigned i=0;i<thrustPoints;++i)
         if (!std::isfinite(r.thrustN[i]) || (i && r.thrustN[i]<=r.thrustN[i-1])) return false;
-      const bool increasing=r.tiltDeg[tiltPoints-1]>r.tiltDeg[0];
-      for (unsigned i=0;i<tiltPoints;++i) {
-        if (!std::isfinite(r.tiltDeg[i]) || std::fabs(r.tiltDeg[i])>45) return false;
-        if (i && (increasing ? r.tiltDeg[i]-r.tiltDeg[i-1] :
-                              r.tiltDeg[i-1]-r.tiltDeg[i])<.01f) return false;
-      }
-      if (std::fmin(r.tiltDeg[0],r.tiltDeg[8])>0 ||
-          std::fmax(r.tiltDeg[0],r.tiltDeg[8])<0 ||
-          std::fabs(r.tiltDeg[4])>tiltLimitDeg) return false;
+      if (!tiltMappingValid(r) || std::fabs(r.tiltDeg[4])>tiltLimitDeg) return false;
     }
     const Vec3 a=rotor[1].position-rotor[0].position;
     const Vec3 b=rotor[2].position-rotor[0].position;

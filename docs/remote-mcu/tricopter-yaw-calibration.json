@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "id": "drehmflight-yaw-calibration",
-  "revision": 2,
+  "revision": 3,
   "name": "dRehmFlight 三旋翼 Yaw 标定与控制",
   "data": {
     "kind": "application",
@@ -137,7 +137,7 @@
       },
       {
         "id": 3,
-        "name": "M2 倾角模型估算（需标定）",
+        "name": "M2 标定倾角估算（指令映射）",
         "unit": "°",
         "precision": 2,
         "color": "#eb96b7",
@@ -146,7 +146,7 @@
       },
       {
         "id": 4,
-        "name": "M4 倾角模型估算（需标定）",
+        "name": "M4 标定倾角估算（指令映射）",
         "unit": "°",
         "precision": 2,
         "color": "#b6a4ed",
@@ -155,7 +155,7 @@
       },
       {
         "id": 5,
-        "name": "M3 倾角模型估算（需标定）",
+        "name": "M3 标定倾角估算（指令映射）",
         "unit": "°",
         "precision": 2,
         "color": "#97c876",

@@ -644,7 +644,7 @@ void serviceRemoteMcu() {
   sample.values[1]=tricopter::quantizedServoLogical(servoLogical);
   sample.values[2]=tricopter::servoPulseCommandUs(servoLogical);
   for (unsigned i=0;i<3;++i)
-    sample.values[3+i]=flightParameters.config().ready ?
+    sample.values[3+i]=flightParameters.config().tiltMappingReady[i] ?
         tricopter::physicalTilt(flightParameters.config().model.rotor[i],sample.values[1]) : 0;
   sample.values[6]=flightOutput.heading; sample.values[7]=normalYawOutput.headingTarget;
   sample.values[8]=flightOutput.yawTarget; sample.values[9]=flightOutput.yawRate;

@@ -1,5 +1,6 @@
 #pragma once
 #include "NormalYawControl.h"
+#include "ServoTiltCalibration.h"
 #include "src/RemoteMcu/parameters.h"
 #include <cstdio>
 #include <cstring>
@@ -35,7 +36,8 @@ class FlightParameters {
     const unsigned motors[]={2,4,3};
     for (unsigned r=0;r<3;++r) for (unsigned j=0;j<9;++j) {
       char name[48]; std::snprintf(name,sizeof(name),"M%u_tilt_at_servo_%u_deg",motors[r],50+10*j);
-      add(30+9*r+j,name,RMP_PARAM_F32,-45,45,0);
+      add(30+9*r+j,name,RMP_PARAM_F32,-maxCalibratedTiltDeg,maxCalibratedTiltDeg,
+          servo_calibration::defaultTilt(j));
     }
     for (unsigned r=0;r<3;++r) for (unsigned j=0;j<5;++j) {
       char name[48]; std::snprintf(name,sizeof(name),"M%u_thrust_at_%u_pct_N",motors[r],25*j);
@@ -90,6 +92,7 @@ class FlightParameters {
     for (unsigned r=0;r<3;++r) {
       auto &m=c.model.rotor[r]; m.reactionSign=r==1 ? 1 : -1; m.kappa=number(v,24+r);
       for (unsigned j=0;j<9;++j) m.tiltDeg[j]=number(v,27+9*r+j);
+      c.tiltMappingReady[r]=tiltMappingValid(m);
       for (unsigned j=0;j<5;++j) m.thrustN[j]=number(v,54+5*r+j);
     }
     c.ready=a>0 && b>0 && d>0 && c.model.valid();
@@ -98,8 +101,9 @@ class FlightParameters {
   void rebuild() { config_=decode(parameters_.values); }
   void add(uint16_t id,const char *name,uint8_t type,double low,double high,float initial) {
     std::snprintf(names_[added_],sizeof(names_[added_]),"%s",name);
-    uint32_t bits=static_cast<uint32_t>(initial);
+    uint32_t bits=0;
     if (type==RMP_PARAM_F32) std::memcpy(&bits,&initial,4);
+    else bits=static_cast<uint32_t>(initial);
     definitions_[added_]={id,type,low,high,bits,names_[added_]}; ++added_;
   }
   unsigned added_=0;

@@ -6,6 +6,7 @@ namespace tricopter {
 struct NormalYawConfig {
   DynamicsModel model{};
   bool flightEnabled=false, spinEnabled=false, ready=false;
+  bool tiltMappingReady[3]{}; // Cached on parameter changes; independent of thrust/inertia readiness.
   float headingKp=1.5f, rateKp=4, rateKi=1.5f;
   float maxRateDps=30, maxAccelDps2=60, rateFilterHz=12, maxHeadingError=45;
   float antiWindupGain=2, servoSlew=60, servoLag=.08f, integralLimit=2, damping=0;

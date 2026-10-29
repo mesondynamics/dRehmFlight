@@ -6,7 +6,7 @@
 
 namespace remote_mcu {
 constexpr unsigned channelCount = 32;
-constexpr const char *buildId = "drehm-yaw-model-20261029";
+constexpr const char *buildId = "drehm-yaw-cal-20261029";
 
 struct Snapshot {
   float values[channelCount];

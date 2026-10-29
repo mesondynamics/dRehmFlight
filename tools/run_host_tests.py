@@ -17,7 +17,7 @@ def main():
     compiler = shlex.split(os.environ.get('CXX', 'c++'))
     flags = ['-std=c++11', '-Wall', '-Wextra', '-Werror']
     if args.sanitize:
-        flags += ['-fsanitize=address,undefined', '-fno-omit-frame-pointer']
+        flags += ['-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-fno-omit-frame-pointer']
     with tempfile.TemporaryDirectory(prefix='drehmflight-host-') as build:
         for test in tests:
             target = str(Path(build) / test.stem)

@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-29",
+  "measurement_source": "User-provided static M3 angle versus servo PWM command",
+  "original_angle_sign": "M3 thrust-axis top tilting left viewed from above is positive",
+  "firmware_angle_sign": "FLU tangential tilt; M3 thrust-axis top tilting right is positive",
+  "sign_multiplier": -1,
+  "pwm_units": "us command, not independently measured pulse width",
+  "angle_units": "degrees relative to airframe vertical",
+  "concatenated_pwm_input": {
+    "original": "11871063",
+    "confirmed_split_us": [1187, 1063]
+  },
+  "mapping_scope": {
+    "directly_measured_rotor": "M3",
+    "applied_rotors": ["M2", "M4", "M3"],
+    "shared_mapping_reason": "User explicitly confirmed the common gear drives all three and requested the same calibration values",
+    "M2_M4_independently_measured": false
+  },
+  "points_sorted_by_pwm": [
+    {"pwm_us":1063, "reported_left_positive_deg":-55.9, "firmware_tilt_deg":55.9},
+    {"pwm_us":1187, "reported_left_positive_deg":-39.9, "firmware_tilt_deg":39.9},
+    {"pwm_us":1327, "reported_left_positive_deg":-20.5, "firmware_tilt_deg":20.5},
+    {"pwm_us":1605, "reported_left_positive_deg":16.0, "firmware_tilt_deg":-16.0},
+    {"pwm_us":1687, "reported_left_positive_deg":28.2, "firmware_tilt_deg":-28.2},
+    {"pwm_us":1820, "reported_left_positive_deg":49.6, "firmware_tilt_deg":-49.6},
+    {"pwm_us":1945, "reported_left_positive_deg":63.6, "firmware_tilt_deg":-63.6}
+  ],
+  "interpolation": {
+    "method": "Piecewise linear between measured knots, endpoints clamped",
+    "estimated_zero_pwm_us": 1483.13698630137,
+    "nearest_integer_zero_pwm_us": 1483,
+    "software_center_pwm_us": 1504,
+    "estimated_tilt_at_software_center_deg": -2.7392086330935257,
+    "zero_independently_measured": false,
+    "software_center_changed": false
+  },
+  "runtime_table": {
+    "method": "Resample seven-point curve at the existing nine logical nodes using their integer PWM commands",
+    "logical_nodes_deg": [50,60,70,80,90,100,110,120,130],
+    "pwm_nodes_us": [1063,1173,1284,1394,1504,1614,1724,1835,1945],
+    "tilt_nodes_deg": [55.9,41.70645161290322,26.458571428571428,11.703237410071942,-2.7392086330935257,-17.339024390243903,-34.153383458646616,-51.28,-63.6],
+    "checked_pwm_range_us": [1063,1945],
+    "checked_pwm_step_us": 1,
+    "maximum_resampling_difference_deg": 0.5989449430026639,
+    "maximum_resampling_difference_within_30_deg": 0.24124736383643253,
+    "resampling_difference_is_physical_measurement_error": false
+  },
+  "limits": {
+    "stored_calibration_angle_limit_deg": 85,
+    "default_flight_tilt_limit_deg": 30,
+    "maximum_configurable_flight_tilt_limit_deg": 45,
+    "flight_enable": false,
+    "spin_enable": false,
+    "model_verified": false,
+    "bench_pwm_endpoints_changed": false
+  },
+  "not_provided": [
+    "Sweep direction, reverse sweep, repeatability and hysteresis",
+    "Measurement instrument accuracy and an independently measured zero point",
+    "Servo dynamic delay, lag and maximum safe rate",
+    "Mass, arm geometry, inertia, motor thrust and reaction torque coefficients"
+  ],
+  "firmware_build_id": "drehm-yaw-cal-20261029",
+  "verification": {
+    "host_command": "python3 tools/run_host_tests.py --sanitize",
+    "host_test_programs_passed": 14,
+    "sanitizers": ["address", "undefined"],
+    "sanitizer_errors_fatal": true,
+    "build_command": "arduino-cli compile --fqbn teensy:avr:teensy40:usb=serial --build-path /private/tmp/drehmflight-yaw-cal-20261029 Versions/dRehmFlight_Teensy_BETA_1.3",
+    "teensy40_build_passed": true,
+    "hex_path": "/private/tmp/drehmflight-yaw-cal-20261029/dRehmFlight_Teensy_BETA_1.3.ino.hex",
+    "hex_text_bytes": 337067,
+    "hex_text_sha256": "8d7361467dd1fd53d60e8579b52f535973fde90e149b0eb25de791d9081c17c3",
+    "hex_hash_is_remotemcu_aligned_image_hash": false,
+    "remotemcu_application_revision": 3,
+    "remotemcu_application_updated": true,
+    "hardware_timing_reverified": false
+  },
+  "hardware_applied": false,
+  "hardware_status": "Ready for download; user powered the flight controller off and requested notification before power-on"
+}

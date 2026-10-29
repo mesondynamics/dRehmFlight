@@ -157,7 +157,7 @@ int main() {
   uint32_t now=1000;
   for (int i=0;i<50;++i,now+=500) telemetry.poll(port,sample,now);
   assert(port.output[0][5]==RMP_HELLO);
-  assert(payload(port.output[0]).find("drehm-yaw-model-20261029")!=std::string::npos);
+  assert(payload(port.output[0]).find("drehm-yaw-cal-20261029")!=std::string::npos);
   assert(payload(port.output[0]).find("teensy40-1881bf")!=std::string::npos);
   assert(payload(port.output[0]).find("\"safe_to_flash\":true")!=std::string::npos);
   const uint32_t session=rmp_get_u32(port.output[0].data()+12);

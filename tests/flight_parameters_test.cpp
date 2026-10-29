@@ -26,6 +26,18 @@ static std::vector<uint8_t> batch(tricopter::FlightParameters &p,
 int main() {
   tricopter::FlightParameters p; p.begin();
   assert(!p.config().ready && !p.config().flightEnabled);
+  assert(!p.config().spinEnabled && !p.config().model.calibrated);
+  assert(p.config().model.tiltLimitDeg==30);
+  for (unsigned rotor=0;rotor<3;++rotor) {
+    assert(p.config().tiltMappingReady[rotor]);
+    for (unsigned j=0;j<9;++j)
+      assert(std::fabs(p.config().model.rotor[rotor].tiltDeg[j]-
+          tricopter::servo_calibration::defaultTilt(j))<1e-5f);
+  }
+  // Large bench angles remain valid calibration data, without enabling flight.
+  assert(batch(p,{{48,55.9f},{56,-63.6f}})[8]==RMP_APPLIED);
+  assert(batch(p,{{56,-85.1f}})[8]==RMP_OUT_OF_RANGE);
+  assert(batch(p,{{14,1,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
   assert(batch(p,{{1,1,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
   assert(batch(p,{{3,2}},false)[8]==RMP_UNSAFE);
   assert(batch(p,{{3,2},{4,-1}})[8]==RMP_OUT_OF_RANGE);
