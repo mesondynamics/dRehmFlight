@@ -1,0 +1,120 @@
+{
+  "date": "2026-11-03",
+  "branch": "feature/cyclone-rotor-tricopter",
+  "base_commit": "907d4a1b04bcdaf0633a9e603ec8477ec808e766",
+  "build_id": "drehm-cyclone-rotor-v1-20261103",
+  "scope": "Ordinary and low-speed self-spinning tricopter, three small motor propellers, no large rotating wings, no tether model",
+  "verification": {
+    "host_command": "python3 tools/run_host_tests.py --sanitize",
+    "host_programs_passed": 18,
+    "sanitizers": ["address", "undefined"],
+    "unified_synthetic_attitude_cases": 6,
+    "unified_synthetic_spin_rates_deg_s": [45, 90],
+    "unified_synthetic_servo_lag_ms": [40, 80, 120],
+    "unified_synthetic_metrics": {
+      "peak_tilt_deg_upper_rounded": 2.87,
+      "steady_spin_absolute_rate_error_deg_s_upper_rounded": 1.34,
+      "final_heading_error_deg_upper_rounded": 0.31,
+      "final_rate_deg_s_upper_rounded": 0.22
+    },
+    "additional_regressions": [
+      "Bidirectional laser zero crossing, 180-degree wrap exclusion, rate threshold and micros32 wrap",
+      "Heading-rate acceleration kinematics against quaternion integration",
+      "Rigid-body coupling and positive-thrust feasibility",
+      "Physical saturation feedback to transverse integrators and authority recovery",
+      "Spin entry after normal Yaw avoids legacy rate-target inheritance",
+      "Atomic parameter gates including NaN/Inf pulse timing",
+      "New RMP bool/uint32/float state wire types"
+    ],
+    "limitations": [
+      "Synthetic attitude plant only; no translation/contact/takeoff simulation",
+      "No hardware IMU vibration, ESC measurements or exhaustive uncertainty analysis",
+      "Legacy cyclone_dynamics_test exercises up to 360 deg/s; those cases do not validate this production build at 360 deg/s",
+      "Main-loop worst-case execution time and laser optical alignment require hardware measurement"
+    ]
+  },
+  "compile": {
+    "command": "arduino-cli compile --fqbn teensy:avr:teensy40:usb=serial --warnings all --build-path /tmp/drehm-cyclone-final.oeEdup Versions/dRehmFlight_Teensy_BETA_1.3",
+    "result": "passed",
+    "arduino_cli": "1.5.1",
+    "teensy_core": "1.62.0",
+    "flash_code_bytes": 85936,
+    "flash_data_bytes": 33976,
+    "ram1_variables_bytes": 35744,
+    "ram2_variables_bytes": 12416,
+    "warnings": [
+      "CRSFforArduino architecture metadata uses teensy while core architecture label is avr",
+      "Existing unused MgX/MgY/MgZ in IMU calibration",
+      "Clean compilation also reports existing overlapping memcpy in unused TFMPlus library"
+    ]
+  },
+  "artifact": {
+    "path": "build/cyclone-rotor-v1/firmware.hex",
+    "git_ignored": true,
+    "format": "Intel HEX text, not aligned RemoteMCU image",
+    "bytes": 362987,
+    "sha256": "548fe3bfdb5cfd5c10e2879e399e52a2fa3370941c8cfa12d9c76ed6a8d589a0"
+  },
+  "critical_sources_sha256": {
+    "dRehmFlight_Teensy_BETA_1.3.ino": "9bce047b744585938876a9115b9776075071d69b640fb8b04ad2ba0fdd50cbef",
+    "CycloneControl.h": "0b34dafa96e3f6fdf2c2a2d3a0f96f10350b205a3937f8cedd383337dac46d4b",
+    "NormalYawControl.h": "5d9a49f115c3c4faaf7b2b74c8a61eb8b7e91adf36014def13ba8682bbec9912",
+    "TricopterDynamics.h": "82f75f40362dd3151501a7686eb4743b24c9f86d7f3451cd93c50aa8d9ef3ffa",
+    "FlightParameters.h": "b5961ff58e2c75e7444bf12bded3b19efa592d492e43a08bdff09ac391cb267b",
+    "FlightMath.h": "9de7dbc2bbebb9dcae27ab2b17edf42b9b073939915a9fbd66d7ecd68aa42039",
+    "LaserSync.h": "c42eb177ed2a5f596ca95d2af74ee06a084f02fbe9ddcb92e4647d6325210267",
+    "RemoteMcuTelemetry.h": "c62a2a0981b523708f7b46a1cbbd626028cdf32785709c3985e52f6ec8d81142",
+    "TricopterConfig.h": "8cdfdacedc178b1d48f45880733e70eea3bf5fe7dc9a18b285fc5f4858779a9f"
+  },
+  "remote_mcu": {
+    "agent_url": "http://127.0.0.1:47301",
+    "agent_mode": "hardware",
+    "agent_reported_version": "0.1.0",
+    "agent_existing_binary_started": true,
+    "gateway_ip": "192.168.0.62",
+    "application": "drehmflight-cyclone-rotor-v1",
+    "device": "drehmflight-cyclone-rotor-device",
+    "application_revision": 1,
+    "device_revision": 1,
+    "profile_api_import_and_catalog_readback": "passed",
+    "selected_application_preserved": "drehmflight-yaw-flight",
+    "selected_device_preserved": "drehmflight-model-flight",
+    "schema_id": 1,
+    "channels": 32,
+    "states": 46,
+    "parameters": 94,
+    "wave_windows": 8,
+    "browser_visual_check": "unavailable: browser access host unavailable",
+    "target_connected_at_readback": false,
+    "mcu_parameters_written": false,
+    "gateway_firmware_written": false
+  },
+  "documentation": {
+    "source": "docs/CYCLONE_ROTOR_MODEL.md",
+    "html": "docs/reports/cyclone-rotor-model.html",
+    "equations_rendered_to_inline_svg": 23,
+    "external_runtime_assets": false,
+    "mathjax": "3.2.2",
+    "marked": "15.0.12",
+    "math_conversion_errors": 0,
+    "visual_browser_review": "unavailable"
+  },
+  "laser": {
+    "pin": 14,
+    "logic_voltage": 3.3,
+    "active_high": true,
+    "connect_to": "laser driver EN/TTL and shared ground, not laser power",
+    "default_enabled": false,
+    "default_max_high_us": 10000,
+    "default_phase_half_window_deg": 2,
+    "default_min_interval_us": 100000
+  },
+  "hardware": {
+    "firmware_downloaded": false,
+    "motor_commands_issued": false,
+    "flight_performed": false,
+    "cycle_timing_measured": false,
+    "laser_phase_measured": false,
+    "next_step": "User powers airframe with SA cut, low throttle, centered S1; RemoteMCU download and static checks before normal-flight tuning, then low-speed spin"
+  }
+}

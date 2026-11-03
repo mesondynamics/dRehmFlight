@@ -50,6 +50,22 @@ struct Rotation {
   }
 };
 
+// psi_dot = a(q).omega_FLU; psi_ddot = a.omega_dot + drift.
+// omega is rad/s. This converts a heading-acceleration request to body torque
+// without equating Euler heading rate with body Z rate during tilted spin.
+struct HeadingDynamics { Vec3 a; float drift; bool valid; };
+inline HeadingDynamics headingDynamics(const Rotation &r,Vec3 omega) {
+  const float d=1-r.bx.z*r.bx.z;
+  if (!(d>.01f) || !(r.bz.z>.05f) || !omega.finite()) return {{0,0,1},0,false};
+  const float bxDot=-omega.z*r.by.z+omega.y*r.bz.z;
+  const float byDot=omega.z*r.bx.z+omega.x*r.bz.z;
+  const float bzDot=-omega.y*r.bx.z-omega.x*r.by.z;
+  const float dDot=-2*r.bx.z*bxDot;
+  const float drift=((byDot*d-r.by.z*dDot)*omega.y+
+                     (bzDot*d-r.bz.z*dDot)*omega.z)/(d*d);
+  return {{0,r.by.z/d,r.bz.z/d},drift,std::isfinite(drift)};
+}
+
 // Checked Madgwick IMU step. A perfectly aligned gravity vector gives a zero
 // gradient: skip its correction instead of dividing by zero. No magnetometer.
 inline bool updateImu(Quaternion &q, Vec3 gyroFrd, Vec3 accel, float dt, float beta) {

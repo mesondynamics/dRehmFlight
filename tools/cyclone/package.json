@@ -1,0 +1,9 @@
+{
+  "name": "drehmflight-cyclone-model-doc",
+  "private": true,
+  "description": "Build-time dependencies for the offline dynamics document",
+  "dependencies": {
+    "marked": "15.0.12",
+    "mathjax-full": "3.2.2"
+  }
+}

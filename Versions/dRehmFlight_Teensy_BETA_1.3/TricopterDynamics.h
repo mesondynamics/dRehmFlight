@@ -27,11 +27,16 @@ inline bool tiltMappingValid(const RotorModel &r) {
 struct DynamicsModel {
   RotorModel rotor[3]; // M2, M4, M3
   float massKg=0, izz=0, tiltLimitDeg=30;
+  // Zero transverse entries retain the historical planar prior Ixx=Iyy=Izz/2.
+  // These are inertias about CG, expressed in body FLU principal axes.
+  float ixx=0, iyy=0;
+  Vec3 inertia() const { return {ixx>0 ? ixx : izz*.5f, iyy>0 ? iyy : izz*.5f, izz}; }
   bool calibrated=false;
   bool valid(bool requireVerified=true) const {
     if ((requireVerified && !calibrated) || !std::isfinite(massKg) || massKg<=0 ||
         !std::isfinite(izz) || izz<=0 || !std::isfinite(tiltLimitDeg) ||
-        tiltLimitDeg<=0 || tiltLimitDeg>45) return false;
+        tiltLimitDeg<=0 || tiltLimitDeg>45 || !std::isfinite(ixx) || ixx<0 ||
+        !std::isfinite(iyy) || iyy<0) return false;
     for (const auto &r : rotor) {
       if (!r.position.finite() || !r.tangent.finite() ||
           std::fabs(r.tangent.dot(r.tangent)-1)>.001f || std::fabs(r.tangent.z)>.001f ||
@@ -44,6 +49,34 @@ struct DynamicsModel {
     const Vec3 a=rotor[1].position-rotor[0].position;
     const Vec3 b=rotor[2].position-rotor[0].position;
     return std::fabs(a.cross(b).z)>1e-4f;
+  }
+};
+
+// Low-speed rotating-mode dynamics.  The current airframe has no large
+// rotor blades. Damping is an empirical body-drag model, not a blade model.
+// Large rotating wings also introduce lift, inertia and aerodynamic moments;
+// adding them requires a separate model/validation, not just a drag update.
+struct SpinDynamicsModel {
+  float viscousDampingNmS=0;
+  float quadraticDampingNmS2=0;
+  float feedforwardScale=1;
+  float maxRateDps=spinMaxDps;
+  float maxAccelDps2=yawSlewDps2;
+  bool valid() const {
+    return std::isfinite(viscousDampingNmS) && viscousDampingNmS>=0 &&
+           std::isfinite(quadraticDampingNmS2) && quadraticDampingNmS2>=0 &&
+           std::isfinite(feedforwardScale) && feedforwardScale>=0 &&
+           feedforwardScale<=1 && std::isfinite(maxRateDps) && maxRateDps>0 &&
+           maxRateDps<=360 && std::isfinite(maxAccelDps2) && maxAccelDps2>0 &&
+           maxAccelDps2<=360;
+  }
+  float sustainingTorque(float rateRadS) const {
+    if (!std::isfinite(rateRadS)) return 0;
+    return viscousDampingNmS*rateRadS+
+           quadraticDampingNmS2*rateRadS*std::fabs(rateRadS);
+  }
+  float feedforwardTorque(float izz,float rateRadS,float accelRadS2) const {
+    return feedforwardScale*(izz*accelRadS2+sustainingTorque(rateRadS));
   }
 };
 
@@ -81,6 +114,10 @@ inline Wrench wrench(const DynamicsModel &model,const float thrust[3],float serv
   }
   return out;
 }
+
+inline Vec3 gyroscopicTorque(Vec3 inertia,Vec3 omega) {
+  return omega.cross({inertia.x*omega.x,inertia.y*omega.y,inertia.z*omega.z});
+}
 inline Vec3 angularAcceleration(Vec3 inertia,Vec3 omega,Vec3 torque) {
   const Vec3 momentum{inertia.x*omega.x,inertia.y*omega.y,inertia.z*omega.z};
   const Vec3 net=torque-omega.cross(momentum);
@@ -89,7 +126,7 @@ inline Vec3 angularAcceleration(Vec3 inertia,Vec3 omega,Vec3 torque) {
 
 struct Allocation {
   float thrust[3];
-  float servoDeg, liftScale, yawResidual;
+  float servoDeg, liftScale, attitudeScale, yawResidual;
   Wrench achieved;
   bool valid, limited;
 };
@@ -97,7 +134,7 @@ struct Allocation {
 // At a given servo angle, solve the exact 3x3 vertical force / roll / pitch
 // equations, including tilted reaction torques. Positive thrust only.
 inline Allocation allocateAt(const DynamicsModel &m,Vec3 liftRollPitch,float yaw,float servo) {
-  Allocation out{}; out.servoDeg=servo; out.liftScale=1;
+  Allocation out{}; out.servoDeg=servo; out.liftScale=out.attitudeScale=1;
   Vec3 columns[3];
   for (unsigned i=0;i<3;++i) {
     if (std::fabs(physicalTilt(m.rotor[i],servo))>m.tiltLimitDeg+.001f) return out;
@@ -124,6 +161,27 @@ inline Allocation allocateAt(const DynamicsModel &m,Vec3 liftRollPitch,float yaw
   return out;
 }
 
+// Moment requests at the edge of a positive-thrust envelope are saturation,
+// not a numerical/sensor fault. Keep collective, shrink the transverse demand
+// direction by at most four bounded bisection evaluations, then report limited.
+// The exact unsaturated path stays identical to the tested normal allocator.
+inline Allocation allocateFeasibleAt(const DynamicsModel &m,Vec3 target,float yaw,float servo) {
+  Allocation full=allocateAt(m,target,yaw,servo);
+  if (full.valid) return full;
+  Allocation best=allocateAt(m,{target.x,0,0},yaw,servo);
+  if (!best.valid) return full; // singular geometry / invalid physical travel
+  best.attitudeScale=0; best.limited=true;
+  float low=0, high=1;
+  for (unsigned i=0;i<4;++i) {
+    const float scale=(low+high)*.5f;
+    Allocation candidate=allocateAt(m,{target.x,target.y*scale,target.z*scale},yaw,servo);
+    if (candidate.valid) {
+      low=scale; best=candidate; best.attitudeScale=scale; best.limited=true;
+    } else high=scale;
+  }
+  return best;
+}
+
 inline float servoForTilt(const RotorModel &r,float tilt) {
   const bool increasing=r.tiltDeg[8]>r.tiltDeg[0];
   for (unsigned i=0;i<8;++i) {
@@ -133,8 +191,10 @@ inline float servoForTilt(const RotorModel &r,float tilt) {
   return 130;
 }
 
-// At most five fixed evaluations, no unbounded optimization. Reachable servo limits
-// combine measured physical travel and the configured command slew rate.
+// At most five servo candidates, no unbounded optimization. Each candidate
+// uses one 3x3 solve normally, at most six when positive-thrust saturation
+// requires transverse-demand bisection. Servo limits combine calibrated
+// physical travel and the configured command slew rate.
 inline Allocation allocateYaw(const DynamicsModel &m,Vec3 target,float yaw,
                               float previousServo,float maxStep) {
   Allocation failure{};
@@ -149,18 +209,18 @@ inline Allocation allocateYaw(const DynamicsModel &m,Vec3 target,float yaw,
   const float travelLow=low,travelHigh=high;
   low=std::fmax(low,previousServo-maxStep); high=std::fmin(high,previousServo+maxStep);
   float servo=clamp(previousServo,low,high);
-  Allocation best=allocateAt(m,target,yaw,servo);
+  Allocation best=allocateFeasibleAt(m,target,yaw,servo);
   for (unsigned iteration=0;iteration<2;++iteration) {
     const float probe=travelHigh-servo>=servo-travelLow ? servo+.25f : servo-.25f;
     // Probe outside slew range is allowed for the derivative only, but remains
     // inside the physical range. Final commands always obey low/high.
     const float bounded=clamp(probe,travelLow,travelHigh);
-    const Allocation next=allocateAt(m,target,yaw,bounded);
+    const Allocation next=allocateFeasibleAt(m,target,yaw,bounded);
     if (!best.valid || !next.valid || std::fabs(bounded-servo)<1e-5f) break;
     const float gain=(next.achieved.torque.z-best.achieved.torque.z)/(bounded-servo);
     if (!std::isfinite(gain) || std::fabs(gain)<1e-6f) break;
     const float candidate=clamp(servo+best.yawResidual/gain,low,high);
-    const Allocation result=allocateAt(m,target,yaw,candidate);
+    const Allocation result=allocateFeasibleAt(m,target,yaw,candidate);
     if (!result.valid || std::fabs(result.yawResidual)>std::fabs(best.yawResidual)+1e-6f) break;
     servo=candidate; best=result;
   }

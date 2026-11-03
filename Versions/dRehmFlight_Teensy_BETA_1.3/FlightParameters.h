@@ -9,7 +9,7 @@
 namespace tricopter {
 class FlightParameters {
  public:
-  static constexpr unsigned count=71;
+  static constexpr unsigned count=94;
   void begin() {
     added_=0;
     add(1,"flight_enable",RMP_PARAM_BOOL,0,1,0);
@@ -49,6 +49,29 @@ class FlightParameters {
     // replace missing physical values with synthetic regression fixtures.
     add(75,"model_initial_estimate",RMP_PARAM_BOOL,0,1,0);
     add(76,"motor_lag_s",RMP_PARAM_F32,.005,.5,.04);
+    add(77,"ixx_kg_m2",RMP_PARAM_F32,.0001,2,initial_model::izz*.5f);
+    add(78,"iyy_kg_m2",RMP_PARAM_F32,.0001,2,initial_model::izz*.5f);
+    add(79,"spin_damping_Nm_s_rad",RMP_PARAM_F32,0,1,0);
+    add(80,"spin_quadratic_damping",RMP_PARAM_F32,0,1,0);
+    add(81,"spin_feedforward_scale",RMP_PARAM_F32,0,1,1);
+    add(82,"spin_max_deg_s",RMP_PARAM_F32,1,90,45);
+    add(83,"spin_max_accel_deg_s2",RMP_PARAM_F32,1,180,30);
+    add(84,"laser_align_window_deg",RMP_PARAM_F32,.1,30,2);
+    add(85,"laser_pulse_ms",RMP_PARAM_F32,1,200,10);
+    add(86,"laser_min_interval_ms",RMP_PARAM_F32,10,2000,100);
+    add(87,"laser_enable",RMP_PARAM_BOOL,0,1,0);
+    add(88,"roll_angle_kp",RMP_PARAM_F32,0,3,.2f);
+    add(89,"roll_angle_ki",RMP_PARAM_F32,0,3,.3f);
+    add(90,"roll_rate_kd",RMP_PARAM_F32,0,1,.05f);
+    add(91,"pitch_angle_kp",RMP_PARAM_F32,0,3,.2f);
+    add(92,"pitch_angle_ki",RMP_PARAM_F32,0,3,.3f);
+    add(93,"pitch_rate_kd",RMP_PARAM_F32,0,1,.05f);
+    add(94,"spin_rate_kp_1_s",RMP_PARAM_F32,.05,30,1.5f);
+    add(95,"spin_rate_ki_1_s2",RMP_PARAM_F32,0,30,.4f);
+    add(96,"gyro_coupling_scale",RMP_PARAM_F32,0,1,1);
+    add(97,"spin_tilt_limit_deg",RMP_PARAM_F32,1,15,10);
+    add(98,"normal_tilt_limit_deg",RMP_PARAM_F32,1,35,30);
+    add(99,"generalized_yaw_max_deg_s",RMP_PARAM_F32,1,60,20);
     rmp_params_init(&parameters_,definitions_,count,nullptr,nullptr);
     rebuild();
   }
@@ -68,7 +91,8 @@ class FlightParameters {
         for (unsigned j=0;j<count;++j) if (definitions_[j].id==rmp_get_u16(e)) candidate[j]=rmp_get_u32(e+4);
       }
       const NormalYawConfig next=decode(candidate);
-      if ((candidate[13] && !next.ready) || (candidate[0] && !next.ready)) safe=false;
+      if ((candidate[13] && !next.ready) || (candidate[0] && !next.ready) ||
+          (candidate[1] && !next.spinReady) || (next.laserEnabled && !next.laser.valid())) safe=false;
     }
     const uint32_t before=parameters_.revision;
     const size_t size=rmp_params_handle(&parameters_,kind,request,length,safe,response);
@@ -102,9 +126,33 @@ class FlightParameters {
       for (unsigned j=0;j<5;++j) m.thrustN[j]=number(v,54+5*r+j);
     }
     c.initialModelEnabled=v[69]; c.motorLag=number(v,70);
+    c.model.ixx=number(v,71); c.model.iyy=number(v,72);
+    c.spin.viscousDampingNmS=number(v,73);
+    c.spin.quadraticDampingNmS2=number(v,74);
+    c.spin.feedforwardScale=number(v,75);
+    c.spin.maxRateDps=number(v,76);
+    c.spin.maxAccelDps2=number(v,77);
+    c.laser.alignWindowDeg=number(v,78);
+    c.laser.pulseUs=milliseconds(v,79);
+    c.laser.minIntervalUs=milliseconds(v,80);
+    c.laserEnabled=v[81];
+    c.rollKp=number(v,82); c.rollKi=number(v,83); c.rollKd=number(v,84);
+    c.pitchKp=number(v,85); c.pitchKi=number(v,86); c.pitchKd=number(v,87);
+    c.spinRateKp=number(v,88); c.spinRateKi=number(v,89);
+    c.gyroFeedforwardScale=number(v,90);
+    c.reference.spinTilt=number(v,91); c.reference.normalTilt=number(v,92);
+    c.reference.generalizedYawMaxDps=number(v,93);
     c.ready=a>0 && b>0 && d>0 && c.model.valid(false) &&
         (c.model.calibrated || c.initialModelEnabled);
+    c.spinReady=c.ready && c.spin.valid() && c.model.ixx>0 && c.model.iyy>0;
     return c;
+  }
+  static uint32_t milliseconds(const uint32_t *v,unsigned i) {
+    const float ms=number(v,i);
+    // Candidate batches are decoded before the parameter library validates
+    // types/ranges. Never convert NaN/Inf or a negative float to uint32 here.
+    return std::isfinite(ms) && ms>=0 && ms<=2000 ?
+        static_cast<uint32_t>(ms*1000.0f+.5f) : 0;
   }
   void rebuild() { config_=decode(parameters_.values); }
   void add(uint16_t id,const char *name,uint8_t type,double low,double high,float initial) {

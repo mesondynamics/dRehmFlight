@@ -61,7 +61,8 @@ static void controlIntegration() {
     assert(false); return {};
   };
   poll(4);
-  assert(payload(last(RMP_HELLO)).find("\"parameter_count\":71")!=std::string::npos);
+  assert(payload(last(RMP_HELLO)).find("\"parameter_count\":"+
+      std::to_string(tricopter::FlightParameters::count))!=std::string::npos);
   uint64_t id=10000;
   std::vector<uint8_t> set(24); rmp_put_u64(set.data(),id++);
   rmp_put_u32(set.data()+8,params.revision()); set[12]=1;
@@ -81,7 +82,8 @@ static void controlIntegration() {
   std::vector<uint8_t> page(16); rmp_put_u64(page.data(),id++); page[14]=8;
   enqueue(port,RMP_PARAM_SCHEMA_PAGE,telemetry.session(),page); poll(10);
   const auto schema=last(RMP_PARAM_SCHEMA_RESPONSE);
-  assert(schema[36]==RMP_APPLIED && schema[38]==8 && rmp_get_u16(schema.data()+48)==71);
+  assert(schema[36]==RMP_APPLIED && schema[38]==8 &&
+         rmp_get_u16(schema.data()+48)==tricopter::FlightParameters::count);
 
   const auto command=[&](uint8_t op,uint32_t arg) {
     std::vector<uint8_t> q(16); rmp_put_u64(q.data(),id++); q[8]=op;
@@ -151,7 +153,11 @@ int main() {
   telemetry.setDeviceId(0x1881bf);
   remote_mcu::Snapshot sample{};
   sample.state[22]=4; sample.state[33]=8;
-  for (unsigned i=0;i<32;++i) sample.values[i]=i+.25f;
+  sample.state[34]=1; sample.state[35]=19; sample.state[44]=0xfffffff0;
+  const float newStates[]={.875f,10.f,-.012f,.75f};
+  for (unsigned j=0;j<4;++j)
+    std::memcpy(&sample.state[j<3 ? 41+j : 45],&newStates[j],4);
+  for (unsigned i=0;i<remote_mcu::channelCount;++i) sample.values[i]=i+.25f;
   sample.values[6]=90; sample.values[7]=1504; sample.values[18]=1; sample.values[19]=0;
   sample.values[20]=0; sample.values[21]=1; sample.values[27]=0;
   sample.safeToFlash=true;
@@ -169,7 +175,8 @@ int main() {
     assert(rmp_crc32(f.data(),f.size()-4)==rmp_get_u32(f.data()+f.size()-4));
     if (f[5]!=RMP_TELEMETRY) continue;
     const uint8_t *p=f.data()+28;
-    assert(rmp_get_u32(p)==1 && rmp_get_u16(p+8)==10000 && p[10]==1 && p[11]==32);
+    assert(rmp_get_u32(p)==1 && rmp_get_u16(p+8)==10000 && p[10]==1 &&
+           p[11]==remote_mcu::channelCount);
     float servo; const uint32_t bits=rmp_get_u32(p+12+6*4); std::memcpy(&servo,&bits,4);
     assert(servo==90); ++samples;
   }
@@ -180,6 +187,12 @@ int main() {
     for (unsigned index : {22u,33u}) {
       const unsigned offset=28+8+8*index;
       assert(rmp_get_u16(f.data()+offset)==index+1 && f[offset+2]==2);
+      assert(rmp_get_u32(f.data()+offset+4)==sample.state[index]);
+    }
+    for (unsigned index : {34u,35u,41u,42u,43u,44u,45u}) {
+      const unsigned offset=28+8+8*index;
+      const uint8_t type=index==34 ? 3 : ((index>=41 && index<=43) || index==45 ? 1 : 2);
+      assert(rmp_get_u16(f.data()+offset)==index+1 && f[offset+2]==type);
       assert(rmp_get_u32(f.data()+offset+4)==sample.state[index]);
     }
     sawDiagnostics=true;

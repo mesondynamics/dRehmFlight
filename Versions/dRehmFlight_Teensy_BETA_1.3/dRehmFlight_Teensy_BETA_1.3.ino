@@ -67,6 +67,7 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
 #include "TricopterConfig.h"
 #include "CycloneControl.h"
+#include "LaserSync.h"
 #include "RemoteMcuTelemetry.h"
 #include "FlightParameters.h"
 #include "ImuDiagnostics.h"
@@ -247,6 +248,9 @@ const int servo4Pin = 9;
 const int servo5Pin = 10;
 const int servo6Pin = 11;
 const int servo7Pin = 12;
+// 3.3 V push-pull LOGIC output; connect to driver EN/TTL, not laser power.
+// GPIO14 is unused by the current CRSF/MPU6050/DShot/servo wiring.
+const int laserSyncPin = 14;
 PWMServo servo1;  //Create servo objects to control a servo or ESC with PWM
 PWMServo servo2;
 PWMServo servo3;
@@ -360,6 +364,8 @@ bool servoCalibrationActive = false;
 tricopter::FlightParameters flightParameters;
 tricopter::NormalYawControl normalYaw;
 tricopter::NormalYawOutput normalYawOutput;
+tricopter::LaserSync laserSync;
+bool laserSyncHigh=false;
 bool normalYawFaultLatched = false;
 uint32_t previousLoopWorkUs = 0, maxRemoteWorkUs = 0, maxAllocationWorkUs = 0;
 uint32_t skippedRemotePolls = 0;
@@ -383,6 +389,8 @@ void setup() {
   pinMode(m4Pin, OUTPUT);
   pinMode(m5Pin, OUTPUT);
   pinMode(m6Pin, OUTPUT);
+  digitalWrite(laserSyncPin, LOW);
+  pinMode(laserSyncPin, OUTPUT);
 #if DREHM_ESC_DSHOT_RATE
   dshotOutput.begin(DREHM_ESC_DSHOT_RATE);
 #endif
@@ -499,6 +507,7 @@ void loop() {
   getDesState(); //Convert raw commands to normalized values based on saturated control limits
   
   controlCyclone(); //Reference-frame tilt control and closed-loop heading rate
+  updateLaserSync();
 
   //Actuator mixing and scaling to PWM values
   controlMixer(); //Mixes PID outputs to scaled actuator commands -- custom mixing assignments done here
@@ -549,18 +558,28 @@ void loop() {
 void controlCyclone() {
   unsigned spinUs=channel_6_pwm;
 #if DREHM_REMOTE_MCU
-  if (!flightParameters.config().spinEnabled) spinUs=1500;
+  if (!flightParameters.config().spinEnabled || !flightParameters.config().spinReady) spinUs=1500;
 #endif
   const tricopter::PilotInput pilot = tricopter::pilotInput(
       channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, spinUs,
       flightControl.spinning());
+  const auto &config=flightParameters.config();
+#if DREHM_REMOTE_MCU
+  const tricopter::ControlGains gains{
+    {.01f*config.rollKp,.01f*config.rollKi,.01f*config.rollKd},
+    {.01f*config.pitchKp,.01f*config.pitchKi,.01f*config.pitchKd},
+    {0.01f*Kp_yaw,0.01f*Ki_yaw,0.01f*Kd_yaw}};
+#else
   const tricopter::ControlGains gains{
     {0.01f*Kp_roll_angle, 0.01f*Ki_roll_angle, 0.01f*Kd_roll_angle},
     {0.01f*Kp_pitch_angle, 0.01f*Ki_pitch_angle, 0.01f*Kd_pitch_angle},
     {0.01f*Kp_yaw, 0.01f*Ki_yaw, 0.01f*Kd_yaw}};
+#endif
   const uint32_t previousFaultCount=flightControl.faultCount();
   flightOutput = flightControl.step(pilot, {q0,q1,q2,q3}, {GyroX,GyroY,GyroZ}, dt,
-      armedFly, channel_5_pwm >= 1500, imuSampleHealthy && imuFusionHealthy, gains);
+      armedFly, channel_5_pwm >= 1500, imuSampleHealthy && imuFusionHealthy, gains,
+      DREHM_REMOTE_MCU ? &config.spin : nullptr,
+      DREHM_REMOTE_MCU ? &config.reference : nullptr);
   if (flightControl.faultCount()!=previousFaultCount) {
     lastControlFaultTimeUs=current_time;
     lastControlFaultImuReason=imuDiagnostics.currentReason;
@@ -574,9 +593,13 @@ void controlCyclone() {
 #if DREHM_REMOTE_MCU
   const uint32_t allocationStarted=micros();
   const bool normalActive=armedFly && channel_5_pwm<1500 && pilot.throttle>=.06f &&
-      flightOutput.mode==tricopter::FlightMode::Normal && !flightOutput.fault;
+      !flightOutput.fault;
+  tricopter::YawControlRequest yawRequest;
+  yawRequest.rateMode=flightOutput.mode!=tricopter::FlightMode::Normal;
+  yawRequest.rateTargetDps=flightOutput.yawTarget;
+  yawRequest.attitude={q0,q1,q2,q3}; yawRequest.gyroDps={GyroX,GyroY,GyroZ};
   normalYawOutput=normalYaw.step(flightParameters.config(),flightOutput.motors,
-      flightOutput.heading,flightOutput.yawRate,pilot.yaw,dt,normalActive);
+      flightOutput.heading,flightOutput.yawRate,pilot.yaw,dt,normalActive,yawRequest);
   const uint32_t allocationWork=(uint32_t)(micros()-allocationStarted);
   if (allocationWork>maxAllocationWorkUs) maxAllocationWorkUs=allocationWork;
   if (normalYawOutput.fault) {
@@ -585,6 +608,8 @@ void controlCyclone() {
     crsfChannelsReady=false;
 #endif
   } else if (normalActive) {
+    flightControl.applyAllocationLimits(normalYawOutput.liftScale<.9999f ||
+        normalYawOutput.attitudeScale<.9999f);
     flightOutput.motors=normalYawOutput.motors;
     flightOutput.servoDeg=normalYawOutput.servoDeg;
     flightOutput.yawTarget=normalYawOutput.rateTarget;
@@ -592,8 +617,7 @@ void controlCyclone() {
     flightOutput.yawIntegral=normalYawOutput.integral;
     flightOutput.yaw=(normalYawOutput.servoDeg-tricopter::servoCenterDeg)/
         (tricopter::yawServoDirection*180.0f);
-  } else if (armedFly && flightParameters.config().ready &&
-             flightOutput.mode==tricopter::FlightMode::Normal) {
+  } else if (armedFly && flightParameters.config().ready) {
     // At idle, preposition the linkage at its calibrated vertical direction.
     // SA-cut CH6 calibration keeps the existing logical 90 degree midpoint.
     flightOutput.servoDeg=normalYawOutput.servoDeg;
@@ -603,6 +627,21 @@ void controlCyclone() {
   pitch_PID = flightOutput.pitch;
   yaw_PID = flightOutput.yaw;
   yaw_des = flightOutput.yawTarget;
+}
+
+void updateLaserSync() {
+  const auto &config=flightParameters.config();
+  bool active=DREHM_REMOTE_MCU && armedFly && channel_5_pwm<1500 &&
+      !flightOutput.fault && !normalYawFaultLatched && normalYawOutput.active &&
+      flightOutput.mode==tricopter::FlightMode::Spin && config.spinEnabled &&
+      config.spinReady && config.laserEnabled;
+#if DREHM_ESC_DSHOT_RATE
+  active=active && dshotOutput.ready();
+#endif
+  const bool high=laserSync.update(active,flightOutput.phase,
+      flightOutput.yawRate-flightOutput.referenceRate,current_time,config.laser);
+  if (high!=laserSyncHigh) digitalWrite(laserSyncPin,high ? HIGH : LOW);
+  laserSyncHigh=high;
 }
 
 void controlMixer() {
@@ -653,24 +692,25 @@ void serviceRemoteMcu() {
   sample.values[19]=3000-channel_4_pwm;
 #endif
   const float servoLogical=s1_command_scaled*180.0f;
-  sample.values[1]=tricopter::quantizedServoLogical(servoLogical);
-  sample.values[2]=tricopter::servoPulseCommandUs(servoLogical);
-  // One mapped tilt; the other derived channels now report actual pilot input.
-  sample.values[3]=flightParameters.config().tiltMappingReady[2] ?
-      tricopter::physicalTilt(flightParameters.config().model.rotor[2],sample.values[1]) : 0;
-  sample.values[6]=flightOutput.heading; sample.values[7]=normalYawOutput.headingTarget;
+  sample.values[1]=tricopter::servoPulseCommandUs(servoLogical);
+  sample.values[2]=(unsigned)flightOutput.mode;
+  sample.values[3]=flightOutput.phase;
+  sample.values[6]=flightOutput.heading;
+  sample.values[7]=flightOutput.mode==tricopter::FlightMode::Normal ?
+      normalYawOutput.headingTarget : flightOutput.reference;
   sample.values[8]=flightOutput.yawTarget; sample.values[9]=flightOutput.yawRate;
   sample.values[10]=normalYawOutput.rateFiltered; sample.values[11]=normalYawOutput.torqueRequested;
-  sample.values[12]=normalYawOutput.torqueEstimated; sample.values[13]=normalYawOutput.residual;
+  sample.values[12]=normalYawOutput.torqueEstimated; sample.values[13]=normalYawOutput.torqueFeedforward;
   sample.values[14]=normalYawOutput.integral; sample.values[15]=roll_IMU;
   sample.values[16]=pitch_IMU; sample.values[17]=GyroZ;
   // First-flight profile: independent inertial observations for identification.
   // Target motor thrust can be reconstructed from DShot + the parameter snapshot.
   sample.values[20]=GyroX; sample.values[21]=GyroY; sample.values[22]=AccZ;
   sample.values[23]=d2; sample.values[24]=d4; sample.values[25]=d3;
-  sample.values[26]=normalYawOutput.servoEstimated; sample.values[27]=normalYawOutput.liftScale;
+  sample.values[26]=normalYawOutput.torqueTarget.x; sample.values[27]=normalYawOutput.torqueTarget.y;
   sample.values[28]=loopPeriodUs; sample.values[29]=previousLoopWorkUs;
-  sample.values[30]=maxLoopWorkUs; sample.values[31]=maxLoopPeriodUs;
+  sample.values[30]=flightOutput.tiltErrorDeg;
+  sample.values[31]=laserSync.pulseCount();
   sample.state[0]=armedFly; sample.state[1]=servoCalibrationActive;
   sample.state[3]=imuSampleHealthy && imuFusionHealthy;
   sample.state[5]=flightControl.faulted() || normalYawFaultLatched;
@@ -695,6 +735,18 @@ void serviceRemoteMcu() {
   sample.state[31]=imuDiagnostics.peakAccelerationRaw;
   sample.state[32]=imuDiagnostics.peakGyroscopeRaw;
   sample.state[33]=lastControlFaultImuReason;
+  sample.state[34]=laserSyncHigh;
+  sample.state[35]=laserSync.pulseCount();
+  sample.state[36]=flightParameters.config().spinEnabled;
+  sample.state[37]=flightParameters.config().spinReady;
+  sample.state[38]=flightParameters.config().laserEnabled;
+  sample.state[39]=maxLoopWorkUs; sample.state[40]=maxLoopPeriodUs;
+  const float liftScale=normalYawOutput.liftScale, tiltLimit=flightOutput.tiltLimit;
+  const float couplingZ=normalYawOutput.couplingTorque.z;
+  memcpy(&sample.state[41],&liftScale,4); memcpy(&sample.state[42],&tiltLimit,4);
+  memcpy(&sample.state[43],&couplingZ,4);
+  sample.state[44]=laserSync.lastPulseUs();
+  memcpy(&sample.state[45],&normalYawOutput.attitudeScale,4);
   sample.safeToFlash=!armedFly && motorsStopped && channel_5_pwm>=1500 &&
       channel_1_pwm<1050 && tricopter::spinCentered(channel_6_pwm);
   sample.safeToConfigure=!armedFly && motorsStopped && channel_5_pwm>=1500 && channel_1_pwm<1050;

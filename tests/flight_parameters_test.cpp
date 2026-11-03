@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdio>
 #include <initializer_list>
+#include <limits>
 #include <vector>
 
 struct Value {
@@ -69,15 +70,35 @@ int main() {
   assert(!p.config().ready);
   assert(batch(p,{{14,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED && p.config().ready);
   assert(batch(p,{{1,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED && p.config().flightEnabled);
+  assert(p.config().spinReady && !p.config().laserEnabled);
+  assert(p.config().spin.maxRateDps==45 && p.config().spin.maxAccelDps2==30);
+  assert(batch(p,{{2,1,RMP_PARAM_BOOL},{87,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED);
+  assert(p.config().spinEnabled && p.config().laserEnabled);
+  // Cross-field pulse timing is rejected atomically; candidate decoding must
+  // also be defined for malformed floating-point milliseconds before validation.
+  const auto laserRevision=p.revision();
+  assert(batch(p,{{85,150},{86,100}})[8]==RMP_UNSAFE);
+  assert(p.revision()==laserRevision && p.config().laser.pulseUs==10000);
+  for (float invalid : {std::numeric_limits<float>::quiet_NaN(),
+       std::numeric_limits<float>::infinity(),-1.f}) {
+    assert(batch(p,{{85,invalid}})[8]!=RMP_APPLIED);
+    assert(batch(p,{{86,invalid}})[8]!=RMP_APPLIED);
+    assert(p.revision()==laserRevision);
+  }
+  assert(batch(p,{{82,91}})[8]==RMP_OUT_OF_RANGE);
+  assert(batch(p,{{88,.25f},{93,.06f},{94,2},{95,.5f}})[8]==RMP_APPLIED);
+  assert(p.config().rollKp==.25f && p.config().pitchKd==.06f && p.config().spinRateKp==2);
+  assert(batch(p,{{2,0,RMP_PARAM_BOOL},{87,0,RMP_PARAM_BOOL}})[8]==RMP_APPLIED);
   const auto revision=p.revision();
   assert(batch(p,{{16,0}})[8]==RMP_UNSAFE && p.revision()==revision);
   assert(batch(p,{{14,0,RMP_PARAM_BOOL}})[8]==RMP_UNSAFE);
   uint8_t q[16]={0},reply[RMP_PARAM_BYTES]; rmp_put_u64(q,nextId++); rmp_put_u32(q+8,p.revision());
   p.handle(RMP_PARAM_SAVE,q,sizeof(q),true,reply);
   assert(reply[8]==RMP_UNSAFE && rmp_get_u32(reply+16)==0);
-  // Metadata is paged, UTF-8 safe ASCII, and reports all 71 real parameters.
+  // Metadata is paged and reports the complete ordinary/spin parameter set.
   rmp_put_u64(q,nextId++); rmp_put_u32(q+8,0); q[14]=8;
   const size_t n=p.handle(RMP_PARAM_SCHEMA_PAGE,q,sizeof(q),true,reply);
-  assert(n>24 && reply[8]==RMP_APPLIED && rmp_get_u16(reply+20)==71 && reply[10]==8);
+  assert(n>24 && reply[8]==RMP_APPLIED &&
+         rmp_get_u16(reply+20)==tricopter::FlightParameters::count && reply[10]==8);
   std::puts("Flight gate, paged parameters, atomic validation, conflict immunity and nonblocking save refusal passed");
 }

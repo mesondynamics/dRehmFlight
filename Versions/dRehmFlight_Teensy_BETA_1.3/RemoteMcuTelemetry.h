@@ -5,9 +5,9 @@
 #include <cstring>
 
 namespace remote_mcu {
-constexpr unsigned channelCount = 32;
-constexpr unsigned stateCount = 34;
-constexpr const char *buildId = "drehm-yaw-ch14-20261029";
+constexpr unsigned channelCount = 32; // RemoteMCU v0.3 hard limit (agent + web).
+constexpr unsigned stateCount = 46;
+constexpr const char *buildId = "drehm-cyclone-rotor-v1-20261103";
 
 struct Snapshot {
   float values[channelCount];
@@ -144,7 +144,9 @@ class Telemetry {
       for (unsigned i=0;i<stateCount;++i) {
         uint8_t *entry=state+8+8*i;
         rmp_put_u16(entry,i+1);
-        entry[2]=(i<6 || i==8 || i==9 || i==12 || i==13 || (i>=18 && i<=21)) ? 3 : 2;
+        entry[2]=((i>=41 && i<=43) || i==45) ? 1 :
+          ((i<6 || i==8 || i==9 || i==12 || i==13 || (i>=18 && i<=21) ||
+            i==34 || (i>=36 && i<=38)) ? 3 : 2);
         uint32_t bits=s.state[i];
         if (i==2) bits=streamEnabled_; // Current RemoteMCU web expects STATE ID 3.
         if (i==4) bits=s.safeToFlash;

@@ -1,5 +1,7 @@
 # 三旋翼与低速 Cyclone 旋转控制
 
+当前分支 `feature/cyclone-rotor-tricopter` 的普通/低速自旋动力学、GPIO14 激光同步和调试步骤以[离线 HTML 文档](reports/cyclone-rotor-model.html)（[源文档](CYCLONE_ROTOR_MODEL.md)）为准；RemoteMCU 使用[cyclone-rotor-flight.json](remote-mcu/cyclone-rotor-flight.json)，32波形／46状态／94参数。CH1→Yaw、CH4→Roll；自旋率默认45°/s，上限90°/s，开关默认关闭。下面的2026-10月记录包含旧通道、旧Profile和360°/s台架接口等历史约定，不能用于本版操作或解析新数据。本版尚未下载或自由飞行验证。
+
 当前进度：完整动力学Yaw闭环已下载；±8g修正版在约250g配重持续拉紧的系留试飞中未复现健康停机，用户报告可稳定离地。原始数据与限制见[系留试飞记录](YAW_TETHERED_TEST_20261029.md)。按用户随后纠正，最新源码接收映射为CH1→Yaw、CH4→Roll，CH2→Pitch、CH3→油门、CH5→SA、CH6→S1；**这与下方历史AETR表不同**。当前应用revision5：32路波形、34状态、71参数，四轴复测及下载进度见[测试准备](YAW_FOUR_AXIS_TEST_20261029.md)。
 
 四轴正式复测已完成，约46秒配重系留空中操纵、健康故障0、主周期500µs、最大工作297µs；精确Yaw保持仍待改善。详见[模型、控制与实测HTML报告](reports/yaw-four-axis-20261029.html)。

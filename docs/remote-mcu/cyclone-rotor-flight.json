@@ -1,0 +1,1291 @@
+{
+  "format_version": 1,
+  "id": "drehmflight-cyclone-rotor-v1",
+  "revision": 1,
+  "name": "普通／低速旋转三旋翼 · 模型闭环调试",
+  "data": {
+    "kind": "application",
+    "target_profile": "teensy40-usb",
+    "schema_id": 1,
+    "window_seconds": 5,
+    "wave_layout": "columns",
+    "wave_windows": [
+      {
+        "id": "input",
+        "name": "四轴输入和 S1（µs）",
+        "channels": [
+          0,
+          4,
+          5,
+          18,
+          19
+        ],
+        "height": 300,
+        "window_seconds": 5
+      },
+      {
+        "id": "heading",
+        "name": "航向、相位与激光计数（注意各单位）",
+        "channels": [
+          6,
+          7,
+          3,
+          2,
+          31
+        ],
+        "height": 300,
+        "window_seconds": 5
+      },
+      {
+        "id": "rate",
+        "name": "航向率与机体 GyroZ（°/s）",
+        "channels": [
+          8,
+          9,
+          10,
+          17
+        ],
+        "height": 300,
+        "window_seconds": 5
+      },
+      {
+        "id": "attitude",
+        "name": "Roll / Pitch 与推力方向误差（°）",
+        "channels": [
+          15,
+          16,
+          30
+        ],
+        "height": 300,
+        "window_seconds": 5
+      },
+      {
+        "id": "torque",
+        "name": "需求／预计力矩与积分（注意各单位）",
+        "channels": [
+          11,
+          12,
+          13,
+          14,
+          26,
+          27
+        ],
+        "height": 300,
+        "window_seconds": 5
+      },
+      {
+        "id": "actuators",
+        "name": "实际电机与舵机命令（注意各单位）",
+        "channels": [
+          1,
+          23,
+          24,
+          25
+        ],
+        "height": 300,
+        "window_seconds": 5
+      },
+      {
+        "id": "inertial",
+        "name": "独立惯性观测（°/s、g）",
+        "channels": [
+          20,
+          21,
+          17,
+          22
+        ],
+        "height": 300,
+        "window_seconds": 5
+      },
+      {
+        "id": "timing",
+        "name": "2 kHz 主循环周期与工作耗时（µs）",
+        "channels": [
+          28,
+          29
+        ],
+        "height": 300,
+        "window_seconds": 5
+      }
+    ],
+    "channels": [
+      {
+        "id": 0,
+        "name": "CH6 S1 原始值",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#68e0ba",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 1,
+        "name": "联动舵机 PWM 命令",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#f6be73",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 2,
+        "name": "模式 0普通 1自旋 2制动 3参考系归并",
+        "unit": "",
+        "precision": 0,
+        "color": "#91baff",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 3,
+        "name": "机体相对广义前方的相位",
+        "unit": "°",
+        "precision": 2,
+        "color": "#eb96b7",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 4,
+        "name": "CH4 Roll 原始值",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#b6a4ed",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 5,
+        "name": "CH2 Pitch 原始值",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#97c876",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 6,
+        "name": "机体相对航向",
+        "unit": "°",
+        "precision": 2,
+        "color": "#e89278",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 7,
+        "name": "普通：持向目标／自旋：广义前方",
+        "unit": "°",
+        "precision": 2,
+        "color": "#8ccece",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 8,
+        "name": "目标航向率",
+        "unit": "°/s",
+        "precision": 2,
+        "color": "#68e0ba",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 9,
+        "name": "测得航向率（含姿态换算）",
+        "unit": "°/s",
+        "precision": 2,
+        "color": "#f6be73",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 10,
+        "name": "滤波航向率",
+        "unit": "°/s",
+        "precision": 2,
+        "color": "#91baff",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 11,
+        "name": "需求 Yaw 力矩",
+        "unit": "N·m",
+        "precision": 4,
+        "color": "#eb96b7",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 12,
+        "name": "模型预计 Yaw 力矩（非实测）",
+        "unit": "N·m",
+        "precision": 4,
+        "color": "#b6a4ed",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 13,
+        "name": "自旋加速与阻尼前馈力矩",
+        "unit": "N·m",
+        "precision": 4,
+        "color": "#97c876",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 14,
+        "name": "Yaw 积分角加速度",
+        "unit": "rad/s²",
+        "precision": 3,
+        "color": "#e89278",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 15,
+        "name": "机体 Roll",
+        "unit": "°",
+        "precision": 2,
+        "color": "#8ccece",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 16,
+        "name": "机体 Pitch",
+        "unit": "°",
+        "precision": 2,
+        "color": "#68e0ba",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 17,
+        "name": "机体 GyroZ",
+        "unit": "°/s",
+        "precision": 2,
+        "color": "#f6be73",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 18,
+        "name": "CH3 油门原始值",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#91baff",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 19,
+        "name": "CH1 Yaw 原始值",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#eb96b7",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 20,
+        "name": "机体 GyroX",
+        "unit": "°/s",
+        "precision": 2,
+        "color": "#b6a4ed",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 21,
+        "name": "机体 GyroY",
+        "unit": "°/s",
+        "precision": 2,
+        "color": "#97c876",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 22,
+        "name": "机体 AccZ（静止约1g）",
+        "unit": "g",
+        "precision": 3,
+        "color": "#e89278",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 23,
+        "name": "M2 DShot 命令",
+        "unit": "",
+        "precision": 0,
+        "color": "#8ccece",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 24,
+        "name": "M4 DShot 命令",
+        "unit": "",
+        "precision": 0,
+        "color": "#68e0ba",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 25,
+        "name": "M3 DShot 命令",
+        "unit": "",
+        "precision": 0,
+        "color": "#f6be73",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 26,
+        "name": "需求 Roll 力矩",
+        "unit": "N·m",
+        "precision": 4,
+        "color": "#91baff",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 27,
+        "name": "需求 Pitch 力矩",
+        "unit": "N·m",
+        "precision": 4,
+        "color": "#eb96b7",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 28,
+        "name": "主循环周期",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#b6a4ed",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 29,
+        "name": "上一轮工作耗时",
+        "unit": "µs",
+        "precision": 0,
+        "color": "#97c876",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 30,
+        "name": "推力方向角误差",
+        "unit": "°",
+        "precision": 2,
+        "color": "#e89278",
+        "visible": true,
+        "scale": 1
+      },
+      {
+        "id": 31,
+        "name": "激光累计同步脉冲数",
+        "unit": "",
+        "precision": 0,
+        "color": "#8ccece",
+        "visible": true,
+        "scale": 1
+      }
+    ],
+    "cards": [
+      {
+        "id": 1,
+        "name": "已解锁",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 2,
+        "name": "CH6 标定有效",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 19,
+        "name": "失联保护",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 4,
+        "name": "IMU 有效",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 5,
+        "name": "可远程烧录",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 6,
+        "name": "控制故障",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 7,
+        "name": "目标累计丢样",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 8,
+        "name": "目标快照率",
+        "enabled": true,
+        "unit": "Hz",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 9,
+        "name": "动力学参数可运行（非飞行验收）",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 10,
+        "name": "允许飞行",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 11,
+        "name": "模式 0普通 1自旋 2制动 3归并",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 12,
+        "name": "参数修订号",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 13,
+        "name": "控制分配受限",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 14,
+        "name": "动力学控制故障锁定",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 15,
+        "name": "通讯累计最大耗时",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 150
+      },
+      {
+        "id": 16,
+        "name": "动力学分配累计最大耗时",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 150
+      },
+      {
+        "id": 17,
+        "name": "主循环累计超时",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 18,
+        "name": "预算不足跳过通讯",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 3,
+        "name": "采样流启用",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 20,
+        "name": "使用初始估计模型",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 21,
+        "name": "模型已验证",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 22,
+        "name": "统一动力学闭环活动",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 23,
+        "name": "最近控制故障原因位掩码（重启清零）",
+        "enabled": true,
+        "unit": "bits",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 24,
+        "name": "控制故障累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 25,
+        "name": "最近控制故障时刻（micros32）",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 26,
+        "name": "IMU 读取不完整累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 27,
+        "name": "IMU 加速度全零累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 28,
+        "name": "IMU 加速度原始值触顶累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 29,
+        "name": "IMU 陀螺原始值触顶累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 30,
+        "name": "姿态融合失败累计次数",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 31,
+        "name": "最近 IMU 拒绝原因位掩码",
+        "enabled": true,
+        "unit": "bits",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 32,
+        "name": "加速度原始绝对峰值（8g量程）",
+        "enabled": true,
+        "unit": "LSB",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 32759
+      },
+      {
+        "id": 33,
+        "name": "陀螺原始绝对峰值（2000°/s量程）",
+        "enabled": true,
+        "unit": "LSB",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 32759
+      },
+      {
+        "id": 34,
+        "name": "最近控制故障当帧 IMU 原因",
+        "enabled": true,
+        "unit": "bits",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 35,
+        "name": "GPIO14 当前高电平",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 36,
+        "name": "激光累计脉冲数（低频状态）",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 37,
+        "name": "允许旋转模式",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 38,
+        "name": "旋转模型可运行",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 39,
+        "name": "允许激光同步",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 40,
+        "name": "累计最大工作耗时",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 500
+      },
+      {
+        "id": 41,
+        "name": "累计最大主循环周期",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 500
+      },
+      {
+        "id": 42,
+        "name": "推力共同缩放",
+        "enabled": true,
+        "unit": "",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 43,
+        "name": "驾驶倾角限幅",
+        "enabled": true,
+        "unit": "°",
+        "precision": 2,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 44,
+        "name": "Yaw 刚体／航向耦合补偿",
+        "enabled": true,
+        "unit": "N·m",
+        "precision": 5,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 45,
+        "name": "最近激光脉冲目标时刻（micros32）",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 46,
+        "name": "Roll / Pitch 请求缩放",
+        "enabled": true,
+        "unit": "",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      }
+    ],
+    "parameters": [
+      {
+        "id": 1,
+        "name": "允许飞行（完整模型路径）",
+        "enabled": true
+      },
+      {
+        "id": 2,
+        "name": "允许旋转模式",
+        "enabled": true
+      },
+      {
+        "id": 3,
+        "name": "航向外环 Kp (1/s)",
+        "enabled": true
+      },
+      {
+        "id": 4,
+        "name": "角速度 Kp (1/s)",
+        "enabled": true
+      },
+      {
+        "id": 5,
+        "name": "角速度 Ki (1/s²)",
+        "enabled": true
+      },
+      {
+        "id": 6,
+        "name": "最大 Yaw 速度 (°/s)",
+        "enabled": true
+      },
+      {
+        "id": 7,
+        "name": "最大 Yaw 加速度 (°/s²)",
+        "enabled": true
+      },
+      {
+        "id": 8,
+        "name": "Yaw 率低通 (Hz)",
+        "enabled": true
+      },
+      {
+        "id": 9,
+        "name": "最大航向超前角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 10,
+        "name": "抗饱和反算增益 (1/s)",
+        "enabled": true
+      },
+      {
+        "id": 11,
+        "name": "舵机逻辑角限速 (°/s)",
+        "enabled": true
+      },
+      {
+        "id": 12,
+        "name": "舵机滞后时间 (s)",
+        "enabled": true
+      },
+      {
+        "id": 13,
+        "name": "物理桨盘倾角限制 (°)",
+        "enabled": true
+      },
+      {
+        "id": 14,
+        "name": "模型已验证（首飞保持0）",
+        "enabled": true
+      },
+      {
+        "id": 15,
+        "name": "总质量 (kg)",
+        "enabled": true
+      },
+      {
+        "id": 16,
+        "name": "偏航惯量 Izz (kg·m²)",
+        "enabled": true
+      },
+      {
+        "id": 17,
+        "name": "积分角加速度上限 (rad/s²)",
+        "enabled": true
+      },
+      {
+        "id": 18,
+        "name": "Yaw 阻尼系数 (N·m·s/rad)",
+        "enabled": true
+      },
+      {
+        "id": 20,
+        "name": "M2 力臂 (m)",
+        "enabled": true
+      },
+      {
+        "id": 21,
+        "name": "M4 力臂 (m)",
+        "enabled": true
+      },
+      {
+        "id": 22,
+        "name": "M3 力臂 (m)",
+        "enabled": true
+      },
+      {
+        "id": 23,
+        "name": "重心前向偏置 (m)",
+        "enabled": true
+      },
+      {
+        "id": 24,
+        "name": "重心左向偏置 (m)",
+        "enabled": true
+      },
+      {
+        "id": 25,
+        "name": "转子相对重心高度 (m)",
+        "enabled": true
+      },
+      {
+        "id": 26,
+        "name": "M2 κ (m)",
+        "enabled": true
+      },
+      {
+        "id": 27,
+        "name": "M4 κ (m)",
+        "enabled": true
+      },
+      {
+        "id": 28,
+        "name": "M3 κ (m)",
+        "enabled": true
+      },
+      {
+        "id": 30,
+        "name": "M2 逻辑50时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 31,
+        "name": "M2 逻辑60时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 32,
+        "name": "M2 逻辑70时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 33,
+        "name": "M2 逻辑80时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 34,
+        "name": "M2 逻辑90时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 35,
+        "name": "M2 逻辑100时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 36,
+        "name": "M2 逻辑110时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 37,
+        "name": "M2 逻辑120时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 38,
+        "name": "M2 逻辑130时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 39,
+        "name": "M4 逻辑50时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 40,
+        "name": "M4 逻辑60时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 41,
+        "name": "M4 逻辑70时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 42,
+        "name": "M4 逻辑80时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 43,
+        "name": "M4 逻辑90时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 44,
+        "name": "M4 逻辑100时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 45,
+        "name": "M4 逻辑110时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 46,
+        "name": "M4 逻辑120时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 47,
+        "name": "M4 逻辑130时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 48,
+        "name": "M3 逻辑50时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 49,
+        "name": "M3 逻辑60时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 50,
+        "name": "M3 逻辑70时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 51,
+        "name": "M3 逻辑80时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 52,
+        "name": "M3 逻辑90时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 53,
+        "name": "M3 逻辑100时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 54,
+        "name": "M3 逻辑110时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 55,
+        "name": "M3 逻辑120时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 56,
+        "name": "M3 逻辑130时真实倾角 (°)",
+        "enabled": true
+      },
+      {
+        "id": 60,
+        "name": "M2 命令0%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 61,
+        "name": "M2 命令25%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 62,
+        "name": "M2 命令50%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 63,
+        "name": "M2 命令75%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 64,
+        "name": "M2 命令100%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 65,
+        "name": "M4 命令0%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 66,
+        "name": "M4 命令25%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 67,
+        "name": "M4 命令50%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 68,
+        "name": "M4 命令75%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 69,
+        "name": "M4 命令100%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 70,
+        "name": "M3 命令0%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 71,
+        "name": "M3 命令25%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 72,
+        "name": "M3 命令50%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 73,
+        "name": "M3 命令75%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 74,
+        "name": "M3 命令100%时模型推力（初值估计） (N)",
+        "enabled": true
+      },
+      {
+        "id": 75,
+        "name": "使用初始估计模型（完整动力学）",
+        "enabled": true
+      },
+      {
+        "id": 76,
+        "name": "电机一阶滞后估计 (s)",
+        "enabled": true
+      },
+      {
+        "id": 77,
+        "name": "Roll 惯量 Ixx (kg·m²)",
+        "enabled": true
+      },
+      {
+        "id": 78,
+        "name": "Pitch 惯量 Iyy (kg·m²)",
+        "enabled": true
+      },
+      {
+        "id": 79,
+        "name": "自旋线性阻尼 (N·m·s/rad)",
+        "enabled": true
+      },
+      {
+        "id": 80,
+        "name": "自旋二次阻尼 (N·m·s²/rad²)",
+        "enabled": true
+      },
+      {
+        "id": 81,
+        "name": "自旋加速／阻尼前馈比例",
+        "enabled": true
+      },
+      {
+        "id": 82,
+        "name": "自旋最大航向率 (°/s，限90)",
+        "enabled": true
+      },
+      {
+        "id": 83,
+        "name": "自旋最大角加速度 (°/s²)",
+        "enabled": true
+      },
+      {
+        "id": 84,
+        "name": "激光容许半窗口 (°)",
+        "enabled": true
+      },
+      {
+        "id": 85,
+        "name": "激光最大高电平时长 (ms)",
+        "enabled": true
+      },
+      {
+        "id": 86,
+        "name": "激光最小脉冲间隔 (ms)",
+        "enabled": true
+      },
+      {
+        "id": 87,
+        "name": "允许 GPIO14 激光同步",
+        "enabled": true
+      },
+      {
+        "id": 88,
+        "name": "Roll 姿态 P",
+        "enabled": true
+      },
+      {
+        "id": 89,
+        "name": "Roll 姿态 I",
+        "enabled": true
+      },
+      {
+        "id": 90,
+        "name": "Roll 角速度阻尼 D",
+        "enabled": true
+      },
+      {
+        "id": 91,
+        "name": "Pitch 姿态 P",
+        "enabled": true
+      },
+      {
+        "id": 92,
+        "name": "Pitch 姿态 I",
+        "enabled": true
+      },
+      {
+        "id": 93,
+        "name": "Pitch 角速度阻尼 D",
+        "enabled": true
+      },
+      {
+        "id": 94,
+        "name": "自旋角速度 Kp (1/s)",
+        "enabled": true
+      },
+      {
+        "id": 95,
+        "name": "自旋角速度 Ki (1/s²)",
+        "enabled": true
+      },
+      {
+        "id": 96,
+        "name": "自旋刚体／航向耦合补偿比例",
+        "enabled": true
+      },
+      {
+        "id": 97,
+        "name": "自旋驾驶倾角上限 (°)",
+        "enabled": true
+      },
+      {
+        "id": 98,
+        "name": "普通驾驶倾角上限 (°)",
+        "enabled": true
+      },
+      {
+        "id": 99,
+        "name": "广义前方最大转向率 (°/s)",
+        "enabled": true
+      }
+    ],
+    "parameter_mode": "configured"
+  }
+}

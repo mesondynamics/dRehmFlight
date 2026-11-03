@@ -119,6 +119,11 @@ constexpr float spinTiltDeg = 15.0f;
 constexpr float tiltLimitSlewDps = 15.0f;
 constexpr float pilotYawMaxDps = 160.0f;
 constexpr float spinMaxDps = 360.0f;
+// Runtime limits used by the unified model path; legacy bench tests keep the
+// constants above. Transverse feedback is retained during low-speed self-spin.
+struct AttitudeReferenceConfig {
+  float normalTilt=normalTiltDeg, spinTilt=10, generalizedYawMaxDps=20;
+};
 constexpr float yawSlewDps2 = 180.0f;
 constexpr float spinStoppedDps = 15.0f;
 constexpr float spinStoppedSeconds = .3f;
