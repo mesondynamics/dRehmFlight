@@ -1,8 +1,9 @@
 {
-  "record_type": "session_nonce_fix_software_verification",
+  "record_type": "session_nonce_fix_software_and_hardware_verification",
   "date": "2026-11-04",
   "branch": "feature/cyclone-rotor-tricopter",
   "base_commit": "6dd55dd",
+  "downloaded_source_commit": "27ad5f2",
   "build_id": "drehm-cyclone-rotor-v2-session-20261104",
   "hardware_followup": "docs/CYCLONE_HARDWARE_SESSION_20261104.md",
   "previous_hardware_verification": "docs/cyclone-laser-verification-20261104.json",
@@ -35,8 +36,9 @@
       "Counter wrap skips zero",
       "Existing stream change, abandoned reply, old-session rejection and parameter gates"
     ],
-    "rng_hardware_test": "not performed",
-    "repeated_power_cycle_test": "not performed"
+    "rng_hardware_test": "nonzero session created on two actual startups",
+    "single_power_cycle_test": "passed: Agent accepted new boot without restarting Agent",
+    "repeated_power_cycle_test": "not performed; only one user power cycle verified"
   },
   "compile": {
     "command": "arduino-cli compile --fqbn teensy:avr:teensy40:usb=serial --warnings all --build-path /tmp/drehm-cyclone-session.AkHoUl/teensy --output-dir build/cyclone-rotor-v2-session Versions/dRehmFlight_Teensy_BETA_1.3",
@@ -58,7 +60,9 @@
     "bytes": 380297,
     "sha256": "ba98ce70d3e82384a1b8b9ce2f4003b9970811ff59dda1a385ea2725a1082ba9",
     "git_ignored": true,
-    "downloaded": false
+    "downloaded": true,
+    "aligned_image_bytes": 135168,
+    "aligned_image_sha256": "b630467fd2ccb4a9097705b59bd8200046ccecc60043c7eb9f9b21d8f9961bd3"
   },
   "critical_sources_sha256": {
     "RemoteMcuTelemetry.h": "5a78b40f7530a8d067b8aea4ecd1dc204bac5c26985ade0fe3583b354f749348",
@@ -72,7 +76,145 @@
     "installed_Entropy_h_sha256": "ee09dcfa44a021d6a04655c20c537b5ff0959a238dd47d22ad48c32d413417c2"
   },
   "hardware": {
-    "firmware_downloaded": false,
-    "next_step": "Notify user to power on with SA cut, throttle minimum, S1 centered; download and verify new HELLO before repeated power-cycle/session checks and ordinary hover"
+    "firmware_downloaded": true,
+    "tool": "RemoteMCU",
+    "download": {
+      "device_id": "teensy40-1881bf",
+      "job_id": 1,
+      "state": "complete",
+      "progress_percent": 100,
+      "stall_retries": 86,
+      "error": "",
+      "confirmed_build": "drehm-cyclone-rotor-v2-session-20261104",
+      "confirmed_boot_id": 2420863977,
+      "cdc_connected": true,
+      "flash_readback_performed": false
+    },
+    "power_cycle": {
+      "user_confirmed_tx_on_and_restart": true,
+      "previous_boot_id": 2420863977,
+      "new_boot_id": 3119387479,
+      "agent_restarted": false,
+      "automatic_fresh_telemetry_recovery": true,
+      "rejected_packets_snapshot": 0,
+      "default_parameter_count": 107,
+      "default_revision": 1,
+      "default_flight_spin_model_authorizations_and_laser_disabled": true,
+      "recording_id": "18e4ca67c4d13ff0-9",
+      "raw_sha256": "d554b4a2f6498ef5e1bd58aa329ae4fd7aa9517714ed440ee9aecbd323f75867",
+      "frames": 15090,
+      "all_frames_crc_valid": true,
+      "sessions": [
+        {"boot_id": 2420863977, "unique_samples": 4779, "missing_samples": 0, "duplicates": 0},
+        {"boot_id": 3119387479, "unique_samples": 9839, "expected_samples": 10417, "missing_samples": 578, "duplicates": 0}
+      ],
+      "all_motor_commands_zero": true,
+      "overruns": 0,
+      "same_session_network_gaps_fixed": false,
+      "test_scope": "one power cycle, not repeated-cycle endurance or permanent uniqueness proof"
+    },
+    "ram_parameters": {
+      "revision": 2,
+      "saved_revision": 0,
+      "flight_enable": true,
+      "model_initial_estimate": true,
+      "model_verified": false,
+      "spin_enable": false,
+      "laser_enable": true,
+      "spin_max_deg_s": 10,
+      "spin_max_accel_deg_s2": 10,
+      "spin_tilt_limit_deg": 5,
+      "save_performed": false,
+      "full_response_sha256": "cceec8f34c1bd50455c89b1637dbd21f72706ce9abc5f80ef9a539bb42206472"
+    },
+    "normal_flight_record": {
+      "recording_id": "18e4ca8cf0314120-c",
+      "boot_id": 3119387479,
+      "raw_sha256": "7caf8e3c49cc3ca59e2c9b8029332cd3957fd05a2421352b96beddf767f8eb4e",
+      "target_time_s": [107.422318, 416.592318],
+      "all_frames_crc_valid": true,
+      "frames": 31794,
+      "unique_telemetry_samples": 30840,
+      "expected_samples": 30918,
+      "missing_samples": 78,
+      "duplicates": 0,
+      "processing": "Separate boots and sort by target sample sequence before advancing model states; raw file is in receive order",
+      "first_attempt": {
+        "used_for_hover_performance": false,
+        "user_annotation": "Drifted in one direction and collided with an object",
+        "control_fault_target_time_s": 209.939594,
+        "control_fault_reason": 1,
+        "imu_reason_at_fault": 4,
+        "reason_name": "acceleration rail",
+        "accel_full_scale_g": 8,
+        "accel_counts_per_g": 4096,
+        "peak_absolute_raw_accel": 32768,
+        "retained_accel_rail_count_after_event": 4,
+        "rail_protection_changed": false
+      },
+      "last_attempt": {
+        "user_annotation": "Reoriented aircraft toward clear space; achieved hover, visually stable Yaw, forward drift along laser/body +X with centered sticks; landed and stopped",
+        "motor_command_target_time_s": [273.072318, 285.872318],
+        "motor_command_span_s": 12.8,
+        "motor_command_span_is_confirmed_airborne_duration": false,
+        "precise_airborne_boundaries_known": false,
+        "source_sample_sequence": [27070, 28350],
+        "telemetry_samples": 1281,
+        "missing_samples": 0,
+        "duplicates": 0,
+        "raw_pitch_ch2_us": [1500, 1502],
+        "raw_roll_ch4_us": [1503, 1503],
+        "raw_yaw_ch1_us": [1502, 1503],
+        "all_axis_sticks_inside_deadband": true,
+        "pitch_mean_deg": 0.1124293370941486,
+        "pitch_range_deg": [-2.8978521823883057, 3.6530866622924805],
+        "pitch_rms_deg": 1.3484058687065859,
+        "roll_mean_deg": -0.3115846859788301,
+        "roll_range_deg": [-4.9593048095703125, 5.1671624183654785],
+        "roll_rms_deg": 1.4944726050257395,
+        "heading_error_abs_max_deg": 24.8865966796875,
+        "heading_error_abs_p95_deg": 23.62713623046875,
+        "yaw_rate_range_deg_s": [-21.863977432250977, 25.61924171447754],
+        "servo_command_us": [1436, 1483],
+        "throttle_us": [1045, 1359],
+        "state_snapshots": 13,
+        "yaw_allocation_limited_snapshots": 6,
+        "all_lift_and_transverse_allocation_scales_one": true,
+        "new_control_faults": 0,
+        "new_accel_rails": 0,
+        "failsafe": false,
+        "spin_enabled": false,
+        "spin_abort_bits": 0,
+        "period_us": 500,
+        "sampled_work_us": [224, 275],
+        "cumulative_max_work_us": 297,
+        "cumulative_max_allocator_us": 25,
+        "overruns": 0,
+        "communication_budget_skips": 0,
+        "target_dropped_samples": 0,
+        "final_disarmed_motors_zero_laser_low": true
+      }
+    },
+    "forward_drift_diagnosis": {
+      "direction": "body +X, laser/nose direction, confirmed by user",
+      "forward_stick_command_found": false,
+      "horizontal_position_or_velocity_feedback_present": false,
+      "persistent_positive_pitch_proven": false,
+      "model_reconstruction": {
+        "assumptions": "Shared measured tilt map, shared provisional thrust curves, 100 Hz received commands, prior motor lag 40 ms and servo lag 80 ms; not a force measurement or exact 2 kHz replay",
+        "body_force_x_mean_N": -0.001619295048936342,
+        "body_force_z_mean_N": 1.987367648643527,
+        "ratio_of_force_means_x_over_z": -0.0008147939059195151,
+        "persistent_forward_force_predicted": false,
+        "physical_geometry_or_thrust_errors_excluded": false
+      },
+      "stationary_pitch_before_attempts_deg_approx": 2.4,
+      "independent_mechanical_level_confirmed": false,
+      "unique_root_cause_identified": false,
+      "code_parameters_or_safety_thresholds_changed_during_analysis": false,
+      "detailed_analysis": "docs/CYCLONE_NORMAL_HOVER_20261104.md",
+      "offline_html": "docs/reports/cyclone-normal-hover-20261104.html"
+    },
+    "next_step": "Keep power off until needed. Inspect collision-affected geometry; independently level and fix airframe, briefly power on with SA cut/minimum throttle/S1 centered to read static attitude and gyro using current firmware, then verify three rotor vertical zeros before any trim, gain change or further flight. Spin remains disabled."
   }
 }
