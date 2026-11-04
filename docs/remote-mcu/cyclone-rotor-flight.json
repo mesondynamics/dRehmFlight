@@ -716,7 +716,7 @@
       },
       {
         "id": 36,
-        "name": "激光累计脉冲数（低频状态）",
+        "name": "激光累计相位脉冲数（常亮不计）",
         "enabled": true,
         "unit": "",
         "precision": 0,
@@ -743,7 +743,7 @@
       },
       {
         "id": 39,
-        "name": "允许激光同步",
+        "name": "激光总开关",
         "enabled": true,
         "unit": "",
         "precision": 0,
@@ -1320,7 +1320,7 @@
       },
       {
         "id": 85,
-        "name": "激光最大高电平时长 (ms)",
+        "name": "自旋相位最大脉宽 (ms)",
         "enabled": true
       },
       {
@@ -1330,7 +1330,7 @@
       },
       {
         "id": 87,
-        "name": "允许 GPIO14 激光同步",
+        "name": "允许 GPIO14 方向激光",
         "enabled": true
       },
       {

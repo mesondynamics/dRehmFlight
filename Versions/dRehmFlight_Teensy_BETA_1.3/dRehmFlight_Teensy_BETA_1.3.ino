@@ -635,13 +635,19 @@ void controlCyclone() {
 void updateLaserSync() {
   const auto &config=flightParameters.config();
   bool active=DREHM_REMOTE_MCU && armedFly && channel_5_pwm<1500 &&
-      !flightOutput.fault && !normalYawFaultLatched && normalYawOutput.active &&
-      flightOutput.mode==tricopter::FlightMode::Spin && config.spinEnabled &&
-      config.spinReady && config.laserEnabled;
+      imuSampleHealthy && imuFusionHealthy && !flightOutput.fault &&
+      !normalYawFaultLatched && config.flightEnabled && config.ready && config.laserEnabled;
 #if DREHM_ESC_DSHOT_RATE
   active=active && dshotOutput.ready();
 #endif
-  const bool high=laserSync.update(active,flightOutput.phase,
+  tricopter::LaserMode mode=tricopter::LaserMode::Off;
+  if (active) {
+    if (flightOutput.mode==tricopter::FlightMode::Normal)
+      mode=tricopter::LaserMode::Continuous;
+    else if (config.spinEnabled && config.spinReady && normalYawOutput.active)
+      mode=tricopter::LaserMode::PhasePulse;
+  }
+  const bool high=laserSync.update(mode,flightOutput.phase,
       flightOutput.yawRate-flightOutput.referenceRate,current_time,config.laser);
   if (high!=laserSyncHigh) digitalWrite(laserSyncPin,high ? HIGH : LOW);
   laserSyncHigh=high;

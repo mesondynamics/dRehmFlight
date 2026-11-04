@@ -3,6 +3,8 @@
 #include <stdint.h>
 
 namespace tricopter {
+enum class LaserMode : uint8_t { Off, Continuous, PhasePulse };
+
 struct LaserSyncConfig {
   float alignWindowDeg=2;
   uint32_t pulseUs=10000, minIntervalUs=100000;
@@ -12,16 +14,21 @@ struct LaserSyncConfig {
   }
 };
 
-// One high pulse when projected body +X crosses generalized +X, either way.
+// Normal flight holds the direction marker high. During spin and its exit,
+// emit one high pulse when projected body +X crosses generalized +X, either way.
 // Azimuth is gyro-referenced, not an absolute compass direction. No delay(),
 // timer ISR or telemetry dependency. Count/time survive mode exits so a 100 Hz
 // recording cannot lose the existence of a sub-sample-width laser pulse.
 class LaserSync {
  public:
-  bool update(bool active,float phase,float relativeRateDps,uint32_t now,
+  bool update(LaserMode mode,float phase,float relativeRateDps,uint32_t now,
               const LaserSyncConfig &cfg) {
+    if (mode!=LaserMode::PhasePulse) {
+      tracking_=pulsing_=false;
+      return mode==LaserMode::Continuous && cfg.valid();
+    }
     phase=wrapDegrees(phase);
-    if (!active || !cfg.valid() || !std::isfinite(phase) ||
+    if (!cfg.valid() || !std::isfinite(phase) ||
         !std::isfinite(relativeRateDps) || std::fabs(relativeRateDps)<5) {
       tracking_=pulsing_=false;
       return false;

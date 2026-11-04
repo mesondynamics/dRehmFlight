@@ -13,32 +13,49 @@ static void laserChecks() {
   const LaserSyncConfig cfg;
   for (float direction : {-1.f,1.f}) {
     LaserSync sync;
-    assert(!sync.update(false,0,45,100,cfg));
-    assert(!sync.update(true,-direction*.1f,direction*45,1000,cfg));
-    assert(sync.update(true,direction*.01f,direction*45,1500,cfg));
+    assert(!sync.update(LaserMode::Off,0,45,100,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,-direction*.1f,direction*45,1000,cfg));
+    assert(sync.update(LaserMode::PhasePulse,direction*.01f,direction*45,1500,cfg));
     assert(sync.pulseCount()==1 && sync.lastPulseUs()==1500);
-    assert(sync.update(true,direction*.1f,direction*45,5000,cfg));
-    assert(!sync.update(true,direction*.2f,direction*45,11500,cfg));
-    assert(!sync.update(true,-direction*.01f,-direction*45,12000,cfg)); // no retrigger
-    assert(!sync.update(true,-direction*179.9f,direction*45,200000,cfg));
-    assert(!sync.update(true,direction*179.9f,direction*45,201000,cfg)); // wrap is not front
-    assert(!sync.update(true,-direction*.1f,direction*45,250000,cfg));
-    assert(sync.update(true,direction*.01f,direction*45,250500,cfg));
+    assert(sync.update(LaserMode::PhasePulse,direction*.1f,direction*45,5000,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,direction*.2f,direction*45,11500,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,-direction*.01f,-direction*45,12000,cfg)); // no retrigger
+    assert(!sync.update(LaserMode::PhasePulse,-direction*179.9f,direction*45,200000,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,direction*179.9f,direction*45,201000,cfg)); // wrap is not front
+    assert(!sync.update(LaserMode::PhasePulse,-direction*.1f,direction*45,250000,cfg));
+    assert(sync.update(LaserMode::PhasePulse,direction*.01f,direction*45,250500,cfg));
     assert(sync.pulseCount()==2);
-    assert(!sync.update(false,0,45,251000,cfg)); // stop/fault cancels this tick
+    assert(!sync.update(LaserMode::Off,0,45,251000,cfg)); // stop/fault cancels this tick
     assert(sync.pulseCount()==2);
   }
   LaserSync rollover;
-  assert(!rollover.update(true,-.01f,45,UINT32_MAX-2000,cfg));
-  assert(rollover.update(true,.01f,45,UINT32_MAX-1000,cfg));
-  assert(rollover.update(true,.1f,45,3000,cfg));
-  assert(!rollover.update(true,.2f,45,9000,cfg));
+  assert(!rollover.update(LaserMode::PhasePulse,-.01f,45,UINT32_MAX-2000,cfg));
+  assert(rollover.update(LaserMode::PhasePulse,.01f,45,UINT32_MAX-1000,cfg));
+  assert(rollover.update(LaserMode::PhasePulse,.1f,45,3000,cfg));
+  assert(!rollover.update(LaserMode::PhasePulse,.2f,45,9000,cfg));
   assert(rollover.pulseCount()==1);
   LaserSync stopped;
-  assert(!stopped.update(true,-.01f,0,1000,cfg));
-  assert(!stopped.update(true,.01f,0,2000,cfg));
-  assert(!stopped.update(true,std::numeric_limits<float>::quiet_NaN(),45,3000,cfg));
+  assert(!stopped.update(LaserMode::PhasePulse,-.01f,0,1000,cfg));
+  assert(!stopped.update(LaserMode::PhasePulse,.01f,0,2000,cfg));
+  assert(!stopped.update(LaserMode::PhasePulse,std::numeric_limits<float>::quiet_NaN(),45,3000,cfg));
   assert(stopped.pulseCount()==0);
+
+  LaserSync marker;
+  assert(marker.update(LaserMode::Continuous,160,0,1000,cfg));
+  assert(marker.update(LaserMode::Continuous,-120,0,1000000,cfg)); // no pulse timeout
+  assert(marker.pulseCount()==0 && marker.lastPulseUs()==0);
+  assert(!marker.update(LaserMode::PhasePulse,.01f,10,1000500,cfg)); // no inherited crossing
+  assert(marker.update(LaserMode::PhasePulse,-.01f,-10,1001000,cfg));
+  assert(marker.pulseCount()==1);
+  assert(marker.update(LaserMode::Continuous,120,0,1001500,cfg));
+  assert(!marker.update(LaserMode::Off,120,0,1002000,cfg));
+  assert(marker.pulseCount()==1); // continuous/stop do not fabricate pulse events
+  assert(!marker.update(LaserMode::PhasePulse,.01f,10,1200000,cfg));
+  assert(!marker.update(LaserMode::PhasePulse,179,10,1200500,cfg));
+  assert(!marker.update(LaserMode::PhasePulse,-179,10,1201000,cfg));
+  assert(marker.pulseCount()==1);
+  LaserSyncConfig invalid=cfg; invalid.minIntervalUs=0;
+  assert(!marker.update(LaserMode::Continuous,0,0,1201500,invalid));
 }
 
 static void kinematicChecks() {
@@ -160,7 +177,7 @@ static void unifiedPlant(float spinSpeed,float servoLag,float inertiaScale=1,flo
     assert(tilt<12);
     if (t>=15 && t<17) positiveError=std::fmax(positiveError,std::fabs(refs.yawRate-spinSpeed));
     if (t>=27 && t<29) negativeError=std::fmax(negativeError,std::fabs(refs.yawRate+spinSpeed));
-    laser.update(refs.mode==FlightMode::Spin,refs.phase,
+    laser.update(refs.mode==FlightMode::Normal ? LaserMode::Continuous : LaserMode::PhasePulse,refs.phase,
         refs.yawRate-refs.referenceRate,i*500,c.laser);
     if (t>48) {
       finalRate=std::fmax(finalRate,std::fabs(refs.yawRate));
