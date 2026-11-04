@@ -35,6 +35,21 @@ struct Quaternion {
     return true;
   }
 };
+inline float vectorAngle(Vec3 a,Vec3 b) {
+  const Vec3 cross=a.cross(b);
+  return std::atan2(std::sqrt(cross.dot(cross)),a.dot(b));
+}
+// Great-circle slew of unit thrust directions, rather than independent Euler
+// angle limits. Production commands stay in the upright hemisphere.
+inline Vec3 slewDirection(Vec3 from,Vec3 to,float maxAngle) {
+  const float dot=from.dot(to);
+  const Vec3 transverse=to-from*dot;
+  const float n=std::sqrt(transverse.dot(transverse));
+  const float angle=std::atan2(n,dot);
+  if(angle<=maxAngle || n<1e-7f) return to;
+  Vec3 next=from*std::cos(maxAngle)+transverse*(std::sin(maxAngle)/n);
+  return next*(1/std::sqrt(next.dot(next)));
+}
 struct Rotation {
   Vec3 bx, by, bz; // Body basis vectors in world FRD coordinates.
   explicit Rotation(Quaternion q)

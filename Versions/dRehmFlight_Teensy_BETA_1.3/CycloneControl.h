@@ -3,6 +3,7 @@
 #include "FlightMath.h"
 #include "TricopterDynamics.h"
 #include "YawServoControl.h"
+#include "SpinSupervisor.h"
 #include <stdint.h>
 
 namespace tricopter {
@@ -31,6 +32,8 @@ struct ControlOutput {
   float heading, reference, referenceRate, phase, yawTarget, yawRate, mixScale, tiltLimit;
   float yawRequested, yawFilteredRate, yawAuthority, yawIntegral;
   float yawTargetAccel, tiltErrorDeg;
+  Vec3 desiredUp;
+  float desiredTiltRate;
   bool yawSlewLimited;
   FlightMode mode;
   bool fault;
@@ -42,6 +45,9 @@ class CycloneControl {
   bool faulted() const { return fault_; }
   uint32_t faultReason() const { return faultReason_; }
   uint32_t faultCount() const { return faultCount_; }
+  const SpinSupervisor &supervisor() const { return supervisor_; }
+  float brakingTime() const { return brakingTime_; }
+  float stoppedDwell() const { return stoppedTime_; }
   ControlOutput step(PilotInput in, Quaternion q, Vec3 pilotGyro, float dt,
                      bool armed, bool cut, bool sensorHealthy, const ControlGains &gains) {
     return step(in,q,pilotGyro,dt,armed,cut,sensorHealthy,gains,nullptr,nullptr);
@@ -49,7 +55,8 @@ class CycloneControl {
   ControlOutput step(PilotInput in, Quaternion q, Vec3 pilotGyro, float dt,
                      bool armed, bool cut, bool sensorHealthy, const ControlGains &gains,
                      const SpinDynamicsModel *spinModel,
-                     const AttitudeReferenceConfig *referenceConfig) {
+                     const AttitudeReferenceConfig *referenceConfig,
+                     const SpinSafetyConfig *safetyConfig=nullptr) {
     ControlOutput out{};
     out.servoDeg = servoCenterDeg;
     out.mixScale = 1;
@@ -70,6 +77,8 @@ class CycloneControl {
       if (!(r.bz.z > 0)) reason|=faultInverted;
     }
     const bool healthy=reason==0;
+    if(healthy && cut && in.throttle<.05f && !in.spinRequested && in.spin==0)
+      supervisor_.clear();
     if (!healthy) {
       // Preserve the entry reason through subsequent healthy samples and cut recovery.
       if (!fault_) { faultReason_=reason; ++faultCount_; }
@@ -90,6 +99,7 @@ class CycloneControl {
     const float heading = rotation.heading();
     const float measuredYawRate = rotation.headingRate(pilotGyro);
     const bool haveSpinModel=spinModel && spinModel->valid();
+    const SpinSafetyConfig &safety=safetyConfig ? *safetyConfig : defaultSafety_;
     const float spinRateLimit=haveSpinModel ? spinModel->maxRateDps : spinMaxDps;
     const float spinAccelLimit=haveSpinModel ? spinModel->maxAccelDps2 : yawSlewDps2;
     const float normalTiltLimit=referenceConfig ? referenceConfig->normalTilt : normalTiltDeg;
@@ -106,9 +116,24 @@ class CycloneControl {
       return out;
     }
     const bool firstActive = !active_;
-    if (firstActive) { resetFlight(heading); active_ = true; }
+    if (firstActive) {
+      resetFlight(heading); active_ = true;
+      desiredUp_=rotation.bz*(-1);
+    }
     const float oldReference = reference_;
-    spinSelected_ = in.spinRequested;
+    // Allocation feedback is consumed once, from the preceding 500 us frame.
+    const bool haveFeedback=feedbackValid_;
+    feedbackValid_=false;
+    if(mode_==FlightMode::Braking) brakingTime_+=dt;
+    if(haveSpinModel)
+      supervisor_.update(safety,mode_!=FlightMode::Normal,spinRateLimit,
+          haveFeedback ? allocatedRateTarget_ : yawRate_,measuredYawRate,
+          vectorAngle(rotation.bz*(-1),desiredUp_)*degrees,
+          haveFeedback ? allocatedLiftScale_ : 1,
+          haveFeedback ? allocatedAttitudeScale_ : 1,
+          haveFeedback && allocatedYawLimited_,
+          mode_==FlightMode::Braking ? brakingTime_ : 0,brakingBudget_,dt);
+    spinSelected_ = in.spinRequested && !supervisor_.inhibited();
     if (spinSelected_ && mode_ != FlightMode::Spin) {
       // Normal mode's reference always follows the nose; braking/aligning retain theirs.
       if (mode_ == FlightMode::Normal) {
@@ -120,11 +145,17 @@ class CycloneControl {
         if (haveSpinModel) yawRate_=measuredYawRate;
       }
       mode_ = FlightMode::Spin;
-      stoppedTime_ = 0;
+      stoppedTime_ = brakingTime_ = 0;
     } else if (!spinSelected_ && mode_ == FlightMode::Spin) {
-      mode_ = FlightMode::Braking;
-      stoppedTime_ = 0;
+      beginBraking(measuredYawRate,spinAccelLimit,safety);
     }
+    const float stopRate=haveSpinModel ? safety.stoppedRate(spinRateLimit) : spinStoppedDps;
+    const bool stopped=std::fabs(measuredYawRate)<stopRate &&
+        std::fabs(yawRate_)<.01f && (!haveFeedback || std::fabs(allocatedRateTarget_)<.1f);
+    if(mode_==FlightMode::Aligning &&
+       (std::fabs(measuredYawRate)>1.5f*stopRate ||
+        (haveFeedback && std::fabs(allocatedRateTarget_)>=.1f)))
+      beginBraking(measuredYawRate,spinAccelLimit,safety);
 
     float targetRate = 0;
     float referenceRate = 0;
@@ -133,13 +164,21 @@ class CycloneControl {
       referenceRate = measuredYawRate;
       targetRate = in.yaw*pilotYawMaxDps;
     } else if (mode_ == FlightMode::Aligning) {
+      stoppedTime_=stopped ? stoppedTime_+dt : 0;
       alignTime_ = std::fmin(alignTime_+dt, exitBlendSeconds);
-      alignPilotOffset_ += in.yaw*referenceYawLimit*dt;
-      const float t = alignTime_/exitBlendSeconds;
-      const float smooth = t*t*(3-2*t);
-      reference_ = wrapDegrees(heading+(alignOffset_+alignPilotOffset_)*(1-smooth));
-      referenceRate = wrapDegrees(reference_-oldReference)/dt;
-      if (alignTime_ >= exitBlendSeconds) mode_ = FlightMode::Normal;
+      // While the pilot steers generalized Yaw, postpone the coordinate handoff.
+      // Otherwise follow the shortest arc at a bounded azimuth rate. A 180 deg
+      // phase error therefore takes at least 9 s at the default 20 deg/s.
+      const bool yawCentered=std::fabs(in.yaw)<.001f;
+      const float wantedStep=yawCentered ? wrapDegrees(heading-reference_) :
+          in.yaw*referenceYawLimit*dt;
+      const float step=clamp(wantedStep,-safety.exitReferenceDps*dt,safety.exitReferenceDps*dt);
+      reference_=wrapDegrees(reference_+step);
+      referenceRate=step/dt;
+      if(alignTime_>=exitBlendSeconds &&
+         stoppedTime_>=(haveSpinModel ? safety.stopDwellSeconds : spinStoppedSeconds) && yawCentered &&
+         std::fabs(wrapDegrees(heading-reference_))<.001f)
+        mode_=FlightMode::Normal;
     } else {
       referenceRate = in.yaw*referenceYawLimit;
       reference_ = wrapDegrees(reference_+referenceRate*dt);
@@ -148,13 +187,12 @@ class CycloneControl {
     const float oldYawTarget=yawRate_;
     yawRate_ = approach(yawRate_, targetRate, spinAccelLimit*dt);
     if (mode_ == FlightMode::Braking) {
-      if (std::fabs(measuredYawRate) < spinStoppedDps && std::fabs(yawRate_) < .01f)
+      if (stopped)
         stoppedTime_ += dt;
       else stoppedTime_ = 0;
-      if (stoppedTime_ >= spinStoppedSeconds) {
+      if (stoppedTime_ >= (haveSpinModel ? safety.stopDwellSeconds : spinStoppedSeconds)) {
         mode_ = FlightMode::Aligning;
-        alignOffset_ = wrapDegrees(reference_-heading);
-        alignPilotOffset_ = alignTime_ = 0;
+        alignTime_=brakingTime_=0;
       }
     }
     tiltLimit_ = approach(tiltLimit_, mode_ == FlightMode::Normal ? normalTiltLimit : spinTiltLimit,
@@ -175,8 +213,13 @@ class CycloneControl {
     const float stickNorm = std::sqrt(in.roll*in.roll+in.pitch*in.pitch);
     const float k = tiltLimit_*radians / std::fmax(1.0f, stickNorm);
     const float roll = in.roll*k, pitch = in.pitch*k;
-    const Vec3 desiredUp = forward*(std::sin(pitch)*std::cos(roll)) +
-                          right*std::sin(roll) + Vec3{0,0,-std::cos(pitch)*std::cos(roll)};
+    const Vec3 wantedUp = forward*(std::sin(pitch)*std::cos(roll)) +
+                         right*std::sin(roll) + Vec3{0,0,-std::cos(pitch)*std::cos(roll)};
+    const Vec3 desiredUp=haveSpinModel ?
+        slewDirection(desiredUp_,wantedUp,safety.tiltCommandDps*radians*dt) : wantedUp;
+    out.desiredTiltRate=vectorAngle(desiredUp_,desiredUp)*degrees/dt;
+    out.desiredUp=desiredUp;
+    desiredUp_=desiredUp;
     const Vec3 up = rotation.bz*(-1);
     Vec3 error = up.cross(desiredUp);
     const float en = std::sqrt(error.dot(error));
@@ -248,12 +291,27 @@ class CycloneControl {
     if ((integralPitch_-priorIntegralPitch_)*requestedPitch_>0)
       integralPitch_=priorIntegralPitch_;
   }
+  void applyAllocationFeedback(float liftScale,float attitudeScale,bool yawLimited,float rateTarget) {
+    applyAllocationLimits(liftScale<.9999f || attitudeScale<.9999f);
+    allocatedLiftScale_=liftScale; allocatedAttitudeScale_=attitudeScale;
+    allocatedYawLimited_=yawLimited; allocatedRateTarget_=rateTarget;
+    feedbackValid_=active_;
+  }
  private:
+  void beginBraking(float rate,float accel,const SpinSafetyConfig &safety) {
+    mode_=FlightMode::Braking;
+    stoppedTime_=alignTime_=brakingTime_=0;
+    brakingBudget_=std::fmax(std::fabs(rate),std::fabs(yawRate_))/accel+safety.brakingSettleSeconds;
+  }
   void resetFlight(float heading) {
     mode_ = FlightMode::Normal;
     reference_ = heading;
     spinSelected_ = active_ = false;
-    yawRate_ = stoppedTime_ = alignTime_ = alignOffset_ = alignPilotOffset_ = 0;
+    yawRate_ = stoppedTime_ = alignTime_ = brakingTime_ = 0;
+    brakingBudget_=120;
+    feedbackValid_=false;
+    desiredUp_={0,0,-1};
+    supervisor_.idle(); // The abort latch is cleared only by the explicit cut-state check.
     integralRoll_ = integralPitch_ = 0;
     priorIntegralRoll_=priorIntegralPitch_=requestedRoll_=requestedPitch_=0;
     yawControl_.reset();
@@ -262,7 +320,12 @@ class CycloneControl {
   FlightMode mode_ = FlightMode::Normal;
   bool spinSelected_ = false, active_ = false, fault_ = false;
   float reference_ = 0, yawRate_ = 0, tiltLimit_ = normalTiltDeg;
-  float stoppedTime_ = 0, alignTime_ = 0, alignOffset_ = 0, alignPilotOffset_ = 0;
+  float stoppedTime_=0,alignTime_=0,brakingTime_=0,brakingBudget_=120;
+  Vec3 desiredUp_{0,0,-1};
+  SpinSafetyConfig defaultSafety_{};
+  SpinSupervisor supervisor_;
+  bool feedbackValid_=false,allocatedYawLimited_=false;
+  float allocatedLiftScale_=1,allocatedAttitudeScale_=1,allocatedRateTarget_=0;
   float integralRoll_ = 0, integralPitch_ = 0;
   float priorIntegralRoll_=0, priorIntegralPitch_=0, requestedRoll_=0, requestedPitch_=0;
   YawServoControl yawControl_;

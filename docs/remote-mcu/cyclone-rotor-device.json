@@ -6,7 +6,7 @@
   "data": {
     "kind": "device",
     "target_profile": "teensy40-usb",
-    "application_profile": "drehmflight-cyclone-rotor-v1",
+    "application_profile": "drehmflight-cyclone-rotor-v2",
     "gateway_ip": "192.168.0.62"
   }
 }

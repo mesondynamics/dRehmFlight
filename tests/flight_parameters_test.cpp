@@ -71,7 +71,16 @@ int main() {
   assert(batch(p,{{14,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED && p.config().ready);
   assert(batch(p,{{1,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED && p.config().flightEnabled);
   assert(p.config().spinReady && !p.config().laserEnabled);
-  assert(p.config().spin.maxRateDps==45 && p.config().spin.maxAccelDps2==30);
+  assert(p.config().spin.maxRateDps==15 && p.config().spin.maxAccelDps2==10);
+  assert(p.config().safety.valid() && p.config().safety.stoppedRate(15)==1.5f);
+  assert(batch(p,{{100,1},{101,.7f},{102,15},{103,45}})[8]==RMP_APPLIED);
+  assert(p.config().safety.stopRateDps==1 && p.config().safety.stopDwellSeconds==.7f &&
+      p.config().safety.exitReferenceDps==15 && p.config().safety.tiltCommandDps==45);
+  const auto safetyRevision=p.revision();
+  assert(batch(p,{{100,0},{101,.8f}})[8]==RMP_OUT_OF_RANGE);
+  assert(batch(p,{{110,1}})[8]==RMP_OUT_OF_RANGE);
+  assert(p.revision()==safetyRevision && p.config().safety.stopDwellSeconds==.7f);
+  assert(batch(p,{{103,60}},false)[8]==RMP_UNSAFE);
   assert(batch(p,{{2,1,RMP_PARAM_BOOL},{87,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED);
   assert(p.config().spinEnabled && p.config().laserEnabled);
   // Cross-field pulse timing is rejected atomically; candidate decoding must

@@ -556,13 +556,15 @@ void loop() {
 
 
 void controlCyclone() {
-  unsigned spinUs=channel_6_pwm;
-#if DREHM_REMOTE_MCU
-  if (!flightParameters.config().spinEnabled || !flightParameters.config().spinReady) spinUs=1500;
-#endif
-  const tricopter::PilotInput pilot = tricopter::pilotInput(
-      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, spinUs,
+  tricopter::PilotInput pilot = tricopter::pilotInput(
+      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_6_pwm,
       flightControl.spinning());
+#if DREHM_REMOTE_MCU
+  // Keep the real S1 position for fault/abort reset qualification even while
+  // spinning is disabled. Only suppress the request, never synthesize center.
+  if (!flightParameters.config().spinEnabled || !flightParameters.config().spinReady)
+    pilot.spinRequested=false;
+#endif
   const auto &config=flightParameters.config();
 #if DREHM_REMOTE_MCU
   const tricopter::ControlGains gains{
@@ -579,7 +581,8 @@ void controlCyclone() {
   flightOutput = flightControl.step(pilot, {q0,q1,q2,q3}, {GyroX,GyroY,GyroZ}, dt,
       armedFly, channel_5_pwm >= 1500, imuSampleHealthy && imuFusionHealthy, gains,
       DREHM_REMOTE_MCU ? &config.spin : nullptr,
-      DREHM_REMOTE_MCU ? &config.reference : nullptr);
+      DREHM_REMOTE_MCU ? &config.reference : nullptr,
+      DREHM_REMOTE_MCU ? &config.safety : nullptr);
   if (flightControl.faultCount()!=previousFaultCount) {
     lastControlFaultTimeUs=current_time;
     lastControlFaultImuReason=imuDiagnostics.currentReason;
@@ -608,8 +611,8 @@ void controlCyclone() {
     crsfChannelsReady=false;
 #endif
   } else if (normalActive) {
-    flightControl.applyAllocationLimits(normalYawOutput.liftScale<.9999f ||
-        normalYawOutput.attitudeScale<.9999f);
+    flightControl.applyAllocationFeedback(normalYawOutput.liftScale,normalYawOutput.attitudeScale,
+        normalYawOutput.limited,normalYawOutput.rateTarget);
     flightOutput.motors=normalYawOutput.motors;
     flightOutput.servoDeg=normalYawOutput.servoDeg;
     flightOutput.yawTarget=normalYawOutput.rateTarget;
@@ -710,7 +713,7 @@ void serviceRemoteMcu() {
   sample.values[26]=normalYawOutput.torqueTarget.x; sample.values[27]=normalYawOutput.torqueTarget.y;
   sample.values[28]=loopPeriodUs; sample.values[29]=previousLoopWorkUs;
   sample.values[30]=flightOutput.tiltErrorDeg;
-  sample.values[31]=laserSync.pulseCount();
+  sample.values[31]=flightControl.supervisor().reasons(); // Latched abort reason at waveform rate.
   sample.state[0]=armedFly; sample.state[1]=servoCalibrationActive;
   sample.state[3]=imuSampleHealthy && imuFusionHealthy;
   sample.state[5]=flightControl.faulted() || normalYawFaultLatched;
@@ -747,6 +750,15 @@ void serviceRemoteMcu() {
   memcpy(&sample.state[43],&couplingZ,4);
   sample.state[44]=laserSync.lastPulseUs();
   memcpy(&sample.state[45],&normalYawOutput.attitudeScale,4);
+  const auto &supervisor=flightControl.supervisor();
+  sample.state[46]=supervisor.reasons(); sample.state[47]=supervisor.inhibited();
+  const float spinDiagnostics[]={flightControl.brakingTime(),flightControl.stoppedDwell(),
+      flightOutput.referenceRate,flightOutput.desiredTiltRate,supervisor.overspeedTime(),
+      supervisor.rateErrorTime(),supervisor.tiltErrorTime(),supervisor.allocationTime()};
+  for(unsigned i=0;i<8;++i) memcpy(&sample.state[48+i],&spinDiagnostics[i],4);
+  sample.state[56]=supervisor.count();
+  const float stopThreshold=flightParameters.config().safety.stoppedRate(flightParameters.config().spin.maxRateDps);
+  memcpy(&sample.state[57],&stopThreshold,4);
   sample.safeToFlash=!armedFly && motorsStopped && channel_5_pwm>=1500 &&
       channel_1_pwm<1050 && tricopter::spinCentered(channel_6_pwm);
   sample.safeToConfigure=!armedFly && motorsStopped && channel_5_pwm>=1500 && channel_1_pwm<1050;

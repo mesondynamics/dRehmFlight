@@ -74,15 +74,19 @@ static void kinematicChecks() {
   for (float thrust : limited.thrust) assert(thrust>=0);
 }
 
-static void unifiedPlant(float spinSpeed,float servoLag) {
+static void unifiedPlant(float spinSpeed,float servoLag,float inertiaScale=1,float thrustScale=1,
+                         bool combined=false,uint32_t expectedAbort=0) {
   // Independent Newton-Euler plant with actual calibrated linkage, motor lag,
   // 50 Hz servo sample/hold, 125-step motor quantization and unknown body drag.
   // No tether, rotating wings, fabricated IMU data capture or altitude control.
   FlightParameters parameters; parameters.begin();
   auto c=parameters.config(); c.ready=true; c.spinReady=true;
-  c.spin.maxRateDps=spinSpeed; c.servoLag=servoLag;
+  c.spin.maxRateDps=spinSpeed; c.servoLag=combined ? .08f : servoLag;
+  c.spin.maxAccelDps2=combined && !expectedAbort ? 10 : 30;
   c.model.ixx=.03f; c.model.iyy=.04f;
   auto physical=c.model;
+  physical.ixx*=inertiaScale;physical.iyy*=inertiaScale;physical.izz*=inertiaScale;
+  for(auto &r:physical.rotor) for(float &t:r.thrustN) t*=thrustScale;
   const Vec3 inertia=physical.inertia();
   const ControlGains gains{{.002f,.003f,.0005f},{.002f,.003f,.0005f},defaultYawGains()};
   CycloneControl reference; NormalYawControl control; LaserSync laser;
@@ -93,24 +97,44 @@ static void unifiedPlant(float spinSpeed,float servoLag) {
   float servo=servoForTilt(physical.rotor[2],0), servoHold=servo;
   float lastServo=servo, peakTilt=0, positiveError=0, negativeError=0;
   float finalRate=0, finalHeadingError=0;
+  uint32_t abortReasons=0;float abortTime=0,peakRate=0;
   constexpr float dt=.0005f;
   NormalYawOutput out;
   ControlOutput refs{};
-  for (unsigned i=0;i<100000;++i) {
-    const float t=i*dt;
+  const unsigned timeScale=combined ? 3 : 1; // Low-rate cases must complete full phase crossings.
+  for (unsigned i=0;i<100000*timeScale;++i) {
+    const float t=i*dt/timeScale;
     PilotInput pilot{throttle,0,0,0,0,false};
     if (t>=5 && t<17) { pilot.spin=1; pilot.spinRequested=true; }
     if (t>=17 && t<29) { pilot.spin=-1; pilot.spinRequested=true; }
     if (t>=9 && t<25) pilot.pitch=.2f; // world-referenced direction during spin
+    if(combined && t>=9 && t<13) {pilot.roll=.2f;pilot.yaw=.3f;}
+    if(combined && t>=21 && t<25) {pilot.roll=-.2f;pilot.yaw=-.3f;}
     if (t>=36 && t<38) pilot.yaw=.3f;
+    // A legitimately excessive acceleration must cause a protected stop. Keep
+    // S1 displaced to verify the abort latch prevents automatic spin re-entry.
+    if(abortReasons) {pilot.roll=pilot.pitch=pilot.yaw=0;pilot.spin=1;pilot.spinRequested=true;}
     const Vec3 gyro=omega*degrees;
-    refs=reference.step(pilot,q,gyro,dt,true,false,true,gains,&c.spin,&c.reference);
+    refs=reference.step(pilot,q,gyro,dt,true,false,true,gains,&c.spin,&c.reference,&c.safety);
     assert(!refs.fault);
+    if(reference.supervisor().inhibited() && !expectedAbort)
+      std::fprintf(stderr,"Unexpected spin abort: Jx%.2f Tx%.2f at %.3fs, reasons=%u, mode=%u rate=%.3f target=%.3f tilt=%.3f\n",
+          inertiaScale,thrustScale,i*dt,reference.supervisor().reasons(),unsigned(refs.mode),
+          refs.yawRate,refs.yawTarget,refs.tiltErrorDeg);
+    if(!expectedAbort) assert(!reference.supervisor().inhibited());
+    if(reference.supervisor().inhibited()) {
+      if(!abortReasons) abortTime=i*dt;
+      abortReasons=reference.supervisor().reasons();
+      assert(abortReasons&expectedAbort);
+      assert(refs.mode!=FlightMode::Spin);
+    }
+    peakRate=std::fmax(peakRate,std::fabs(refs.yawRate));
+    assert(refs.desiredTiltRate<c.safety.tiltCommandDps+.03f);
     YawControlRequest request;
     request.rateMode=refs.mode!=FlightMode::Normal;
     request.rateTargetDps=refs.yawTarget; request.attitude=q; request.gyroDps=gyro;
     out=control.step(c,refs.motors,refs.heading,refs.yawRate,pilot.yaw,dt,true,request);
-    reference.applyAllocationLimits(out.liftScale<.9999f || out.attitudeScale<.9999f);
+    reference.applyAllocationFeedback(out.liftScale,out.attitudeScale,out.limited,out.rateTarget);
     assert(out.active && !out.fault);
     assert(std::fabs(out.servoDeg-lastServo)<=c.servoSlew*.0056f+.0001f);
     lastServo=out.servoDeg;
@@ -143,10 +167,15 @@ static void unifiedPlant(float spinSpeed,float servoLag) {
       finalHeadingError=std::fmax(finalHeadingError,std::fabs(wrapDegrees(out.headingTarget-refs.heading)));
     }
   }
-  std::printf("Unified untethered synthetic plant +/-%.0f deg/s, %.0f ms servo: tilt %.2f deg, rate errors %.2f/%.2f, final hold %.2f deg / %.2f deg/s, laser %u\n",
-      spinSpeed,servoLag*1000,peakTilt,positiveError,negativeError,finalHeadingError,finalRate,laser.pulseCount());
-  assert(positiveError<8 && negativeError<8 && finalRate<5 && finalHeadingError<5);
-  assert(refs.mode==FlightMode::Normal && laser.pulseCount()>0);
+  std::printf("Unified synthetic plant +/-%.0f deg/s accel%.0f, %.0f ms servo, Jx%.1f Tx%.1f combined=%d: tilt %.2f deg, rate errors %.2f/%.2f, final hold %.2f deg / %.2f deg/s, laser %u, abort %u at %.3fs, peak rate %.2f\n",
+      spinSpeed,c.spin.maxAccelDps2,servoLag*1000,inertiaScale,thrustScale,combined,peakTilt,positiveError,negativeError,finalHeadingError,finalRate,laser.pulseCount(),abortReasons,abortTime,peakRate);
+  assert(finalRate<5 && finalHeadingError<5 && refs.mode==FlightMode::Normal);
+  if(expectedAbort) {
+    assert(abortReasons&expectedAbort);
+    assert(!(abortReasons&spinBrakingTimeout));
+  } else {
+    assert(positiveError<8 && negativeError<8 && laser.pulseCount()>0);
+  }
 }
 static void physicalSaturationChecks() {
   CycloneControl limited,free;
@@ -155,6 +184,13 @@ static void physicalSaturationChecks() {
   const ControlGains integralOnly{{0,.003f,0},{0,.003f,0},defaultYawGains()};
   const PilotInput pilot{.5f,0,.3f,0,0,false};
   ControlOutput a{},b{};
+  const ControlGains noIntegral{};
+  // Settle the bounded thrust-direction reference before comparing equal
+  // integration intervals; the actuator saturation is the subject here.
+  for(unsigned i=0;i<1000;++i) {
+    limited.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,noIntegral,&spin,&cfg);
+    free.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,noIntegral,&spin,&cfg);
+  }
   for (unsigned i=0;i<2000;++i) {
     a=limited.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,integralOnly,&spin,&cfg);
     b=free.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,integralOnly,&spin,&cfg);
@@ -184,5 +220,12 @@ static void spinEntryChecks() {
 int main() {
   laserChecks(); kinematicChecks(); physicalSaturationChecks(); spinEntryChecks();
   for (float speed : {45.f,90.f}) for (float lag : {.04f,.08f,.12f}) unifiedPlant(speed,lag);
+  unifiedPlant(15,.16f,1,1,true);
+  unifiedPlant(15,.16f,.5f,1,true);
+  // Half the assumed inertia with 30 deg/s^2 feedforward really overspeeds;
+  // require the supervisor to brake and hold, rather than suppressing the guard.
+  unifiedPlant(15,.16f,.5f,1,true,spinOverspeed);
+  unifiedPlant(15,.16f,2,1,true);
+  for(float scale:{.7f,1.3f}) unifiedPlant(15,.16f,1,scale,true);
   std::puts("Unified model allocation, mode handoff, Euler coupling, phase marker and clock wrap passed");
 }

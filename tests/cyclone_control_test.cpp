@@ -137,7 +137,7 @@ static void modesAndSaturation() {
   // Return to center while real spin persists: never exit based on CH6 alone.
   for (int i=0;i<7000;++i) o=tick(c,input(),level,{0,0,-100});
   assert(o.mode == FlightMode::Braking && near(o.yawTarget,0));
-  for (int i=0;i<610;++i) o=tick(c,input());
+  for (int i=0;i<1010;++i) o=tick(c,input());
   assert(o.mode == FlightMode::Aligning);
   o=tick(c,input(1500,1500,1500,1000));
   assert(o.mode == FlightMode::Spin); // re-entry during alignment

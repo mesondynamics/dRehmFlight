@@ -1,21 +1,70 @@
 {
-  "date": "2026-11-03",
+  "date": "2026-11-04",
   "branch": "feature/cyclone-rotor-tricopter",
   "base_commit": "907d4a1b04bcdaf0633a9e603ec8477ec808e766",
-  "build_id": "drehm-cyclone-rotor-v1-20261103",
+  "build_id": "drehm-cyclone-rotor-v2-20261104",
   "scope": "Ordinary and low-speed self-spinning tricopter, three small motor propellers, no large rotating wings, no tether model",
   "verification": {
     "host_command": "python3 tools/run_host_tests.py --sanitize",
-    "host_programs_passed": 18,
-    "sanitizers": ["address", "undefined"],
-    "unified_synthetic_attitude_cases": 6,
-    "unified_synthetic_spin_rates_deg_s": [45, 90],
-    "unified_synthetic_servo_lag_ms": [40, 80, 120],
+    "host_programs_passed": 19,
+    "sanitizers": [
+      "address",
+      "undefined"
+    ],
+    "unified_synthetic_attitude_cases": 12,
+    "unified_synthetic_spin_rates_deg_s": [
+      15,
+      45,
+      90
+    ],
+    "unified_synthetic_servo_lag_ms": [
+      40,
+      80,
+      120,
+      160
+    ],
     "unified_synthetic_metrics": {
-      "peak_tilt_deg_upper_rounded": 2.87,
-      "steady_spin_absolute_rate_error_deg_s_upper_rounded": 1.34,
-      "final_heading_error_deg_upper_rounded": 0.31,
-      "final_rate_deg_s_upper_rounded": 0.22
+      "tracking_cases_upper_rounded": {
+        "peak_tilt_deg": 5.61,
+        "steady_spin_absolute_rate_error_deg_s": 1.37,
+        "final_heading_error_deg": 0.3,
+        "final_rate_deg_s": 0.32
+      },
+      "low_rate_parameter_mismatch": {
+        "spin_rate_deg_s": 15,
+        "acceleration_deg_s2": 10,
+        "controller_servo_lag_ms": 80,
+        "plant_servo_lag_ms": 160,
+        "inertia_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "thrust_multipliers": [
+          0.7,
+          1,
+          1.3
+        ],
+        "simulated_seconds_per_case": 150,
+        "combined_roll_pitch_and_generalized_yaw": true
+      },
+      "protected_abort": {
+        "inertia_multiplier": 0.5,
+        "spin_rate_deg_s": 15,
+        "acceleration_deg_s2": 30,
+        "reason_bits": 1,
+        "first_abort_seconds": 15.759,
+        "peak_measured_rate_deg_s_upper_rounded": 23.67,
+        "held_spin_request_cannot_reenter": true,
+        "final_mode": "Normal",
+        "braking_timeout": false
+      },
+      "bidirectional_180_degree_handoff": {
+        "alignment_seconds_rounded": 8.99,
+        "reference_rate_deg_s": 20,
+        "max_thrust_direction_slew_deg_s": 60
+      },
+      "persistent_10_deg_s_braking": "Cannot enter Aligning/Normal; brake timeout latches while motor control stays active"
     },
     "additional_regressions": [
       "Bidirectional laser zero crossing, 180-degree wrap exclusion, rate threshold and micros32 wrap",
@@ -24,23 +73,32 @@
       "Physical saturation feedback to transverse integrators and authority recovery",
       "Spin entry after normal Yaw avoids legacy rate-target inheritance",
       "Atomic parameter gates including NaN/Inf pulse timing",
-      "New RMP bool/uint32/float state wire types"
+      "New RMP bool/uint32/float state wire types",
+      "Near-zero dwell reset, physical-controller target must reach zero, and reacceleration during alignment",
+      "Yaw input postpones coordinate handoff; full thrust-vector reversal obeys angular slew",
+      "Five spin-supervisor causes, transient rejection, retained latch, explicit SA/low-throttle/physical-S1 reset",
+      "Saturated allocator recovers collective before larger Yaw demand",
+      "58-state bool/uint32/float encoding fits one 512-byte USB buffer",
+      "Final targeted transition and telemetry tests rerun with ASan/UBSan"
     ],
     "limitations": [
       "Synthetic attitude plant only; no translation/contact/takeoff simulation",
       "No hardware IMU vibration, ESC measurements or exhaustive uncertainty analysis",
       "Legacy cyclone_dynamics_test exercises up to 360 deg/s; those cases do not validate this production build at 360 deg/s",
-      "Main-loop worst-case execution time and laser optical alignment require hardware measurement"
-    ]
+      "Main-loop worst-case execution time and laser optical alignment require hardware measurement",
+      "Protected-abort case is not counted as successful commanded-rate tracking; first-flight parameters remain provisional"
+    ],
+    "unified_synthetic_tracking_cases": 11,
+    "unified_synthetic_protected_abort_cases": 1
   },
   "compile": {
-    "command": "arduino-cli compile --fqbn teensy:avr:teensy40:usb=serial --warnings all --build-path /tmp/drehm-cyclone-final.oeEdup Versions/dRehmFlight_Teensy_BETA_1.3",
+    "command": "arduino-cli compile --fqbn teensy:avr:teensy40:usb=serial --warnings all --build-path /tmp/drehm-cyclone-v2.jDQhTI/teensy Versions/dRehmFlight_Teensy_BETA_1.3",
     "result": "passed",
     "arduino_cli": "1.5.1",
     "teensy_core": "1.62.0",
-    "flash_code_bytes": 85936,
-    "flash_data_bytes": 33976,
-    "ram1_variables_bytes": 35744,
+    "flash_code_bytes": 90672,
+    "flash_data_bytes": 35000,
+    "ram1_variables_bytes": 36800,
     "ram2_variables_bytes": 12416,
     "warnings": [
       "CRSFforArduino architecture metadata uses teensy while core architecture label is avr",
@@ -49,55 +107,56 @@
     ]
   },
   "artifact": {
-    "path": "build/cyclone-rotor-v1/firmware.hex",
+    "path": "build/cyclone-rotor-v2/firmware.hex",
     "git_ignored": true,
     "format": "Intel HEX text, not aligned RemoteMCU image",
-    "bytes": 362987,
-    "sha256": "548fe3bfdb5cfd5c10e2879e399e52a2fa3370941c8cfa12d9c76ed6a8d589a0"
+    "bytes": 377404,
+    "sha256": "5731e1f0bf6b6a6782ab985bf34f6072de07094d603bf131e7f6e14beebc0c03"
   },
   "critical_sources_sha256": {
-    "dRehmFlight_Teensy_BETA_1.3.ino": "9bce047b744585938876a9115b9776075071d69b640fb8b04ad2ba0fdd50cbef",
-    "CycloneControl.h": "0b34dafa96e3f6fdf2c2a2d3a0f96f10350b205a3937f8cedd383337dac46d4b",
-    "NormalYawControl.h": "5d9a49f115c3c4faaf7b2b74c8a61eb8b7e91adf36014def13ba8682bbec9912",
-    "TricopterDynamics.h": "82f75f40362dd3151501a7686eb4743b24c9f86d7f3451cd93c50aa8d9ef3ffa",
-    "FlightParameters.h": "b5961ff58e2c75e7444bf12bded3b19efa592d492e43a08bdff09ac391cb267b",
-    "FlightMath.h": "9de7dbc2bbebb9dcae27ab2b17edf42b9b073939915a9fbd66d7ecd68aa42039",
+    "dRehmFlight_Teensy_BETA_1.3.ino": "5f37d77a7d0eab8dba79b36bf7d00f60d7e97156d79c8a2b320e1a0592a1076b",
+    "CycloneControl.h": "adfb86f948de3c558fe59b683071c9b1657d47d934bcef74741f7e88c23ad7c5",
+    "NormalYawControl.h": "bd7b99e6921541d0584ce44f9a28e41ac368e85609271e45ec44fb602f52d8a6",
+    "TricopterDynamics.h": "ac97597d28d87f634041ab98867dfb67ea1ef2c50db2c5150c941186cf226c21",
+    "FlightParameters.h": "76127ce0f11dd49b699751ad96f3e6e980ab36f7571dc1de4e87bfa8d72aca6e",
+    "FlightMath.h": "4100cb3ecd9afd0dba0ba6c1354e97cc03d02a0916cc0bca8a497f4d00833ba8",
     "LaserSync.h": "c42eb177ed2a5f596ca95d2af74ee06a084f02fbe9ddcb92e4647d6325210267",
-    "RemoteMcuTelemetry.h": "c62a2a0981b523708f7b46a1cbbd626028cdf32785709c3985e52f6ec8d81142",
-    "TricopterConfig.h": "8cdfdacedc178b1d48f45880733e70eea3bf5fe7dc9a18b285fc5f4858779a9f"
+    "RemoteMcuTelemetry.h": "e439c512a79b23658c1d96e6d81750730ca9a7766caa6e3dee5673cae2fab387",
+    "TricopterConfig.h": "3ddec86c0adbbc2948ee27b1a1d008a3c47e8dba23273ae2b4816e61f2f62162",
+    "SpinSupervisor.h": "1f0e478b9be8c993d5ae19bf16f815d84203967c81abd2af1e3f4df9b356b362"
   },
   "remote_mcu": {
     "agent_url": "http://127.0.0.1:47301",
     "agent_mode": "hardware",
-    "agent_reported_version": "0.1.0",
     "agent_existing_binary_started": true,
     "gateway_ip": "192.168.0.62",
-    "application": "drehmflight-cyclone-rotor-v1",
+    "application": "drehmflight-cyclone-rotor-v2",
     "device": "drehmflight-cyclone-rotor-device",
     "application_revision": 1,
-    "device_revision": 1,
+    "device_revision": 2,
     "profile_api_import_and_catalog_readback": "passed",
     "selected_application_preserved": "drehmflight-yaw-flight",
     "selected_device_preserved": "drehmflight-model-flight",
     "schema_id": 1,
     "channels": 32,
-    "states": 46,
-    "parameters": 94,
+    "states": 58,
+    "parameters": 107,
     "wave_windows": 8,
-    "browser_visual_check": "unavailable: browser access host unavailable",
-    "target_connected_at_readback": false,
+    "browser_visual_check": "not performed",
+    "target_connection_checked": false,
     "mcu_parameters_written": false,
     "gateway_firmware_written": false
   },
   "documentation": {
     "source": "docs/CYCLONE_ROTOR_MODEL.md",
     "html": "docs/reports/cyclone-rotor-model.html",
-    "equations_rendered_to_inline_svg": 23,
+    "equations_rendered_to_inline_svg": 24,
     "external_runtime_assets": false,
     "mathjax": "3.2.2",
     "marked": "15.0.12",
     "math_conversion_errors": 0,
-    "visual_browser_review": "unavailable"
+    "visual_browser_review": "not performed",
+    "static_html_asset_and_math_check": "passed"
   },
   "laser": {
     "pin": 14,
@@ -115,6 +174,23 @@
     "flight_performed": false,
     "cycle_timing_measured": false,
     "laser_phase_measured": false,
-    "next_step": "User powers airframe with SA cut, low throttle, centered S1; RemoteMCU download and static checks before normal-flight tuning, then low-speed spin"
+    "next_step": "User powers airframe with SA cut, low throttle and physical S1 centered; download v2 through RemoteMCU, then verify static directions/parameters/timing before normal flight; enable low-speed spin only after normal tuning"
+  },
+  "previous_implementation_commit": "6ca118db0fd98aaf64b6ce738f53b5b4b577667e",
+  "default_spin_limits": {
+    "max_rate_deg_s": 15,
+    "max_acceleration_deg_s2": 10,
+    "stop_rate_upper_limit_deg_s": 2,
+    "stop_rate_fraction_of_max": 0.1,
+    "stop_dwell_seconds": 0.5,
+    "exit_reference_deg_s": 20,
+    "thrust_direction_slew_deg_s": 60
+  },
+  "first_flight_recipe": {
+    "normal_mode_first": true,
+    "spin_max_deg_s": 10,
+    "spin_max_accel_deg_s2": 10,
+    "spin_tilt_limit_deg": 5,
+    "spin_enabled_only_after_normal_flight_review": true
   }
 }

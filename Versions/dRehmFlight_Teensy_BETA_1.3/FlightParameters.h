@@ -9,7 +9,7 @@
 namespace tricopter {
 class FlightParameters {
  public:
-  static constexpr unsigned count=94;
+  static constexpr unsigned count=107;
   void begin() {
     added_=0;
     add(1,"flight_enable",RMP_PARAM_BOOL,0,1,0);
@@ -54,8 +54,8 @@ class FlightParameters {
     add(79,"spin_damping_Nm_s_rad",RMP_PARAM_F32,0,1,0);
     add(80,"spin_quadratic_damping",RMP_PARAM_F32,0,1,0);
     add(81,"spin_feedforward_scale",RMP_PARAM_F32,0,1,1);
-    add(82,"spin_max_deg_s",RMP_PARAM_F32,1,90,45);
-    add(83,"spin_max_accel_deg_s2",RMP_PARAM_F32,1,180,30);
+    add(82,"spin_max_deg_s",RMP_PARAM_F32,1,90,15);
+    add(83,"spin_max_accel_deg_s2",RMP_PARAM_F32,1,180,10);
     add(84,"laser_align_window_deg",RMP_PARAM_F32,.1,30,2);
     add(85,"laser_pulse_ms",RMP_PARAM_F32,1,200,10);
     add(86,"laser_min_interval_ms",RMP_PARAM_F32,10,2000,100);
@@ -72,6 +72,19 @@ class FlightParameters {
     add(97,"spin_tilt_limit_deg",RMP_PARAM_F32,1,15,10);
     add(98,"normal_tilt_limit_deg",RMP_PARAM_F32,1,35,30);
     add(99,"generalized_yaw_max_deg_s",RMP_PARAM_F32,1,60,20);
+    add(100,"spin_stop_rate_deg_s",RMP_PARAM_F32,.2,3,2);
+    add(101,"spin_stop_dwell_s",RMP_PARAM_F32,.3,2,.5);
+    add(102,"exit_reference_deg_s",RMP_PARAM_F32,1,30,20);
+    add(103,"tilt_command_deg_s",RMP_PARAM_F32,5,90,60);
+    add(104,"spin_overspeed_margin_deg_s",RMP_PARAM_F32,2,30,5);
+    add(105,"spin_overspeed_dwell_s",RMP_PARAM_F32,.1,2,.25);
+    add(106,"spin_rate_error_deg_s",RMP_PARAM_F32,2,30,8);
+    add(107,"spin_rate_error_dwell_s",RMP_PARAM_F32,.3,5,1);
+    add(108,"spin_tilt_error_deg",RMP_PARAM_F32,3,20,8);
+    add(109,"spin_tilt_error_dwell_s",RMP_PARAM_F32,.2,2,.5);
+    add(110,"spin_allocation_min_scale",RMP_PARAM_F32,.5,.99,.95);
+    add(111,"spin_allocation_dwell_s",RMP_PARAM_F32,.2,2,.5);
+    add(112,"spin_braking_settle_timeout_s",RMP_PARAM_F32,2,20,5);
     rmp_params_init(&parameters_,definitions_,count,nullptr,nullptr);
     rebuild();
   }
@@ -142,9 +155,16 @@ class FlightParameters {
     c.gyroFeedforwardScale=number(v,90);
     c.reference.spinTilt=number(v,91); c.reference.normalTilt=number(v,92);
     c.reference.generalizedYawMaxDps=number(v,93);
+    c.safety.stopRateDps=number(v,94); c.safety.stopDwellSeconds=number(v,95);
+    c.safety.exitReferenceDps=number(v,96); c.safety.tiltCommandDps=number(v,97);
+    c.safety.overspeedMarginDps=number(v,98); c.safety.overspeedDwellSeconds=number(v,99);
+    c.safety.rateErrorDps=number(v,100); c.safety.rateErrorDwellSeconds=number(v,101);
+    c.safety.tiltErrorDeg=number(v,102); c.safety.tiltErrorDwellSeconds=number(v,103);
+    c.safety.allocationMinScale=number(v,104); c.safety.allocationDwellSeconds=number(v,105);
+    c.safety.brakingSettleSeconds=number(v,106);
     c.ready=a>0 && b>0 && d>0 && c.model.valid(false) &&
         (c.model.calibrated || c.initialModelEnabled);
-    c.spinReady=c.ready && c.spin.valid() && c.model.ixx>0 && c.model.iyy>0;
+    c.spinReady=c.ready && c.spin.valid() && c.safety.valid() && c.model.ixx>0 && c.model.iyy>0;
     return c;
   }
   static uint32_t milliseconds(const uint32_t *v,unsigned i) {

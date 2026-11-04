@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[2]
 FILES = [ROOT / 'docs/remote-mcu' / name for name in
          ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json')]
-PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 100))
+PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 113))
 
 
 def check(condition, message):
@@ -37,7 +37,7 @@ def validate(profiles):
                      'wave_windows', 'channels', 'cards', 'parameters', 'parameter_mode'}, 'Application fields')
     check(a['target_profile'] == 'teensy40-usb', 'Target profile mismatch')
     check(1 <= a['window_seconds'] <= 30 and a['wave_layout'] in ('stack', 'columns'), 'Wave layout')
-    for key, ids in [('channels', set(range(32))), ('cards', set(range(1, 47))), ('parameters', PARAMETER_IDS)]:
+    for key, ids in [('channels', set(range(32))), ('cards', set(range(1, 59))), ('parameters', PARAMETER_IDS)]:
         items = a[key]
         check(len(items) == len(ids) and {v['id'] for v in items} == ids, f'{key}: IDs/count mismatch')
         check(all(label(v['name']) for v in items), f'{key}: UTF-8 name limit')
@@ -117,7 +117,7 @@ def main():
         profiles = [json.loads(p.read_text()) for p in FILES]
         validate(profiles)
         result = install(args.agent, profiles, args.select) if args.install else {
-            'validation': 'passed', 'channels': 32, 'states': 46, 'parameters': 94,
+            'validation': 'passed', 'channels': 32, 'states': 58, 'parameters': 107,
             'windows': 8, 'agent_contacted': False}
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, KeyError, OSError, HTTPError, URLError) as error:

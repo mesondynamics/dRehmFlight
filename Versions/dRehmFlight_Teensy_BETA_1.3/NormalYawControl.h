@@ -2,6 +2,7 @@
 #include "TricopterDynamics.h"
 #include "LaserSync.h"
 #include "YawServoControl.h"
+#include "SpinSupervisor.h"
 
 namespace tricopter {
 struct NormalYawConfig {
@@ -9,6 +10,7 @@ struct NormalYawConfig {
   SpinDynamicsModel spin{};
   LaserSyncConfig laser{};
   AttitudeReferenceConfig reference{};
+  SpinSafetyConfig safety{};
   float rollKp=.2f, rollKi=.3f, rollKd=.05f;
   float pitchKp=.2f, pitchKi=.3f, pitchKd=.05f;
   float spinRateKp=1.5f, spinRateKi=.4f, gyroFeedforwardScale=1;

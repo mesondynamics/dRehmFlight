@@ -191,7 +191,20 @@ inline float servoForTilt(const RotorModel &r,float tilt) {
   return 130;
 }
 
-// At most five servo candidates, no unbounded optimization. Each candidate
+// Prefer collective, then transverse authority, then yaw tracking among the
+// bounded candidates. This is an explicit priority, not a global optimum.
+inline bool allocationPreferred(const Allocation &candidate,const Allocation &best) {
+  if(!candidate.valid) return false;
+  if(!best.valid) return true;
+  constexpr float tolerance=.0001f;
+  if(candidate.liftScale<best.liftScale-tolerance) return false;
+  if(candidate.liftScale>best.liftScale+tolerance) return true;
+  if(candidate.attitudeScale<best.attitudeScale-tolerance) return false;
+  if(candidate.attitudeScale>best.attitudeScale+tolerance) return true;
+  return std::fabs(candidate.yawResidual)<=std::fabs(best.yawResidual)+1e-6f;
+}
+
+// At most six servo candidates, no unbounded optimization. Each candidate
 // uses one 3x3 solve normally, at most six when positive-thrust saturation
 // requires transverse-demand bisection. Servo limits combine calibrated
 // physical travel and the configured command slew rate.
@@ -221,8 +234,15 @@ inline Allocation allocateYaw(const DynamicsModel &m,Vec3 target,float yaw,
     if (!std::isfinite(gain) || std::fabs(gain)<1e-6f) break;
     const float candidate=clamp(servo+best.yawResidual/gain,low,high);
     const Allocation result=allocateFeasibleAt(m,target,yaw,candidate);
-    if (!result.valid || std::fabs(result.yawResidual)>std::fabs(best.yawResidual)+1e-6f) break;
+    if (!allocationPreferred(result,best)) break;
     servo=candidate; best=result;
+  }
+  if(best.valid && (best.liftScale<.9999f || best.attitudeScale<.9999f)) {
+    // Recover collective authority by moving toward vertical, even when the
+    // requested yaw torque would prefer further motor tilt. Respect slew.
+    const float relief=clamp(servoForTilt(m.rotor[2],0),low,high);
+    const Allocation candidate=allocateFeasibleAt(m,target,yaw,relief);
+    if(allocationPreferred(candidate,best)) best=candidate;
   }
   best.limited=best.limited || std::fabs(best.yawResidual)>.0001f;
   return best;

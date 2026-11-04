@@ -125,9 +125,9 @@ struct AttitudeReferenceConfig {
   float normalTilt=normalTiltDeg, spinTilt=10, generalizedYawMaxDps=20;
 };
 constexpr float yawSlewDps2 = 180.0f;
-constexpr float spinStoppedDps = 15.0f;
-constexpr float spinStoppedSeconds = .3f;
-constexpr float exitBlendSeconds = 1.0f;
+constexpr float spinStoppedDps = 2.0f;
+constexpr float spinStoppedSeconds = .5f;
+constexpr float exitBlendSeconds = 1.0f; // Minimum alignment time, not a fixed-duration rotation.
 constexpr float faultRecoverySeconds = .3f;
 constexpr float tiltIntegralLimit = .075f; // actuator-output units, per reference axis
 // Spin changes the tilt dynamics. Keep full P/D feedback and lower only the

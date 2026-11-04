@@ -1,8 +1,8 @@
 {
   "format_version": 1,
-  "id": "drehmflight-cyclone-rotor-v1",
+  "id": "drehmflight-cyclone-rotor-v2",
   "revision": 1,
-  "name": "普通／低速旋转三旋翼 · 模型闭环调试",
+  "name": "普通／低速自旋三旋翼 v2 · 切换与保护",
   "data": {
     "kind": "application",
     "target_profile": "teensy40-usb",
@@ -25,7 +25,7 @@
       },
       {
         "id": "heading",
-        "name": "航向、相位与激光计数（注意各单位）",
+        "name": "航向、相位、模式与保护原因（各单位）",
         "channels": [
           6,
           7,
@@ -390,10 +390,10 @@
       },
       {
         "id": 31,
-        "name": "激光累计同步脉冲数",
-        "unit": "",
+        "name": "自旋保护原因位（锁存）",
+        "unit": "bits",
         "precision": 0,
-        "color": "#8ccece",
+        "color": "#d84c54",
         "visible": true,
         "scale": 1
       }
@@ -810,6 +810,114 @@
         "enabled": true,
         "unit": "",
         "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 47,
+        "name": "自旋保护位：1超速/2率差/4姿态/8分配/16制动",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 48,
+        "name": "本次自旋已锁定（需停机复位）",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 49,
+        "name": "本轮连续制动时间",
+        "enabled": true,
+        "unit": "s",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 50,
+        "name": "接近零速连续稳定时间",
+        "enabled": true,
+        "unit": "s",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 51,
+        "name": "广义参考方向转速",
+        "enabled": true,
+        "unit": "°/s",
+        "precision": 2,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 52,
+        "name": "目标推力轴变化速度",
+        "enabled": true,
+        "unit": "°/s",
+        "precision": 2,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 53,
+        "name": "超速连续时间",
+        "enabled": true,
+        "unit": "s",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 54,
+        "name": "航向率误差超限连续时间",
+        "enabled": true,
+        "unit": "s",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 55,
+        "name": "推力方向误差超限连续时间",
+        "enabled": true,
+        "unit": "s",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 56,
+        "name": "执行器余量不足连续时间",
+        "enabled": true,
+        "unit": "s",
+        "precision": 3,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 57,
+        "name": "自旋保护触发累计次数",
+        "enabled": true,
+        "unit": "次",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 58,
+        "name": "当前停止转速阈值",
+        "enabled": true,
+        "unit": "°/s",
+        "precision": 2,
         "warning_min": null,
         "warning_max": null
       }
@@ -1283,6 +1391,71 @@
       {
         "id": 99,
         "name": "广义前方最大转向率 (°/s)",
+        "enabled": true
+      },
+      {
+        "id": 100,
+        "name": "停止率阈值上限（实际≤自旋上限10%，°/s）",
+        "enabled": true
+      },
+      {
+        "id": 101,
+        "name": "停转连续稳定时间 (s)",
+        "enabled": true
+      },
+      {
+        "id": 102,
+        "name": "退出时参考方向最大归并速度 (°/s)",
+        "enabled": true
+      },
+      {
+        "id": 103,
+        "name": "目标推力轴最大变化速度 (°/s)",
+        "enabled": true
+      },
+      {
+        "id": 104,
+        "name": "实测超速裕量 (°/s)",
+        "enabled": true
+      },
+      {
+        "id": 105,
+        "name": "超速连续触发时间 (s)",
+        "enabled": true
+      },
+      {
+        "id": 106,
+        "name": "航向率误差触发阈值 (°/s)",
+        "enabled": true
+      },
+      {
+        "id": 107,
+        "name": "航向率误差连续触发时间 (s)",
+        "enabled": true
+      },
+      {
+        "id": 108,
+        "name": "推力方向误差触发阈值 (°)",
+        "enabled": true
+      },
+      {
+        "id": 109,
+        "name": "推力方向误差连续触发时间 (s)",
+        "enabled": true
+      },
+      {
+        "id": 110,
+        "name": "分配余量最低比例",
+        "enabled": true
+      },
+      {
+        "id": 111,
+        "name": "分配不足连续触发时间 (s)",
+        "enabled": true
+      },
+      {
+        "id": 112,
+        "name": "理想制动时间后的额外等待 (s)",
         "enabled": true
       }
     ],
