@@ -66,6 +66,9 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include <SPI.h>      //SPI communication
 #include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
 #include "TricopterConfig.h"
+#if DREHM_REMOTE_MCU
+  #include <Entropy.h> // Teensy 1.62.0 bundled hardware TRNG; setup only.
+#endif
 #include "CycloneControl.h"
 #include "LaserSync.h"
 #include "RemoteMcuTelemetry.h"
@@ -375,11 +378,23 @@ uint32_t skippedRemotePolls = 0;
 //========================================================================================================================//
 
 void setup() {
+#if DREHM_REMOTE_MCU
+  Entropy.Initialize();
+#endif
   Serial.begin(500000); //USB serial
   remoteTelemetry.setDeviceId(HW_OCOTP_MAC0);
   flightParameters.begin();
   remoteTelemetry.setParameters(handleRemoteParameters, nullptr, tricopter::FlightParameters::count);
   delay(500);
+#if DREHM_REMOTE_MCU
+  // At most 50 ms in setup, never in the 2 kHz flight loop. Without a valid
+  // nonzero TRNG nonce telemetry stays off and flight parameters stay disabled.
+  const uint32_t nonceStart=micros();
+  while (static_cast<uint32_t>(micros()-nonceStart)<50000u) {
+    if (TRNG_MCTL & TRNG_MCTL_ERR) break;
+    if (Entropy.available() && remoteTelemetry.setBootNonce(Entropy.random())) break;
+  }
+#endif
   
   //Initialize all pins
   pinMode(13, OUTPUT); //Pin 13 LED blinker on board, do not modify 

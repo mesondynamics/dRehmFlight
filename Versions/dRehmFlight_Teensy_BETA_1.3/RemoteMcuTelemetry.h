@@ -8,7 +8,7 @@ namespace remote_mcu {
 constexpr unsigned channelCount = 32; // RemoteMCU v0.3 hard limit (agent + web).
 constexpr unsigned stateCount = 58;
 static_assert(8+stateCount*8+RMP_HEADER_SIZE+4<=512,"STATE must fit one nonblocking USB buffer");
-constexpr const char *buildId = "drehm-cyclone-rotor-v2-laser-20261104";
+constexpr const char *buildId = "drehm-cyclone-rotor-v2-session-20261104";
 
 struct Snapshot {
   float values[channelCount];
@@ -27,6 +27,16 @@ class Telemetry {
     handler_=handler; context_=context; parameterCount_=count;
   }
   uint32_t session() const { return session_; }
+  // Seed once from a hardware-random nonzero boot nonce during setup. Boot time
+  // in micros() can repeat after power cycling, which makes the Agent reject a
+  // reused retired session. All subsequent stream/USB sessions share this one
+  // counter so reconnect cannot reuse an already allocated stream session.
+  bool setBootNonce(uint32_t nonce) {
+    if (!nonce || sessionSeedReady_) return false;
+    sessionSerial_=nonce-1u;
+    sessionSeedReady_=true;
+    return true;
+  }
   void setDeviceId(uint32_t suffix) {
     std::snprintf(deviceId_, sizeof(deviceId_), "teensy40-%06lx",
                   static_cast<unsigned long>(suffix & 0xffffffu));
@@ -34,15 +44,15 @@ class Telemetry {
 
   template<class SerialPort>
   void poll(SerialPort &port, const Snapshot &snapshot, uint32_t now) {
+    // No deterministic fallback if startup entropy was unavailable. Flight
+    // parameters stay at their disabled defaults; no RNG work enters this loop.
+    if (!sessionSeedReady_) return;
     clock_ += static_cast<uint32_t>(now-previousMicros_);
     previousMicros_=now;
     const bool connected=static_cast<bool>(port);
     if (!connected) { wasConnected_=false; return; }
     if (!wasConnected_) {
-      const uint32_t previous=session_;
-      session_=now ^ (++generation_*0x9e3779b9u);
-      if (!session_ || session_==previous) session_=previous+1u;
-      if (!session_) session_=1;
+      session_=nextSession();
       frameSequence_=sampleSequence_=droppedSamples_=0;
       lastSample_=now;
       management_=1;
@@ -99,6 +109,11 @@ class Telemetry {
   }
 
  private:
+  uint32_t nextSession() {
+    ++sessionSerial_;
+    if (!sessionSerial_) ++sessionSerial_;
+    return sessionSerial_;
+  }
   void resetDecoder() {
     rmp_decoder_init(&decoder_);
     // Largest supported request: SET header + 16 value entries. Reject larger
@@ -188,7 +203,7 @@ class Telemetry {
     std::memset(reply_,0,24); std::memcpy(reply_,q,8);
     reply_[8]=status; reply_[9]=op; reply_[10]=enabled;
     if (!status && (enabled!=streamEnabled_ || rate!=sampleRate_)) {
-      pendingSession_=session_+1; if (!pendingSession_) pendingSession_=1;
+      pendingSession_=nextSession();
       pendingRate_=rate; pendingEnabled_=enabled;
     }
     rmp_put_u32(reply_+12,rate);
@@ -198,7 +213,8 @@ class Telemetry {
 
   rmp_decoder_t decoder_{};
   uint64_t clock_=0;
-  uint32_t previousMicros_=0,session_=0,generation_=0,frameSequence_=0;
+  uint32_t previousMicros_=0,session_=0,sessionSerial_=0,frameSequence_=0;
+  bool sessionSeedReady_=false;
   uint32_t sampleSequence_=0,droppedSamples_=0,lastSample_=0,lastManagement_=0;
   bool wasConnected_=false,lastSafe_=false;
   unsigned management_=0;

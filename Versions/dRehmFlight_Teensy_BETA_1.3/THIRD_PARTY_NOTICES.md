@@ -1,5 +1,17 @@
 # Third Party Notices
 
+## Entropy (Teensy bundled library)
+
+The RemoteMCU flight build uses the Entropy library bundled with Teensy core
+1.62.0 to obtain a nonzero hardware-random session nonce once during setup.
+The library is copyright Walter Anderson and contributors, GPL-3.0-or-later;
+the installed `Entropy.cpp` and `Entropy.h` retain their upstream notices.
+Upstream Teensy maintenance: https://github.com/PaulStoffregen/Entropy .
+No library source is copied into this repository. Initialization and its bounded
+startup wait run before the flight loop; no entropy calls or Flash/EEPROM writes
+occur in the flight loop. A startup entropy failure prevents RMP sessions and
+leaves the default flight parameter authorization disabled.
+
 ## CRSFforArduino
 
 This firmware uses CRSFforArduino by Cassandra "ZZ Cat" Robinson, version

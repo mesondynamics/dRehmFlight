@@ -1,0 +1,78 @@
+{
+  "record_type": "session_nonce_fix_software_verification",
+  "date": "2026-11-04",
+  "branch": "feature/cyclone-rotor-tricopter",
+  "base_commit": "6dd55dd",
+  "build_id": "drehm-cyclone-rotor-v2-session-20261104",
+  "hardware_followup": "docs/CYCLONE_HARDWARE_SESSION_20261104.md",
+  "previous_hardware_verification": "docs/cyclone-laser-verification-20261104.json",
+  "problem": {
+    "repeated_boot_id": 2652074076,
+    "agent_retired_session_rejections_confirmed": true,
+    "same_session_network_loss_has_separate_unresolved_cause": true
+  },
+  "change": {
+    "boot_nonce": "nonzero uint32 from hardware TRNG via Teensy bundled Entropy, setup only",
+    "session_allocation": "one shared incrementing counter for USB reconnections and stream configuration changes, skips zero",
+    "additional_startup_poll_bound_us": 50000,
+    "entropy_initialization": "before existing 500 ms startup delay",
+    "no_entropy_behavior": "no RMP session; default flight authorization stays disabled",
+    "main_loop_rng_calls": 0,
+    "flash_or_eeprom_writes_added": false,
+    "control_mapping_or_laser_behavior_changed": false,
+    "remote_mcu_source_or_gateway_firmware_changed": false,
+    "limitation": "32-bit random nonces are not mathematically permanent unique identifiers"
+  },
+  "verification": {
+    "command": "python3 tools/run_host_tests.py --sanitize",
+    "host_programs_passed": 19,
+    "sanitizers": ["address", "undefined"],
+    "new_cases": [
+      "Repeated identical startup timestamp with 1024 independently injected nonces",
+      "Reject zero nonce and repeated initialization",
+      "Unseeded adapter emits no frames",
+      "USB reconnect generates a new session at identical time",
+      "Counter wrap skips zero",
+      "Existing stream change, abandoned reply, old-session rejection and parameter gates"
+    ],
+    "rng_hardware_test": "not performed",
+    "repeated_power_cycle_test": "not performed"
+  },
+  "compile": {
+    "command": "arduino-cli compile --fqbn teensy:avr:teensy40:usb=serial --warnings all --build-path /tmp/drehm-cyclone-session.AkHoUl/teensy --output-dir build/cyclone-rotor-v2-session Versions/dRehmFlight_Teensy_BETA_1.3",
+    "result": "passed",
+    "teensy_core": "1.62.0",
+    "flash_code_bytes": 91120,
+    "flash_data_bytes": 35000,
+    "ram1_variables_bytes": 36864,
+    "ram2_variables_bytes": 12416,
+    "warnings": [
+      "Existing CRSF architecture metadata",
+      "Existing unused MgX/MgY/MgZ",
+      "Existing overlapping memcpy in unused TFMPlus"
+    ]
+  },
+  "artifact": {
+    "path": "build/cyclone-rotor-v2-session/firmware.hex",
+    "format": "Intel HEX text",
+    "bytes": 380297,
+    "sha256": "ba98ce70d3e82384a1b8b9ce2f4003b9970811ff59dda1a385ea2725a1082ba9",
+    "git_ignored": true,
+    "downloaded": false
+  },
+  "critical_sources_sha256": {
+    "RemoteMcuTelemetry.h": "5a78b40f7530a8d067b8aea4ecd1dc204bac5c26985ade0fe3583b354f749348",
+    "dRehmFlight_Teensy_BETA_1.3.ino": "bf0dcdaf39a91fd60381db1e741246df41a57998f313f3e6e4d18d7e52b3e17b"
+  },
+  "dependency": {
+    "name": "Entropy, bundled with Teensy core 1.62.0",
+    "license": "GPL-3.0-or-later",
+    "source_copied_into_repo": false,
+    "installed_Entropy_cpp_sha256": "df2058eb6734b3abb7dd6dbf81783d422fa17485c88971cf6c7ac7b1c4f0cad3",
+    "installed_Entropy_h_sha256": "ee09dcfa44a021d6a04655c20c537b5ff0959a238dd47d22ad48c32d413417c2"
+  },
+  "hardware": {
+    "firmware_downloaded": false,
+    "next_step": "Notify user to power on with SA cut, throttle minimum, S1 centered; download and verify new HELLO before repeated power-cycle/session checks and ordinary hover"
+  }
+}

@@ -44,6 +44,7 @@ static size_t parameters(const rmp_frame_t *f,uint8_t *reply,bool safe,void *con
 }
 static void controlIntegration() {
   Port port; remote_mcu::Telemetry telemetry; remote_mcu::Snapshot sample{};
+  assert(telemetry.setBootNonce(0x8899aabbu));
   tricopter::FlightParameters params; params.begin();
   telemetry.setParameters(parameters,&params,tricopter::FlightParameters::count);
   uint32_t now=1000;
@@ -147,10 +148,42 @@ static void controlIntegration() {
   assert(port.input.empty() && params.config().headingKp==3);
   assert(last(RMP_PONG).size()==40);
 }
+static void rebootIdentityChecks() {
+  remote_mcu::Snapshot sample{};
+  Port unseededPort;
+  remote_mcu::Telemetry unseeded;
+  unseeded.poll(unseededPort,sample,1500000);
+  assert(unseeded.session()==0 && unseededPort.output.empty());
+  assert(!unseeded.setBootNonce(0));
+
+  // Exact repeated startup timestamps reproduced the observed boot ID collision.
+  // Independent entropy nonces must remain independent of that timing.
+  for (uint32_t nonce=1;nonce<=1024;++nonce) {
+    Port port;
+    remote_mcu::Telemetry boot;
+    assert(boot.setBootNonce(nonce));
+    assert(!boot.setBootNonce(nonce+1));
+    boot.poll(port,sample,1500000);
+    assert(boot.session()==nonce && rmp_get_u32(port.output.back().data()+12)==nonce);
+    port.connected=false; boot.poll(port,sample,1500000);
+    port.connected=true; boot.poll(port,sample,1500000);
+    assert(boot.session()==nonce+1);
+  }
+  Port rolloverPort;
+  remote_mcu::Telemetry rollover;
+  assert(rollover.setBootNonce(UINT32_MAX));
+  rollover.poll(rolloverPort,sample,1500000);
+  assert(rollover.session()==UINT32_MAX);
+  rolloverPort.connected=false; rollover.poll(rolloverPort,sample,1500000);
+  rolloverPort.connected=true; rollover.poll(rolloverPort,sample,1500000);
+  assert(rollover.session()==1); // Zero is never a session ID.
+}
+
 int main() {
   Port port;
   port.capacity=512; // Expanded STATE still fits one bounded USB transmit buffer.
   remote_mcu::Telemetry telemetry;
+  assert(telemetry.setBootNonce(0x12345678u));
   telemetry.setDeviceId(0x1881bf);
   remote_mcu::Snapshot sample{};
   sample.state[22]=4; sample.state[33]=8;
@@ -243,5 +276,6 @@ int main() {
   telemetry.poll(port,sample,0x20);
   assert(rmp_get_u64(port.output.back().data()+20)>rmp_get_u64(previous.data()+20));
   controlIntegration();
+  rebootIdentityChecks();
   std::puts("RemoteMCU framing, calibration snapshots, safety updates, bounded I/O, drops and reconnect passed");
 }
