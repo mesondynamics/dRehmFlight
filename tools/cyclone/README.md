@@ -1,8 +1,8 @@
 # Cyclone 开发工具
 
-当前已下载v6 `drehm-cyclone-rotor-v6-60rpm-20261105`，111项参数回读一致，已开始首级15 RPM记录；目标60 RPM（360°/s）尚待逐级实飞验收。新增差动推力相位补偿及激光延迟预测，模型、预设与部署记录见[60 RPM准备](../../docs/CYCLONE_60RPM_PREPARATION_20261105.md)。应用／设备采用新v6 ID，32波形／59状态／111参数／8窗口；转速波形8／9／10／17在Web乘1/6显示RPM，原始RMPLOG仍为°/s。`inspect_recording.py`支持布局一致的水平标定版及v3／v4／v5／v6，历史记录仍保留其原Profile快照。
+当前固件为v7 `drehm-cyclone-rotor-v7-stop-20261105`，111项参数回读一致；15 RPM回退增益后完成一轮接近60 RPM的实机记录，用户反馈整体可用但有轻微晃动，实机调试暂时暂停。模型、预设与部署记录见[完整动力学模型](../../docs/CYCLONE_ROTOR_MODEL.md)和[v7停转资格记录](../../docs/CYCLONE_V7_STOP_QUALIFICATION_20261105.md)。应用／设备采用v7 ID，32波形／59状态／111参数／8窗口；转速波形8／9／10／17在Web乘1/6显示RPM，原始RMPLOG仍为°/s。`inspect_recording.py`支持v3／v4／v5／v6／v7历史Profile，不能跨版本解释状态语义。
 
-此前v5方向激光版已完成30°/s（5 RPM）单方向自旋，用户反馈旋转与激光正常，见[v4／v5实测](../../docs/CYCLONE_V4_SPIN_AND_V5_LASER_20261105.md)。该轮32波形／59状态／109参数使用旧v3 ID应用revision2；它的实飞与周期结果不能当作v6硬件验收。v6预设 `docs/remote-mcu/cyclone-v6-60rpm-test-parameters.json` 含16项，最终目标360°/s；本次首次应用已覆盖82为90，落地核验后再改为180和360，无需各级重新刷固件。
+此前v5方向激光版已完成30°/s（5 RPM）单方向自旋，用户反馈旋转与激光正常，见[v4／v5实测](../../docs/CYCLONE_V4_SPIN_AND_V5_LASER_20261105.md)。该轮32波形／59状态／109参数使用旧v3 ID应用revision2；它的实飞与周期结果不能当作v7硬件验收。v7停转预设 `docs/remote-mcu/cyclone-v7-stop-test-parameters.json` 保留稳定PI 1.5／0.4；60 RPM单项预设 `docs/remote-mcu/cyclone-v7-60rpm-test-parameters.json` 只将参数82设为360°/s，必须在落地、SA停机时使用。60 RPM实机记录已归档，不能将一次记录当作参数辨识完成。
 
 历史水平标定版加入独立找平后的IMU安装角补偿，用户反馈普通模式前飘“现在好很多了”，尚非位置闭环验收。首次低速自旋曾触发超速制动和制动超时，原始诊断保留于[首次自旋记录](../../docs/CYCLONE_SPIN_DIAGNOSTIC_20261105.md)及[水平标定记录](../../docs/CYCLONE_LEVEL_ALIGNMENT_20261105.md)，不代表当前v5状态。动力学与接线以[模型文档](../../docs/CYCLONE_ROTOR_MODEL.md)为准。激光使能后，普通模式解锁时常亮，自旋／制动／归并时仅在广义前方窗口有时限点亮，停机熄灭；状态36包含对齐切入事件，不能当圈数。v5试验预设为 `docs/remote-mcu/cyclone-v5-test-parameters.json`，每次重启后仅停机恢复并回读；分析工具不会下载固件、解锁、电机试转或自动写飞行参数。
 

@@ -52,6 +52,7 @@ class CycloneControl {
   }
   float brakingTime() const { return brakingTime_; }
   float stoppedDwell() const { return stoppedTime_; }
+  float qualifiedRateDps() const { return stopRateTrend_; }
   ControlOutput step(PilotInput in, Quaternion q, Vec3 pilotGyro, float dt,
                      bool armed, bool cut, bool sensorHealthy, const ControlGains &gains) {
     return step(in,q,pilotGyro,dt,armed,cut,sensorHealthy,gains,nullptr,nullptr);
@@ -146,13 +147,14 @@ class CycloneControl {
     const float entryError=std::fmin(5.f,.5f*safety.rateErrorDps);
     if(haveSpinModel && haveFeedback) {
       if(!entryRatesInitialized_) {
-        entryMeasuredRate_=measuredYawRate; entryTargetRate_=allocatedRateTarget_;
+        qualificationRate_=stopRateTrend_=measuredYawRate; entryTargetRate_=allocatedRateTarget_;
         entryRatesInitialized_=true;
       } else {
-        // Only entry qualification uses this 2 Hz trend. The flight PI and
-        // supervisor continue using their existing, faster measurements.
+        // Entry uses 2 Hz and stopped qualification uses 1 Hz. The flight PI
+        // and supervisor retain their existing, faster measurements.
         const float alpha=lowpassAlpha(2,dt);
-        entryMeasuredRate_+=alpha*(measuredYawRate-entryMeasuredRate_);
+        qualificationRate_+=alpha*(measuredYawRate-qualificationRate_);
+        stopRateTrend_+=lowpassAlpha(1,dt)*(measuredYawRate-stopRateTrend_);
         entryTargetRate_+=alpha*(allocatedRateTarget_-entryTargetRate_);
       }
     }
@@ -162,14 +164,14 @@ class CycloneControl {
     const float entryInstantLimit=spinRateLimit+safety.overspeedMarginDps;
     const bool entryEnvelope=haveFeedback &&
         std::fabs(measuredYawRate)<=entryInstantLimit &&
-        std::fabs(entryMeasuredRate_)<=std::fmin(8.f,spinRateLimit) &&
+        std::fabs(qualificationRate_)<=std::fmin(8.f,spinRateLimit) &&
         std::fabs(entryTargetRate_)<=std::fmin(8.f,spinRateLimit) &&
-        std::fabs(entryTargetRate_-entryMeasuredRate_)<=std::fmin(8.f,safety.rateErrorDps) &&
+        std::fabs(entryTargetRate_-qualificationRate_)<=std::fmin(8.f,safety.rateErrorDps) &&
         currentTiltError<=std::fmin(7.f,safety.tiltErrorDeg);
     const bool entrySettled=haveFeedback &&
         std::fabs(measuredYawRate)<=entryInstantLimit &&
-        std::fabs(entryMeasuredRate_)<=entryRate && std::fabs(entryTargetRate_)<=entryRate &&
-        std::fabs(entryTargetRate_-entryMeasuredRate_)<=entryError &&
+        std::fabs(qualificationRate_)<=entryRate && std::fabs(entryTargetRate_)<=entryRate &&
+        std::fabs(entryTargetRate_-qualificationRate_)<=entryError &&
         currentTiltError<=std::fmin(5.f,safety.tiltErrorDeg);
     spinSelected_ = haveSpinModel ?
         entry_.step(in.spinRequested,in.spin==0,std::fabs(in.yaw)<.001f,entrySettled,entryEnvelope,
@@ -191,10 +193,17 @@ class CycloneControl {
       beginBraking(measuredYawRate,spinAccelLimit,safety);
     }
     const float stopRate=haveSpinModel ? safety.stoppedRate(spinRateLimit) : spinStoppedDps;
-    const bool stopped=std::fabs(measuredYawRate)<stopRate &&
+    // A half-second of every raw sample below 2 deg/s is not a meaningful
+    // zero-speed test with motor vibration. Keep the same mean-rate limit and
+    // dwell, but reject instantaneous excursions beyond the tracking envelope.
+    // Persistent rotation still appears in the trend and cannot qualify.
+    const bool useTrend=haveSpinModel && haveFeedback && entryRatesInitialized_;
+    const float stopMeasurement=useTrend ? stopRateTrend_ : measuredYawRate;
+    const bool stopEnvelope=!useTrend || std::fabs(measuredYawRate)<safety.rateErrorDps;
+    const bool stopped=stopEnvelope && std::fabs(stopMeasurement)<stopRate &&
         std::fabs(yawRate_)<.01f && (!haveFeedback || std::fabs(allocatedRateTarget_)<.1f);
     if(mode_==FlightMode::Aligning &&
-       (std::fabs(measuredYawRate)>1.5f*stopRate ||
+       (!stopEnvelope || std::fabs(stopMeasurement)>1.5f*stopRate ||
         (haveFeedback && std::fabs(allocatedRateTarget_)>=.1f)))
       beginBraking(measuredYawRate,spinAccelLimit,safety);
 
@@ -354,7 +363,7 @@ class CycloneControl {
     desiredUp_={0,0,-1};
     supervisor_.idle(); // The abort latch is cleared only by the explicit cut-state check.
     entry_.reset();
-    entryMeasuredRate_=entryTargetRate_=0; entryRatesInitialized_=false;
+    qualificationRate_=stopRateTrend_=entryTargetRate_=0; entryRatesInitialized_=false;
     integralRoll_ = integralPitch_ = 0;
     priorIntegralRoll_=priorIntegralPitch_=requestedRoll_=requestedPitch_=0;
     yawControl_.reset();
@@ -368,7 +377,7 @@ class CycloneControl {
   SpinSafetyConfig defaultSafety_{};
   SpinSupervisor supervisor_;
   SpinEntryGuard entry_;
-  float entryMeasuredRate_=0,entryTargetRate_=0;
+  float qualificationRate_=0,stopRateTrend_=0,entryTargetRate_=0;
   bool entryRatesInitialized_=false;
   bool feedbackValid_=false,allocatedYawLimited_=false;
   float allocatedLiftScale_=1,allocatedAttitudeScale_=1,allocatedRateTarget_=0;

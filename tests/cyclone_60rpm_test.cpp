@@ -44,10 +44,13 @@ static void cyclicAndLaserChecks() {
 // nonlinear linkage, 125-level motors, unknown body drag and rotor momentum.
 // IMU is at CG as requested. This does not simulate position, altitude, contact
 // or large rotating wings and cannot establish actual flight stability.
-static void run(float inertiaScale,float motorLag,float rotorMomentum) {
+static void run(float inertiaScale,float motorLag,float rotorMomentum,float maxRate=360,
+                bool vibration=false,float rateKp=1.5f,float rateKi=.4f,
+                bool expectedBrakingTimeout=false) {
   FlightParameters parameters; parameters.begin();
   auto c=parameters.config(); c.ready=c.spinReady=true;
-  c.spin.maxRateDps=360; c.spin.maxAccelDps2=30;
+  c.spin.maxRateDps=maxRate; c.spin.maxAccelDps2=30;
+  c.spinRateKp=rateKp;c.spinRateKi=rateKi;
   c.reference.spinTilt=5;
   c.safety.overspeedMarginDps=20; c.safety.rateErrorDps=18;
   c.safety.brakingSettleSeconds=10;
@@ -78,10 +81,23 @@ static void run(float inertiaScale,float motorLag,float rotorMomentum) {
     if((t>=18 && t<21) || (t>=75 && t<78)) {input.pitch=.2f;input.roll=-.15f;}
     if(t>=125 && t<127) input.yaw=.2f;
     refs=reference.step(input,estimate,gyro,dt,true,false,true,gains,&c.spin,&c.reference,&c.safety);
-    if(refs.fault || reference.supervisor().inhibited()) {
-      std::fprintf(stderr,"60RPM failed J=%.2f lag=%.3f H=%.3f t=%.3f mode=%u reasons=%u measured=%.2f target=%.2f tilt=%.2f\n",
+    if(!refs.fault && expectedBrakingTimeout && reference.supervisor().inhibited()) {
+      // Negative case: this is a FAILED exit deadline, not accepted 60 RPM
+      // operation. Verify detection and the requested braking state at the
+      // first trip. Continued recovery/latch behavior is tested separately in
+      // cyclone_transition_safety_test.cpp; do not invent a recovery deadline.
+      assert(reference.supervisor().reasons()==spinBrakingTimeout);
+      assert(t>25 && refs.mode==FlightMode::Braking && std::fabs(refs.yawTarget)<.01f);
+      assert(std::fabs(refs.yawRate)<c.safety.rateErrorDps && refs.tiltErrorDeg<c.safety.tiltErrorDeg);
+      std::printf("%.0fRPM PI%.1f/%.1f noise=%d Jx%.2f motor %.0fms H%.3f: EXPECTED EXIT FAILURE at %.3fs, rate %.2f trend %.2fdeg/s, tilt %.2fdeg; timeout detected, braking requested\n",
+          maxRate/6,rateKp,rateKi,vibration,inertiaScale,motorLag*1000,rotorMomentum,
+          t,refs.yawRate,reference.qualifiedRateDps(),refs.tiltErrorDeg);
+      return;
+    } else if(refs.fault || reference.supervisor().inhibited()) {
+      std::fprintf(stderr,"60RPM failed J=%.2f lag=%.3f H=%.3f t=%.3f mode=%u reasons=%u measured=%.2f trend=%.2f truth=%.2f target=%.2f tilt=%.2f\n",
           inertiaScale,motorLag,rotorMomentum,t,unsigned(refs.mode),reference.supervisor().reasons(),
-          refs.yawRate,refs.yawTarget,refs.tiltErrorDeg);
+          refs.yawRate,reference.qualifiedRateDps(),Rotation(truth).headingRate(omega*degrees),
+          refs.yawTarget,refs.tiltErrorDeg);
       assert(false);
     }
     if(refs.mode!=previous) {
@@ -113,7 +129,8 @@ static void run(float inertiaScale,float motorLag,float rotorMomentum) {
     omega=omega+alpha*dt;
     assert(updateImu(truth,{omega.x*degrees,-omega.y*degrees,-omega.z*degrees},
         Rotation(truth).body({0,0,1}),dt,0));
-    gyro=gyro+(omega*degrees-gyro)*.1f;
+    const Vec3 measured=omega*degrees+Vec3{0,0,vibration ? 8*std::sin(2*3.14159265f*20*t) : 0};
+    gyro=gyro+(measured-gyro)*.1f;
     accel=accel+(Rotation(truth).body({0,0,1})-accel)*.14f;
     assert(updateImu(estimate,{gyro.x,-gyro.y,-gyro.z},accel,dt,.04f));
     const float tilt=vectorAngle(Rotation(truth).bz,{0,0,1})*degrees;
@@ -121,7 +138,7 @@ static void run(float inertiaScale,float motorLag,float rotorMomentum) {
     peakTilt=std::fmax(peakTilt,tilt);peakEstimateError=std::fmax(peakEstimateError,estimateError);
     peakRate=std::fmax(peakRate,std::fabs(Rotation(truth).headingRate(omega*degrees)));
     if((t>=18 && t<24) || (t>=75 && t<81)) {
-      const float desired=t<30 ? -360 : 360;
+      const float desired=t<30 ? -maxRate : maxRate;
       const float error=Rotation(truth).headingRate(omega*degrees)-desired;
       steadyError+=error*error;++steadySamples;
     }
@@ -138,9 +155,12 @@ static void run(float inertiaScale,float motorLag,float rotorMomentum) {
     }
   }
   const float rmse=std::sqrt(steadyError/steadySamples);
-  std::printf("60RPM Jx%.2f motor %.0fms H%.3f: peak %.2fdeg/s tilt %.2fdeg AHRS %.2fdeg RMSE %.2fdeg/s brake/align/normal %u/%u/%u laser %u\n",
-      inertiaScale,motorLag*1000,rotorMomentum,peakRate,peakTilt,peakEstimateError,rmse,
+  std::printf("%.0fRPM PI%.1f/%.1f noise=%d Jx%.2f motor %.0fms H%.3f: peak %.2fdeg/s tilt %.2fdeg AHRS %.2fdeg RMSE %.2fdeg/s brake/align/normal %u/%u/%u laser %u\n",
+      maxRate/6,rateKp,rateKi,vibration,inertiaScale,motorLag*1000,rotorMomentum,peakRate,peakTilt,peakEstimateError,rmse,
       brakingEntries,aligningEntries,normalReturns,laser.pulseCount());
+  if(expectedBrakingTimeout) {
+    assert(false && "Expected exit-deadline failure was not detected");
+  }
   assert(rmse<10 && peakEstimateError<3 && refs.mode==FlightMode::Normal);
   assert(brakingEntries>=2 && aligningEntries>=2 && normalReturns>=2 && laser.pulseCount()>12);
 }
@@ -148,5 +168,14 @@ int main() {
   cyclicAndLaserChecks();
   run(1,.04f,0);
   run(.5f,.04f,.015f);
-  run(2,.08f,-.015f);
+  run(2,.08f,-.015f,360,false,1.5f,.4f,true);
+  run(1,.04f,0,90,true);
+  run(2,.08f,-.015f,360,true,1.5f,.4f,true);
+  // Keep the ideal-model candidate covered, although PI4/2.5 was rejected
+  // by actual 15RPM flight and is no longer the operational preset.
+  run(1,.04f,0,360,false,4,2.5f);
+  run(.5f,.04f,.015f,360,false,4,2.5f);
+  run(2,.08f,-.015f,360,false,4,2.5f);
+  run(1,.04f,0,90,true,4,2.5f);
+  run(2,.08f,-.015f,360,true,4,2.5f);
 }

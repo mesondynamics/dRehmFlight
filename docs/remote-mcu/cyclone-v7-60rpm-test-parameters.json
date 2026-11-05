@@ -1,0 +1,12 @@
+{
+  "name": "v7 60 RPM 单项升速预设",
+  "expected_build": "drehm-cyclone-rotor-v7-stop-20261105",
+  "baseline": "cyclone-v7-stop-test-parameters.json; all 111 live parameters must match the stable revision 3 snapshot except ID82",
+  "storage": "RAM-only; apply only with fresh SA stopped, RC online, physical control inactive; read back all 111 parameters",
+  "units": "360 deg/s = 60 RPM; acceleration remains 30 deg/s2, approximately 12 seconds to accelerate or brake",
+  "gains": "Keep operational spin PI at 1.5/0.4. PI4/2.5 was rejected by actual flight; do not restore it.",
+  "verification_limit": "15 RPM flight is smooth. Complete airborne braking/alignment has not been observed. The 2x inertia 60 RPM model can miss its exit deadline; protection remains enabled. This preset is a test request, not 60 RPM acceptance.",
+  "values": [
+    {"id": 82, "type": 1, "value": 360}
+  ]
+}

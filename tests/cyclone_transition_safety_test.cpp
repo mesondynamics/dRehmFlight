@@ -55,15 +55,34 @@ static void dwellAndReacceleration() {
   in.spin=0;in.spinRequested=false;
   // First bring only the target to zero. A moving airframe cannot build dwell.
   for(unsigned i=0;i<1000;++i) r.tick(in,2);
-  for(unsigned i=0;i<960;++i) assert(r.tick(in).mode==FlightMode::Braking);
-  r.tick(in,2); // above the effective 1.5 deg/s stop threshold resets the dwell
+  for(unsigned i=0;i<800;++i) assert(r.tick(in).mode==FlightMode::Braking);
+  r.tick(in,20); // instantaneous tracking-envelope breach resets the dwell
   for(unsigned i=0;i<960;++i) assert(r.tick(in).mode==FlightMode::Braking);
   for(unsigned i=0;i<80;++i) r.tick(in);
   assert(r.out.mode==FlightMode::Aligning);
-  assert(r.tick(in,3).mode==FlightMode::Braking);
+  assert(r.tick(in,20).mode==FlightMode::Braking);
   for(unsigned i=0;i<960;++i) assert(r.tick(in).mode==FlightMode::Braking);
   assert(!r.control.supervisor().inhibited());
-  std::puts("Stop dwell resets after noise/reacceleration; alignment returns to braking");
+  std::puts("Stop dwell resets on an instantaneous envelope breach; alignment returns to braking");
+}
+static void vibrationAndResidualRotation() {
+  for(float frequency : {5.f,20.f}) for(float residual : {0.f,6.f,-6.f}) {
+    Rig r;PilotInput in{.5f,0,0,0,.2f,true};r.start(in);
+    for(unsigned i=0;i<1000;++i) r.tick(in,3);
+    in.spin=0;in.spinRequested=false;
+    bool aligned=false,normal=false;
+    for(unsigned i=0;i<16000;++i) {
+      // Zero-mean ripple: peak heading excursion <=0.20 deg at 5/20 Hz.
+      const float rate=residual+6*std::sin(2*3.14159265f*frequency*i*dt);
+      const auto out=r.tick(in,rate);
+      aligned=aligned || out.mode==FlightMode::Aligning;
+      normal=normal || out.mode==FlightMode::Normal;
+      if(residual!=0) assert(out.mode==FlightMode::Braking);
+    }
+    if(residual==0) assert(aligned && normal && !r.control.supervisor().inhibited());
+    else assert(!aligned && !normal && (r.control.supervisor().reasons()&spinBrakingTimeout));
+  }
+  std::puts("Zero-mean vibration permits handoff; persistent +/-6 deg/s still blocks and times out");
 }
 static void boundedHandoff(float sign) {
   Rig r;PilotInput in{.5f,0,0,0,sign,true};
@@ -196,7 +215,8 @@ static void collectiveBeforeYaw() {
   std::puts("Saturated allocation recovers collective before satisfying more yaw torque");
 }
 int main() {
-  stoppingMustBeMeasured();dwellAndReacceleration();boundedHandoff(1);boundedHandoff(-1);
+  stoppingMustBeMeasured();dwellAndReacceleration();vibrationAndResidualRotation();
+  boundedHandoff(1);boundedHandoff(-1);
   yawDuringAlignment();physicalRateTargetMustStop();supervisorReasons();
   allocationAbortAndReset();collectiveBeforeYaw();
   std::puts("Low-speed transition boundaries, pilot handoff, spin supervision and reset interlocks passed");
