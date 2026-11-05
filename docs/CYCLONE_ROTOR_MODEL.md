@@ -1,8 +1,8 @@
 # 普通与低速自旋三旋翼：动力学、控制与调试
 
-版本日期：2026-11-05。开发分支：`feature/cyclone-rotor-tricopter`。当前已下载固件标识：`drehm-cyclone-rotor-v2-level-20261105`，停机水平示值已核对，悬停改善效果待对照试飞验证。便于阅读公式的[离线 HTML 版本](reports/cyclone-rotor-model.html)与本文由同一份内容构建。
+版本日期：2026-11-05。开发分支：`feature/cyclone-rotor-tricopter`。当前已下载固件标识：`drehm-cyclone-rotor-v3-entry-20261105`，已核对应用上线、参数及停机主周期，见[本次下载记录](CYCLONE_V3_DOWNLOAD_20261105.md)。便于阅读公式的[离线 HTML 版本](reports/cyclone-rotor-model.html)与本文由同一份内容构建。
 
-本次待下载版为 `drehm-cyclone-rotor-v3-entry-20261105`，修正过早S1请求造成后续测试被锁止的进入流程，见[v3进入确认设计](CYCLONE_SPIN_ENTRY_V3_20261105.md)。下文入口及遥测布局描述对应v3；已有v2实机证据保留原版本标识，不将软件验证当作新固件飞行验收。
+本次v3修正过早S1请求造成后续测试被锁止的进入流程，见[v3进入确认设计](CYCLONE_SPIN_ENTRY_V3_20261105.md)。下文入口及遥测布局描述对应v3；已有v2实机证据保留原版本标识，不将软件验证及停机核对当作新固件飞行验收。
 
 ## 1. 本版解决什么问题
 
