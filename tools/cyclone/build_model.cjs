@@ -6,10 +6,13 @@ const {spawnSync} = require('node:child_process');
 const root = path.resolve(__dirname, '../..');
 const dependencies = path.resolve(process.argv[2] || path.join(__dirname, 'node_modules'));
 const {marked} = require(path.join(dependencies, 'marked'));
-const source = path.join(root, 'docs/CYCLONE_ROTOR_MODEL.md');
-const output = path.join(root, 'docs/reports/cyclone-rotor-model.html');
+const source = path.resolve(root, process.argv[3] || 'docs/CYCLONE_ROTOR_MODEL.md');
+const output = path.resolve(root, process.argv[4] || 'docs/reports/cyclone-rotor-model.html');
+const sourceMarkdown = fs.readFileSync(source, 'utf8');
+const escapeHtml = value => value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const title = escapeHtml(sourceMarkdown.match(/^# (.+)$/m)?.[1] || 'dRehmFlight 工程文档');
 const expressions = [];
-let markdown = fs.readFileSync(source, 'utf8').replace(/\\\[\s*([\s\S]*?)\\\]/g, (_, tex) => {
+let markdown = sourceMarkdown.replace(/\\\[\s*([\s\S]*?)\\\]/g, (_, tex) => {
   const id = expressions.push(tex.trim()) - 1;
   return `\n<div class="equation" data-equation="${id}">MATH_${id}</div>\n`;
 });
@@ -19,7 +22,7 @@ const render = spawnSync(process.execPath, [path.join(root, 'tools/yaw/render_re
 });
 if (render.status !== 0) throw new Error(render.stderr || 'Math renderer failed');
 const svg = JSON.parse(render.stdout);
-if (svg.length !== expressions.length || !svg.length) throw new Error('Formula count mismatch');
+if (svg.length !== expressions.length) throw new Error('Formula count mismatch');
 const headings = [];
 const renderer = new marked.Renderer();
 renderer.heading = function ({tokens, depth}) {
@@ -31,17 +34,18 @@ renderer.heading = function ({tokens, depth}) {
 };
 let body = marked.parse(markdown, {renderer});
 body = body.replace(/MATH_(\d+)/g, (_, id) => svg[Number(id)]);
-// Markdown links start in docs/, while the generated page lives in docs/reports/.
+// Resolve source-relative links from the generated document's directory.
+const linkBase = path.relative(path.dirname(output), path.dirname(source)).split(path.sep).join('/');
 body = body.replace(/href="([^"#]+)"/g, (attribute, href) => {
   if (/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(href)) return attribute;
-  return `href="${path.posix.join('..', href)}"`;
+  return `href="${path.posix.join(linkBase, href)}"`;
 });
 if (body.includes('MATH_') || body.includes('data-mjx-error')) throw new Error('Unrendered formula');
 const toc = headings.filter(h => !h.hidden).map(h => `<a href="#${h.id}">${h.text}</a>`).join('');
 const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>普通与低速自旋三旋翼 · 动力学与控制</title>
+<title>${title}</title>
 <style>
 :root{color-scheme:light;--ink:#172b3b;--accent:#006c78;--line:#d7e3e7}
 *{box-sizing:border-box}body{margin:0;background:#f2f6f7;color:var(--ink);font:16px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
@@ -56,9 +60,9 @@ table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0}th,td{pad
 footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:#526b78}
 @media(max-width:900px){.layout{display:block;padding:0 12px;margin:12px auto}nav{position:static;max-height:none;display:flex;overflow-x:auto;gap:12px;margin:0 0 14px;white-space:nowrap}main{padding:22px 18px}h1{font-size:25px}}
 @media print{body{background:white;font-size:11pt}.bar,nav{display:none}.layout{display:block;margin:0;padding:0}main{border:0;padding:0}h2,h3{break-after:avoid}table,.equation{break-inside:avoid}.equation{overflow:visible;font-size:75%}a{color:inherit}}
-</style></head><body><div class="bar">dRehmFlight · Cyclone Rotor / 工程模型与调试准备 · 2026-11-05</div>
+</style></head><body><div class="bar">dRehmFlight · Cyclone Rotor / 工程模型与实测记录 · 2026-11-05</div>
 <div class="layout"><nav aria-label="目录">${toc}</nav><main>${body}
-<footer>由 <a href="../CYCLONE_ROTOR_MODEL.md">Markdown 源文档</a>构建。公式已在构建时转换为SVG，断网可读；本文没有本版实机飞行结果。</footer>
+<footer>由 <a href="${escapeHtml(path.relative(path.dirname(output), source).split(path.sep).join('/'))}">Markdown 源文档</a>构建，断网可读。公式在构建时转换为SVG；实测、仿真及待验收项目按正文各自标注。</footer>
 </main></div></body></html>\n`;
 fs.writeFileSync(output, html);
 process.stdout.write(JSON.stringify({output, equations: svg.length, bytes: Buffer.byteLength(html)}) + '\n');
