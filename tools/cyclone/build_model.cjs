@@ -52,7 +52,7 @@ table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0}th,td{pad
 footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:#526b78}
 @media(max-width:900px){.layout{display:block;padding:0 12px;margin:12px auto}nav{position:static;max-height:none;display:flex;overflow-x:auto;gap:12px;margin:0 0 14px;white-space:nowrap}main{padding:22px 18px}h1{font-size:25px}}
 @media print{body{background:white;font-size:11pt}.bar,nav{display:none}.layout{display:block;margin:0;padding:0}main{border:0;padding:0}h2,h3{break-after:avoid}table,.equation{break-inside:avoid}.equation{overflow:visible;font-size:75%}a{color:inherit}}
-</style></head><body><div class="bar">dRehmFlight · Cyclone Rotor / 工程模型与调试准备 · 2026-11-04</div>
+</style></head><body><div class="bar">dRehmFlight · Cyclone Rotor / 工程模型与调试准备 · 2026-11-05</div>
 <div class="layout"><nav aria-label="目录">${toc}</nav><main>${body}
 <footer>由 <a href="../CYCLONE_ROTOR_MODEL.md">Markdown 源文档</a>构建。公式已在构建时转换为SVG，断网可读；本文没有本版实机飞行结果。</footer>
 </main></div></body></html>\n`;

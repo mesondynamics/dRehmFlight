@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[2]
 FILES = [ROOT / 'docs/remote-mcu' / name for name in
          ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json')]
-PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 113))
+PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 115))
 
 
 def check(condition, message):
@@ -117,7 +117,7 @@ def main():
         profiles = [json.loads(p.read_text()) for p in FILES]
         validate(profiles)
         result = install(args.agent, profiles, args.select) if args.install else {
-            'validation': 'passed', 'channels': 32, 'states': 58, 'parameters': 107,
+            'validation': 'passed', 'channels': 32, 'states': 58, 'parameters': len(PARAMETER_IDS),
             'windows': 8, 'agent_contacted': False}
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, KeyError, OSError, HTTPError, URLError) as error:

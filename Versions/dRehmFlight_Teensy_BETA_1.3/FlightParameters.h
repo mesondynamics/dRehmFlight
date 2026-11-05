@@ -9,7 +9,7 @@
 namespace tricopter {
 class FlightParameters {
  public:
-  static constexpr unsigned count=107;
+  static constexpr unsigned count=109;
   void begin() {
     added_=0;
     add(1,"flight_enable",RMP_PARAM_BOOL,0,1,0);
@@ -85,6 +85,8 @@ class FlightParameters {
     add(110,"spin_allocation_min_scale",RMP_PARAM_F32,.5,.99,.95);
     add(111,"spin_allocation_dwell_s",RMP_PARAM_F32,.2,2,.5);
     add(112,"spin_braking_settle_timeout_s",RMP_PARAM_F32,2,20,5);
+    add(113,"imu_level_roll_deg",RMP_PARAM_F32,-5,5,measuredLevelRollDeg);
+    add(114,"imu_level_pitch_deg",RMP_PARAM_F32,-5,5,measuredLevelPitchDeg);
     rmp_params_init(&parameters_,definitions_,count,nullptr,nullptr);
     rebuild();
   }
@@ -162,7 +164,8 @@ class FlightParameters {
     c.safety.tiltErrorDeg=number(v,102); c.safety.tiltErrorDwellSeconds=number(v,103);
     c.safety.allocationMinScale=number(v,104); c.safety.allocationDwellSeconds=number(v,105);
     c.safety.brakingSettleSeconds=number(v,106);
-    c.ready=a>0 && b>0 && d>0 && c.model.valid(false) &&
+    c.level.set(number(v,107),number(v,108));
+    c.ready=a>0 && b>0 && d>0 && c.model.valid(false) && c.level.valid() &&
         (c.model.calibrated || c.initialModelEnabled);
     c.spinReady=c.ready && c.spin.valid() && c.safety.valid() && c.model.ixx>0 && c.model.iyy>0;
     return c;

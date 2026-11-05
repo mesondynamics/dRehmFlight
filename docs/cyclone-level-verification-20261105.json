@@ -1,0 +1,143 @@
+{
+  "date": "2026-11-05",
+  "branch": "feature/cyclone-rotor-tricopter",
+  "build": "drehm-cyclone-rotor-v2-level-20261105",
+  "baseline": {
+    "source_commit": "53691b2",
+    "recording_id": "18e50443c4b9ab68-f",
+    "boot": 1578830171,
+    "sha256": "83729a7c4667ceea965464009b7956320daca2ec7c1430e6415e178a25653df1",
+    "level_window": {
+      "time_start_s": 1163.992321,
+      "time_end_s": 1171.992318,
+      "samples": 801,
+      "missing_source_samples": 0,
+      "statistics": {
+        "S1_us": {
+          "mean": 1496,
+          "min": 1496,
+          "max": 1496,
+          "std": 0
+        },
+        "roll_CH4_us": {
+          "mean": 1503,
+          "min": 1503,
+          "max": 1503,
+          "std": 0
+        },
+        "pitch_CH2_us": {
+          "mean": 1500,
+          "min": 1500,
+          "max": 1500,
+          "std": 0
+        },
+        "roll_deg": {
+          "mean": 0.04006076773584914,
+          "min": -0.07917513698339462,
+          "max": 0.15107114613056183,
+          "std": 0.03260924167626864
+        },
+        "pitch_deg": {
+          "mean": -0.14804211331440714,
+          "min": -0.22857770323753357,
+          "max": -0.05451041832566261,
+          "std": 0.032357702903580934
+        },
+        "gyro_Z_dps": {
+          "mean": 1.242054150717684,
+          "min": 0.6856584548950195,
+          "max": 1.7044165134429932,
+          "std": 0.30007667854373726
+        },
+        "throttle_us": {
+          "mean": 1000,
+          "min": 1000,
+          "max": 1000,
+          "std": 0
+        },
+        "gyro_X_dps": {
+          "mean": 0.0659652699156758,
+          "min": -0.06384867429733276,
+          "max": 0.1694900095462799,
+          "std": 0.03879519348518126
+        },
+        "gyro_Y_dps": {
+          "mean": 0.24229189361935102,
+          "min": 0.07152318954467773,
+          "max": 0.40979382395744324,
+          "std": 0.06079239827038197
+        },
+        "sensor_AccZ_g": {
+          "mean": 0.9909311900573425,
+          "min": 0.9847649335861206,
+          "max": 0.9969675540924072,
+          "std": 0.0019118959849333
+        },
+        "loop_period_us": {
+          "mean": 500,
+          "min": 500,
+          "max": 500,
+          "std": 0
+        },
+        "loop_work_us": {
+          "mean": 225.7952559300874,
+          "min": 224,
+          "max": 266,
+          "std": 2.716854953732052
+        }
+      }
+    }
+  },
+  "defaults": {
+    "imu_level_roll_deg": 0.04,
+    "imu_level_pitch_deg": -0.15
+  },
+  "validation": {
+    "sanitizers": "address,undefined",
+    "host_test_programs_passed": 20,
+    "fqbn": "teensy:avr:teensy40:usb=serial",
+    "teensy_core": "1.62.0",
+    "compile": "passed",
+    "profile": {
+      "channels": 32,
+      "states": 58,
+      "parameters": 109,
+      "windows": 8
+    },
+    "offline_html_equations": 25
+  },
+  "firmware": {
+    "hex_file_sha256": "863425c6a91a5624583c201fcc30ae14cdd5495c04f4d79d21fe65d39e3e9916",
+    "gateway_binary_sha256": "596e9de2c48c7f2e0e088c9b6ded512588f46af98ed547b73f2a51021a1d537d",
+    "image_bytes": 117760,
+    "flash_job_id": 1,
+    "flash_state": "complete",
+    "manual": false,
+    "boot": 1519966056
+  },
+  "hardware_stopped_check": {
+    "recording_id": "18e50612cb68f510-1a",
+    "profile_revision": 3,
+    "parameter_revision": 2,
+    "saved_revision": 0,
+    "window_s": [
+      224.18032,
+      227.180317
+    ],
+    "received_samples": 276,
+    "continuous_telemetry": false,
+    "roll_mean_deg": -0.020815689055028917,
+    "pitch_mean_deg": 0.006028429873222722,
+    "loop_period_us": 500,
+    "max_work_us": 283,
+    "overruns": 0,
+    "faults": 0,
+    "motor_commands": [
+      0,
+      0,
+      0
+    ],
+    "spin_enabled": false
+  },
+  "flight_validation": "pending; normal-mode comparison requested"
+}

@@ -335,6 +335,9 @@ float q0 = 1.0f; //Initialize quaternion for madgwick filter
 float q1 = 0.0f;
 float q2 = 0.0f;
 float q3 = 0.0f;
+// Estimator stays in the raw sensor frame; all flight control uses this body frame.
+tricopter::Quaternion flightAttitude{1,0,0,0};
+tricopter::Vec3 flightGyroDps{0,0,0};
 
 //Normalized desired state:
 float thro_des, roll_des, pitch_des, yaw_des;
@@ -581,6 +584,16 @@ void controlCyclone() {
     pilot.spinRequested=false;
 #endif
   const auto &config=flightParameters.config();
+  flightAttitude=DREHM_REMOTE_MCU ? config.level.attitude({q0,q1,q2,q3}) :
+      tricopter::Quaternion{q0,q1,q2,q3};
+  flightGyroDps=DREHM_REMOTE_MCU ? config.level.gyro({GyroX,GyroY,GyroZ}) :
+      tricopter::Vec3{GyroX,GyroY,GyroZ};
+#if DREHM_REMOTE_MCU
+  const tricopter::Rotation body(flightAttitude);
+  roll_IMU=atan2f(body.by.z,body.bz.z)*tricopter::degrees;
+  pitch_IMU=asinf(tricopter::clamp(body.bx.z,-1,1))*tricopter::degrees;
+  yaw_IMU=body.heading();
+#endif
 #if DREHM_REMOTE_MCU
   const tricopter::ControlGains gains{
     {.01f*config.rollKp,.01f*config.rollKi,.01f*config.rollKd},
@@ -593,7 +606,7 @@ void controlCyclone() {
     {0.01f*Kp_yaw, 0.01f*Ki_yaw, 0.01f*Kd_yaw}};
 #endif
   const uint32_t previousFaultCount=flightControl.faultCount();
-  flightOutput = flightControl.step(pilot, {q0,q1,q2,q3}, {GyroX,GyroY,GyroZ}, dt,
+  flightOutput = flightControl.step(pilot, flightAttitude, flightGyroDps, dt,
       armedFly, channel_5_pwm >= 1500, imuSampleHealthy && imuFusionHealthy, gains,
       DREHM_REMOTE_MCU ? &config.spin : nullptr,
       DREHM_REMOTE_MCU ? &config.reference : nullptr,
@@ -615,7 +628,7 @@ void controlCyclone() {
   tricopter::YawControlRequest yawRequest;
   yawRequest.rateMode=flightOutput.mode!=tricopter::FlightMode::Normal;
   yawRequest.rateTargetDps=flightOutput.yawTarget;
-  yawRequest.attitude={q0,q1,q2,q3}; yawRequest.gyroDps={GyroX,GyroY,GyroZ};
+  yawRequest.attitude=flightAttitude; yawRequest.gyroDps=flightGyroDps;
   normalYawOutput=normalYaw.step(flightParameters.config(),flightOutput.motors,
       flightOutput.heading,flightOutput.yawRate,pilot.yaw,dt,normalActive,yawRequest);
   const uint32_t allocationWork=(uint32_t)(micros()-allocationStarted);
@@ -725,11 +738,13 @@ void serviceRemoteMcu() {
   sample.values[8]=flightOutput.yawTarget; sample.values[9]=flightOutput.yawRate;
   sample.values[10]=normalYawOutput.rateFiltered; sample.values[11]=normalYawOutput.torqueRequested;
   sample.values[12]=normalYawOutput.torqueEstimated; sample.values[13]=normalYawOutput.torqueFeedforward;
-  sample.values[14]=normalYawOutput.integral; sample.values[15]=roll_IMU;
-  sample.values[16]=pitch_IMU; sample.values[17]=GyroZ;
+  sample.values[14]=normalYawOutput.integral;
+  sample.values[15]=roll_IMU; sample.values[16]=pitch_IMU;
+  sample.values[17]=flightGyroDps.z;
   // First-flight profile: independent inertial observations for identification.
   // Target motor thrust can be reconstructed from DShot + the parameter snapshot.
-  sample.values[20]=GyroX; sample.values[21]=GyroY; sample.values[22]=AccZ;
+  sample.values[20]=flightGyroDps.x; sample.values[21]=flightGyroDps.y;
+  sample.values[22]=AccZ; // Sensor Z, unchanged: this is not world vertical acceleration.
   sample.values[23]=d2; sample.values[24]=d4; sample.values[25]=d3;
   sample.values[26]=normalYawOutput.torqueTarget.x; sample.values[27]=normalYawOutput.torqueTarget.y;
   sample.values[28]=loopPeriodUs; sample.values[29]=previousLoopWorkUs;
@@ -1169,9 +1184,11 @@ void Madgwick(float gx, float gy, float gz, float ax, float ay, float az, float 
   q3 *= recipNorm;
   
   //compute angles - NWU
+#if !DREHM_REMOTE_MCU
   roll_IMU = atan2(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2)*57.29577951; //degrees
   pitch_IMU = -asin(constrain(-2.0f * (q1*q3 - q0*q2),-0.999999,0.999999))*57.29577951; //degrees
   yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
+#endif
 }
 
 void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, float invSampleFreq) {
@@ -1189,10 +1206,12 @@ void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, fl
     } else q = {1,0,0,0};
   }
   q0=q.w; q1=q.x; q2=q.y; q3=q.z;
+#if !DREHM_REMOTE_MCU
   const tricopter::Rotation r(q);
   roll_IMU = atan2f(r.by.z,r.bz.z)*tricopter::degrees;
   pitch_IMU = asinf(tricopter::clamp(r.bx.z,-1,1))*tricopter::degrees;
   yaw_IMU = r.heading();
+#endif
 }
 
 void getDesState() {

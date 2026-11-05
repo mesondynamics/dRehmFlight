@@ -2,7 +2,7 @@
   "format_version": 1,
   "id": "drehmflight-cyclone-rotor-v2",
   "revision": 1,
-  "name": "普通／低速自旋三旋翼 v2 · 切换与保护",
+  "name": "普通／低速自旋三旋翼 v2 · 水平标定与保护",
   "data": {
     "kind": "application",
     "target_profile": "teensy40-usb",
@@ -246,7 +246,7 @@
       },
       {
         "id": 15,
-        "name": "机体 Roll",
+        "name": "标定后机体 Roll",
         "unit": "°",
         "precision": 2,
         "color": "#8ccece",
@@ -255,7 +255,7 @@
       },
       {
         "id": 16,
-        "name": "机体 Pitch",
+        "name": "标定后机体 Pitch",
         "unit": "°",
         "precision": 2,
         "color": "#68e0ba",
@@ -264,7 +264,7 @@
       },
       {
         "id": 17,
-        "name": "机体 GyroZ",
+        "name": "标定后机体 GyroZ",
         "unit": "°/s",
         "precision": 2,
         "color": "#f6be73",
@@ -291,7 +291,7 @@
       },
       {
         "id": 20,
-        "name": "机体 GyroX",
+        "name": "标定后机体 GyroX",
         "unit": "°/s",
         "precision": 2,
         "color": "#b6a4ed",
@@ -300,7 +300,7 @@
       },
       {
         "id": 21,
-        "name": "机体 GyroY",
+        "name": "标定后机体 GyroY",
         "unit": "°/s",
         "precision": 2,
         "color": "#97c876",
@@ -309,7 +309,7 @@
       },
       {
         "id": 22,
-        "name": "机体 AccZ（静止约1g）",
+        "name": "传感器 AccZ（未转机体轴，静止约1g）",
         "unit": "g",
         "precision": 3,
         "color": "#e89278",
@@ -1456,6 +1456,16 @@
       {
         "id": 112,
         "name": "理想制动时间后的额外等待 (s)",
+        "enabled": true
+      },
+      {
+        "id": 113,
+        "name": "机架真实水平时原始 Roll 示值 (°)",
+        "enabled": true
+      },
+      {
+        "id": 114,
+        "name": "机架真实水平时原始 Pitch 示值 (°)",
         "enabled": true
       }
     ],

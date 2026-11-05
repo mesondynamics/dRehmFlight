@@ -1,6 +1,6 @@
 # 普通与低速自旋三旋翼：动力学、控制与调试
 
-版本日期：2026-11-04。开发分支：`feature/cyclone-rotor-tricopter`。固件标识：`drehm-cyclone-rotor-v2-20261104`。便于阅读公式的[离线 HTML 版本](reports/cyclone-rotor-model.html)与本文由同一份内容构建。
+版本日期：2026-11-05。开发分支：`feature/cyclone-rotor-tricopter`。当前已下载固件标识：`drehm-cyclone-rotor-v2-level-20261105`，停机水平示值已核对，悬停改善效果待对照试飞验证。便于阅读公式的[离线 HTML 版本](reports/cyclone-rotor-model.html)与本文由同一份内容构建。
 
 ## 1. 本版解决什么问题
 
@@ -44,6 +44,24 @@ C=\operatorname{diag}(1,-1,-1),\qquad R=C R_{\rm FRD} C,\qquad
 ψ 是机体 +X 水平投影的方位角；ψg 是广义驾驶前方；φ 是两者的相位差。进入自旋时捕获当前机头作为 ψg，此后 Yaw 杆调整 ψg，S1 调整整机自旋速度。φ=0 表示两个方向的**水平投影**一致；倾斜时不是两根三维轴完全重合。
 
 当前仅有六轴 IMU，没有磁北、位置或高度观测；ψ 和 ψg 都是相对参考，长期会受陀螺偏置影响。激光只能显示当前估计的广义前方，不能提供新的绝对航向测量。
+
+### 2.4 IMU 安装水平与机体坐标对齐
+
+传感器的安装基准不一定与机架真实水平完全一致。应在独立水平仪找平、停机固定时记录原始 Roll/Pitch 示值 r₀、p₀，不能用任意落地姿态自动定义水平。以下矩阵均采用融合内部的 FRD 右手坐标；公开 Pitch 正方向为前倾，因此数学俯仰角为 −p₀。
+
+\[
+R_0=R_y(-p_0)R_x(r_0),\qquad
+R_{WB}=R_{WS}R_0^{\mathsf T},\qquad
+\boldsymbol\omega_B=R_0\boldsymbol\omega_S.
+\]
+
+S 是融合原始传感器系，B 是对齐后的机体系。姿态使用固定安装旋转的逆旋转右乘，三轴角速度按同一安装关系变换；随后才使用前述 FRD↔FLU 转换。这样在任意航向、正反自旋以及制动／归并时都使用相同的物理基准。不能仅对显示角度减常数，也不能给自旋模式加一个固定世界方向的后仰指令。
+
+本机 2026-11-05 独立找平后的 8 秒记录为 r₀≈+0.0401°、p₀≈−0.1480°，固件默认取 +0.04°、−0.15°。RemoteMCU 参数 113／114 为**真实水平时的原始示值**，不是期望姿态、PID 增益或加速度计偏置；范围各为 ±5°，仅允许停机修改。设置二者为零可回退；重新标定前也应先停机归零，以读到原始示值。此补偿没有重新辨识陀螺零偏、加速度计比例或转子推力轴。
+
+控制器、Yaw 物理力矩计算、激光相位和姿态／角速度遥测都使用对齐后的机体系。AccZ 波形保留原传感器 Z 轴含义。通道数与频率不变，安装旋转的三角函数仅在参数重建时计算；主循环增加固定规模的四元数乘法和向量旋转。硬件周期须在更新后重新核验。
+
+这次偏差较小，修正它不能视为已经消除前飘。静态水平对齐之后，先进行普通模式对照试飞，再决定是否需要检查转子轴线、推力差或引入水平速度／位置反馈。详见[本次标定记录](CYCLONE_LEVEL_ALIGNMENT_20261105.md)。
 
 ## 3. 几何与机构标定
 
@@ -451,6 +469,7 @@ dD=\tfrac12\rho V^2 c C_D(\alpha)\,dr.
 | 普通／自旋／制动共用Yaw控制与执行器估计 | `NormalYawControl.h`，类名为历史名称 |
 | 广义参考系、Roll/Pitch及模式切换 | `CycloneControl.h` |
 | 四元数、航向率与加速度换算 | `FlightMath.h` |
+| IMU固定安装角与姿态／角速度同轴转换 | `LevelAlignment.h`、`tests/level_alignment_test.cpp` |
 | 相位脉冲 | `LaserSync.h`；`.ino`中的`laserSyncPin=14` |
 | 运行参数、RMP和状态映射 | `FlightParameters.h`、`RemoteMcuTelemetry.h`、`.ino` |
 | 完整链路合成刚体回归 | `tests/cyclone_spin_model_test.cpp` |
@@ -462,7 +481,7 @@ dD=\tfrac12\rho V^2 c C_D(\alpha)\,dr.
 
 低速用例延长至150s，使正常跟踪用例的相位完成真实穿零，而不要求不足一圈的轨迹必须产生激光事件。它直接积分Newton–Euler姿态方程，没有高度／位置／接触动力学，也没有真实IMU振动与穷尽的不确定性；推力比例误差用例不能说明飞机仍能保持高度。仿真结果只能说明所列条件下的算法回归，不是自由飞行稳定性证明。
 
-Teensy4.0固件已使用Arduino CLI1.5.1、Teensy core1.62.0完成编译；最终软件验证和产物摘要记录于 `docs/cyclone-development-verification.json`。未下载本版固件，未开展本版实机或激光测量。
+原v2软件验证和产物摘要保留于 `docs/cyclone-development-verification.json`。2026-11-05水平标定版已通过20项ASan/UBSan主机程序、Teensy4.0构建和RemoteMCU配置验证，并经RemoteMCU下载成功。新boot `1519966056` 的停机核对：主周期500µs，累计最大工作283µs，超周期及故障为0；最后3秒接收窗口的Roll／Pitch均值约−0.0208°／+0.0060°。这些是停机结果，不能当作悬停或自旋验收。版本、数据与后续步骤见[本轮记录](CYCLONE_LEVEL_ALIGNMENT_20261105.md)及 `docs/cyclone-level-verification-20261105.json`。
 
 参考资料（2026-11-03查阅；实现事实以本仓库为准）：
 

@@ -31,6 +31,7 @@ int main() {
   assert(!p.config().initialModelEnabled && p.config().model.valid(false));
   assert(p.config().model.tiltLimitDeg==15);
   assert(p.config().model.massKg==.75f && p.config().model.izz==.0625f);
+  assert(p.config().level.valid() && tricopter::FlightParameters::count==109);
   for (unsigned rotor=0;rotor<3;++rotor) {
     assert(p.config().tiltMappingReady[rotor]);
     for (unsigned j=0;j<9;++j)
@@ -81,6 +82,16 @@ int main() {
   assert(batch(p,{{110,1}})[8]==RMP_OUT_OF_RANGE);
   assert(p.revision()==safetyRevision && p.config().safety.stopDwellSeconds==.7f);
   assert(batch(p,{{103,60}},false)[8]==RMP_UNSAFE);
+  // Level calibration can only change at a stopped aircraft. An invalid batch
+  // cannot partly change another setting or leave an invalid rotation cached.
+  assert(batch(p,{{113,.1f},{114,-.2f}})[8]==RMP_APPLIED);
+  const auto levelRevision=p.revision();
+  assert(batch(p,{{113,0},{114,5.01f}})[8]!=RMP_APPLIED);
+  assert(batch(p,{{114,-.3f}},false)[8]==RMP_UNSAFE);
+  assert(batch(p,{{114,std::numeric_limits<float>::quiet_NaN()}})[8]!=RMP_APPLIED);
+  assert(p.revision()==levelRevision && p.config().level.valid());
+  const auto adjusted=p.config().level.attitude({1,0,0,0});
+  assert(std::fabs(tricopter::Rotation(adjusted).bx.z*tricopter::degrees-.2f)<.001f);
   assert(batch(p,{{2,1,RMP_PARAM_BOOL},{87,1,RMP_PARAM_BOOL}})[8]==RMP_APPLIED);
   assert(p.config().spinEnabled && p.config().laserEnabled);
   // Cross-field pulse timing is rejected atomically; candidate decoding must
