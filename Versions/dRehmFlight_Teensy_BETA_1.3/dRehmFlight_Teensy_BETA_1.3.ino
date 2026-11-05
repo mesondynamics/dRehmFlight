@@ -795,6 +795,11 @@ void serviceRemoteMcu() {
   sample.state[56]=supervisor.count();
   const float stopThreshold=flightParameters.config().safety.stoppedRate(flightParameters.config().spin.maxRateDps);
   memcpy(&sample.state[57],&stopThreshold,4);
+  const auto &entryConfig=flightParameters.config();
+  const auto entryState=flightControl.supervisor().inhibited() ? tricopter::SpinEntryState::AbortLocked :
+      (!entryConfig.flightEnabled || !entryConfig.spinEnabled || !entryConfig.spinReady ?
+       tricopter::SpinEntryState::Disabled : flightControl.spinEntryState());
+  sample.state[58]=static_cast<uint32_t>(entryState);
   sample.safeToFlash=!armedFly && motorsStopped && channel_5_pwm>=1500 &&
       channel_1_pwm<1050 && tricopter::spinCentered(channel_6_pwm);
   sample.safeToConfigure=!armedFly && motorsStopped && channel_5_pwm>=1500 && channel_1_pwm<1050;

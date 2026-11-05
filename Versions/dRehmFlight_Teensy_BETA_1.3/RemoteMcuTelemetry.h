@@ -6,9 +6,9 @@
 
 namespace remote_mcu {
 constexpr unsigned channelCount = 32; // RemoteMCU v0.3 hard limit (agent + web).
-constexpr unsigned stateCount = 58;
+constexpr unsigned stateCount = 59;
 static_assert(8+stateCount*8+RMP_HEADER_SIZE+4<=512,"STATE must fit one nonblocking USB buffer");
-constexpr const char *buildId = "drehm-cyclone-rotor-v2-level-20261105";
+constexpr const char *buildId = "drehm-cyclone-rotor-v3-entry-20261105";
 
 struct Snapshot {
   float values[channelCount];

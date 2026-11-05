@@ -112,7 +112,9 @@ constexpr float stickDeadbandUs = 20.0f;
 constexpr float rollDirection = 1.0f;
 constexpr float pitchDirection = 1.0f;
 constexpr float spinDirection = -1.0f; // raw CH6 left -> positive/CCW
-constexpr float spinEnterUs = 50.0f;
+// A deliberate 30% knob movement starts entry qualification. Small adjustments
+// around center must not consume a flight's spin authorization while taking off.
+constexpr float spinEnterUs = 150.0f;
 constexpr float spinExitUs = 30.0f;
 constexpr float normalTiltDeg = 30.0f;
 constexpr float spinTiltDeg = 15.0f;

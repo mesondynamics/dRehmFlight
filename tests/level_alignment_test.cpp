@@ -85,8 +85,10 @@ int main() {
   for (unsigned i=0;i<24000;++i) {
     const float t=i*.0005f;
     const bool positive=t>=1 && t<3,negative=t>=6 && t<8;
-    const float rate=positive ? 5 : negative ? -5 : 0;
-    const float heading=t<1 ? 0 : t<3 ? (t-1)*5 : t<6 ? 10 : t<8 ? 10-(t-6)*5 : 0;
+    // The measured turn begins after the deliberate request has been accepted.
+    const float rate=t>=1.35f && t<3 ? 5 : t>=6.35f && t<8 ? -5 : 0;
+    const float heading=t<1.35f ? 0 : t<3 ? (t-1.35f)*5 :
+        t<6.35f ? 8.25f : t<8 ? 8.25f-(t-6.35f)*5 : 0;
     const Quaternion raw=euler(3,-4,heading);
     const Vec3 rawGyro=pilot(Rotation(raw).body({0,0,-rate}));
     const PilotInput in{.4f,.05f*std::sin(t),.05f*std::cos(t),0,
@@ -95,6 +97,8 @@ int main() {
         true,false,true,gains,&spin,&reference);
     const auto actual=compensated.step(in,mounted.attitude(raw),mounted.gyro(rawGyro),
         .0005f,true,false,true,gains,&spin,&reference);
+    ideal.applyAllocationFeedback(1,1,false,expected.yawTarget);
+    compensated.applyAllocationFeedback(1,1,false,actual.yawTarget);
     assert(!actual.fault && actual.mode==expected.mode);
     assert(!compensated.supervisor().inhibited());
     assert(std::fabs(actual.yawRate-expected.yawRate)<.0001f);

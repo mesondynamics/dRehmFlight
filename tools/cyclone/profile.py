@@ -37,7 +37,7 @@ def validate(profiles):
                      'wave_windows', 'channels', 'cards', 'parameters', 'parameter_mode'}, 'Application fields')
     check(a['target_profile'] == 'teensy40-usb', 'Target profile mismatch')
     check(1 <= a['window_seconds'] <= 30 and a['wave_layout'] in ('stack', 'columns'), 'Wave layout')
-    for key, ids in [('channels', set(range(32))), ('cards', set(range(1, 59))), ('parameters', PARAMETER_IDS)]:
+    for key, ids in [('channels', set(range(32))), ('cards', set(range(1, 60))), ('parameters', PARAMETER_IDS)]:
         items = a[key]
         check(len(items) == len(ids) and {v['id'] for v in items} == ids, f'{key}: IDs/count mismatch')
         check(all(label(v['name']) for v in items), f'{key}: UTF-8 name limit')
@@ -117,7 +117,7 @@ def main():
         profiles = [json.loads(p.read_text()) for p in FILES]
         validate(profiles)
         result = install(args.agent, profiles, args.select) if args.install else {
-            'validation': 'passed', 'channels': 32, 'states': 58, 'parameters': len(PARAMETER_IDS),
+            'validation': 'passed', 'channels': 32, 'states': 59, 'parameters': len(PARAMETER_IDS),
             'windows': 8, 'agent_contacted': False}
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, KeyError, OSError, HTTPError, URLError) as error:

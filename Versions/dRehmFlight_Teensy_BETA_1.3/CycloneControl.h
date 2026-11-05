@@ -4,6 +4,7 @@
 #include "TricopterDynamics.h"
 #include "YawServoControl.h"
 #include "SpinSupervisor.h"
+#include "SpinEntryGuard.h"
 #include <stdint.h>
 
 namespace tricopter {
@@ -46,6 +47,9 @@ class CycloneControl {
   uint32_t faultReason() const { return faultReason_; }
   uint32_t faultCount() const { return faultCount_; }
   const SpinSupervisor &supervisor() const { return supervisor_; }
+  SpinEntryState spinEntryState() const {
+    return supervisor_.inhibited() ? SpinEntryState::AbortLocked : entry_.state();
+  }
   float brakingTime() const { return brakingTime_; }
   float stoppedDwell() const { return stoppedTime_; }
   ControlOutput step(PilotInput in, Quaternion q, Vec3 pilotGyro, float dt,
@@ -124,16 +128,43 @@ class CycloneControl {
     // Allocation feedback is consumed once, from the preceding 500 us frame.
     const bool haveFeedback=feedbackValid_;
     feedbackValid_=false;
+    const float currentTiltError=haveSpinModel ?
+        vectorAngle(rotation.bz*(-1),desiredUp_)*degrees : 0;
     if(mode_==FlightMode::Braking) brakingTime_+=dt;
     if(haveSpinModel)
       supervisor_.update(safety,mode_!=FlightMode::Normal,spinRateLimit,
           haveFeedback ? allocatedRateTarget_ : yawRate_,measuredYawRate,
-          vectorAngle(rotation.bz*(-1),desiredUp_)*degrees,
+          currentTiltError,
           haveFeedback ? allocatedLiftScale_ : 1,
           haveFeedback ? allocatedAttitudeScale_ : 1,
           haveFeedback && allocatedYawLimited_,
           mode_==FlightMode::Braking ? brakingTime_ : 0,brakingBudget_,dt);
-    spinSelected_ = in.spinRequested && !supervisor_.inhibited();
+    // Require ordinary Yaw to have settled before changing its job to self-spin.
+    // Use the actual physical controller's preceding target, not this manager's
+    // legacy stick target. Keep its PI, servo state and limited ramp continuous.
+    const float entryRate=std::fmin(5.f,.5f*spinRateLimit);
+    const float entryError=std::fmin(5.f,.5f*safety.rateErrorDps);
+    if(haveSpinModel && haveFeedback) {
+      if(!entryRatesInitialized_) {
+        entryMeasuredRate_=measuredYawRate; entryTargetRate_=allocatedRateTarget_;
+        entryRatesInitialized_=true;
+      } else {
+        // Only entry qualification uses this 2 Hz trend. The flight PI and
+        // supervisor continue using their existing, faster measurements.
+        const float alpha=lowpassAlpha(2,dt);
+        entryMeasuredRate_+=alpha*(measuredYawRate-entryMeasuredRate_);
+        entryTargetRate_+=alpha*(allocatedRateTarget_-entryTargetRate_);
+      }
+    }
+    const bool entrySettled=haveFeedback &&
+        std::fabs(measuredYawRate)<=spinRateLimit &&
+        std::fabs(entryMeasuredRate_)<=entryRate && std::fabs(entryTargetRate_)<=entryRate &&
+        std::fabs(entryTargetRate_-entryMeasuredRate_)<=entryError &&
+        currentTiltError<=std::fmin(5.f,safety.tiltErrorDeg);
+    spinSelected_ = haveSpinModel ?
+        entry_.step(in.spinRequested,in.spin==0,std::fabs(in.yaw)<.001f,entrySettled,
+                    mode_==FlightMode::Normal,supervisor_.inhibited(),dt) :
+        (in.spinRequested && !supervisor_.inhibited());
     if (spinSelected_ && mode_ != FlightMode::Spin) {
       // Normal mode's reference always follows the nose; braking/aligning retain theirs.
       if (mode_ == FlightMode::Normal) {
@@ -312,6 +343,8 @@ class CycloneControl {
     feedbackValid_=false;
     desiredUp_={0,0,-1};
     supervisor_.idle(); // The abort latch is cleared only by the explicit cut-state check.
+    entry_.reset();
+    entryMeasuredRate_=entryTargetRate_=0; entryRatesInitialized_=false;
     integralRoll_ = integralPitch_ = 0;
     priorIntegralRoll_=priorIntegralPitch_=requestedRoll_=requestedPitch_=0;
     yawControl_.reset();
@@ -324,6 +357,9 @@ class CycloneControl {
   Vec3 desiredUp_{0,0,-1};
   SpinSafetyConfig defaultSafety_{};
   SpinSupervisor supervisor_;
+  SpinEntryGuard entry_;
+  float entryMeasuredRate_=0,entryTargetRate_=0;
+  bool entryRatesInitialized_=false;
   bool feedbackValid_=false,allocatedYawLimited_=false;
   float allocatedLiftScale_=1,allocatedAttitudeScale_=1,allocatedRateTarget_=0;
   float integralRoll_ = 0, integralPitch_ = 0;

@@ -31,7 +31,11 @@ renderer.heading = function ({tokens, depth}) {
 };
 let body = marked.parse(markdown, {renderer});
 body = body.replace(/MATH_(\d+)/g, (_, id) => svg[Number(id)]);
-body = body.replaceAll('href="reports/cyclone-rotor-model.html"', 'href="cyclone-rotor-model.html"');
+// Markdown links start in docs/, while the generated page lives in docs/reports/.
+body = body.replace(/href="([^"#]+)"/g, (attribute, href) => {
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(href)) return attribute;
+  return `href="${path.posix.join('..', href)}"`;
+});
 if (body.includes('MATH_') || body.includes('data-mjx-error')) throw new Error('Unrendered formula');
 const toc = headings.filter(h => !h.hidden).map(h => `<a href="#${h.id}">${h.text}</a>`).join('');
 const html = `<!doctype html>

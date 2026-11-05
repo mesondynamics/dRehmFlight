@@ -15,6 +15,7 @@ import zlib
 
 
 BUILD = "drehm-cyclone-rotor-v2-level-20261105"
+SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105")
 CHANNELS = (
     "S1_us", "servo_us", "mode", "phase_deg", "roll_input_us",
     "pitch_input_us", "heading_deg", "reference_deg", "target_rate_dps",
@@ -135,14 +136,15 @@ def main():
     metadata = metadata.get("recording", metadata)
     if metadata.get("state") != "complete":
         raise ValueError("Recording metadata must indicate a finalized recording")
-    if metadata.get("target", {}).get("build_id") != BUILD:
+    build = metadata.get("target", {}).get("build_id")
+    if build not in SUPPORTED_BUILDS:
         raise ValueError("Unsupported build; inspect its channel mapping before analysis")
     if not math.isfinite(args.start) or args.end < args.start or math.isnan(args.end):
         raise ValueError("Invalid time window")
     sessions, frames, digest = read_recording(args.recording)
     if args.boot not in sessions:
         raise ValueError("Requested boot absent")
-    result = {"recording_id": metadata["id"], "build_id": BUILD, "boot": args.boot,
+    result = {"recording_id": metadata["id"], "build_id": build, "boot": args.boot,
               "raw_sha256": digest, "validated_frames": frames, "crc_errors": 0,
               "boots": sorted(sessions), **summarize(sessions[args.boot], args.start, args.end)}
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))

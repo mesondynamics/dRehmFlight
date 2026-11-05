@@ -1,5 +1,6 @@
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/RemoteMcuTelemetry.h"
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/FlightParameters.h"
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/SpinEntryGuard.h"
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/src/RemoteMcu/rmp.c"
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/src/RemoteMcu/parameters.c"
 #include <cassert>
@@ -190,6 +191,7 @@ int main() {
   sample.state[34]=1; sample.state[35]=19; sample.state[44]=0xfffffff0;
   sample.state[46]=tricopter::spinOverspeed|tricopter::spinAllocation;
   sample.state[47]=1;sample.state[56]=2;
+  sample.state[58]=static_cast<unsigned>(tricopter::SpinEntryState::AbortLocked);
   const float diagnostics[]={1.1f,.5f,-20.f,60.f,.25f,0.f,0.f,.5f,1.5f};
   for(unsigned j=0;j<9;++j) std::memcpy(&sample.state[j<8 ? 48+j : 57],&diagnostics[j],4);
   const float newStates[]={.875f,10.f,-.012f,.75f};
@@ -227,7 +229,8 @@ int main() {
       assert(rmp_get_u16(f.data()+offset)==index+1 && f[offset+2]==2);
       assert(rmp_get_u32(f.data()+offset+4)==sample.state[index]);
     }
-    for (unsigned index : {34u,35u,41u,42u,43u,44u,45u,46u,47u,48u,49u,50u,51u,52u,53u,54u,55u,56u,57u}) {
+    assert(f.size()<=512);
+    for (unsigned index : {34u,35u,41u,42u,43u,44u,45u,46u,47u,48u,49u,50u,51u,52u,53u,54u,55u,56u,57u,58u}) {
       const unsigned offset=28+8+8*index;
       const uint8_t type=index==34 || index==47 ? 3 :
           ((index>=41 && index<=43) || index==45 || (index>=48 && index<=55) || index==57 ? 1 : 2);

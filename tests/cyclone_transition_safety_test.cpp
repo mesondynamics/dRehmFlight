@@ -20,17 +20,24 @@ struct Rig {
   Rig() {
     parameters.begin();config=parameters.config();config.ready=config.spinReady=true;
     config.spin.maxRateDps=15;
+    for(unsigned i=0;i<1700;++i) tick({.5f,0,0,0,0,false});
   }
   ControlOutput tick(PilotInput in,float rate=0,bool cut=false) {
     heading=wrapDegrees(heading+rate*dt);
     out=control.step(in,headingQ(heading),{0,0,rate},dt,true,cut,true,gains,
         &config.spin,&config.reference,&config.safety);
     assert(!out.fault);
+    control.applyAllocationFeedback(1,1,false,out.yawTarget);
     return out;
+  }
+  void start(PilotInput in) {
+    for(unsigned i=0;i<620;++i) tick(in);
+    assert(out.mode==FlightMode::Spin);
   }
 };
 static void stoppingMustBeMeasured() {
   Rig r;PilotInput in{.5f,0,0,0,2.f/3,true};
+  r.start(in);
   for(unsigned i=0;i<4000;++i) r.tick(in,10);
   in.spin=0;in.spinRequested=false;
   for(unsigned i=0;i<16000;++i) {
@@ -43,6 +50,7 @@ static void stoppingMustBeMeasured() {
 }
 static void dwellAndReacceleration() {
   Rig r;PilotInput in{.5f,0,0,0,.2f,true};
+  r.start(in);
   for(unsigned i=0;i<1000;++i) r.tick(in,3);
   in.spin=0;in.spinRequested=false;
   // First bring only the target to zero. A moving airframe cannot build dwell.
@@ -59,6 +67,7 @@ static void dwellAndReacceleration() {
 }
 static void boundedHandoff(float sign) {
   Rig r;PilotInput in{.5f,0,0,0,sign,true};
+  r.start(in);
   Vec3 lastUp{0,0,-1};float peakReference=0,peakDirection=0;
   for(unsigned i=0;i<24000;++i) {
     if(i>=4000) {in.roll=.3f;in.pitch=.4f;}
@@ -94,6 +103,7 @@ static void boundedHandoff(float sign) {
 }
 static void yawDuringAlignment() {
   Rig r;PilotInput in{.5f,0,0,0,.2f,true};
+  r.start(in);
   for(unsigned i=0;i<2000;++i) r.tick(in,3);
   in.spin=0;in.spinRequested=false;
   while(r.out.mode!=FlightMode::Aligning) r.tick(in);
@@ -108,6 +118,7 @@ static void yawDuringAlignment() {
 }
 static void physicalRateTargetMustStop() {
   Rig r;PilotInput in{.5f,0,0,0,.2f,true};
+  r.start(in);
   for(unsigned i=0;i<1000;++i) {
     r.tick(in);r.control.applyAllocationFeedback(1,1,false,5);
   }
@@ -148,6 +159,7 @@ static void supervisorReasons() {
 static void allocationAbortAndReset() {
   Rig r;NormalYawControl yaw;
   PilotInput in{.5f,0,0,0,.1f,true};
+  r.start(in);
   for(unsigned i=0;i<1400;++i) {
     const auto refs=r.tick(in);
     YawControlRequest req;req.rateMode=refs.mode!=FlightMode::Normal;
@@ -165,8 +177,10 @@ static void allocationAbortAndReset() {
   r.tick(in,0,true);assert(r.control.supervisor().inhibited());
   in.spin=0;in.spinRequested=false;
   r.tick(in,0,true);assert(!r.control.supervisor().inhibited());
+  in.throttle=.5f;
+  for(unsigned i=0;i<1700;++i) r.tick(in);
   in.throttle=.5f;in.spin=.1f;in.spinRequested=true;
-  assert(r.tick(in).mode==FlightMode::Spin);
+  r.start(in);
 }
 static void collectiveBeforeYaw() {
   FlightParameters p;p.begin();const auto m=p.config().model;

@@ -1,8 +1,8 @@
 {
   "format_version": 1,
-  "id": "drehmflight-cyclone-rotor-v2",
+  "id": "drehmflight-cyclone-rotor-v3",
   "revision": 1,
-  "name": "普通／低速自旋三旋翼 v2 · 水平标定与保护",
+  "name": "普通／低速自旋三旋翼 v3 · 进入确认与锁止提示",
   "data": {
     "kind": "application",
     "target_profile": "teensy40-usb",
@@ -399,6 +399,33 @@
       }
     ],
     "cards": [
+      {
+        "id": 59,
+        "name": "自旋入口 0待机 1回中 2待稳 3就绪 4确认 5运行 6锁止 7禁用",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 48,
+        "name": "自旋锁止：1需落地、SA停机、低油门、S1回中",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
+      {
+        "id": 47,
+        "name": "自旋保护位 1超速 2跟踪 4倾角 8分配 16超时",
+        "enabled": true,
+        "unit": "bits",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": 0
+      },
       {
         "id": 1,
         "name": "已解锁",
@@ -812,24 +839,6 @@
         "precision": 3,
         "warning_min": null,
         "warning_max": null
-      },
-      {
-        "id": 47,
-        "name": "自旋保护位：1超速/2率差/4姿态/8分配/16制动",
-        "enabled": true,
-        "unit": "",
-        "precision": 0,
-        "warning_min": null,
-        "warning_max": 0
-      },
-      {
-        "id": 48,
-        "name": "本次自旋已锁定（需停机复位）",
-        "enabled": true,
-        "unit": "",
-        "precision": 0,
-        "warning_min": null,
-        "warning_max": 0
       },
       {
         "id": 49,

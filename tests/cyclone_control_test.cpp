@@ -38,8 +38,9 @@ static void radioAndNormal() {
     in=input(v,v,v);
     assert(in.roll == 0 && in.pitch == 0 && in.yaw == 0);
   }
-  assert(!input(1500,1500,1500,1550).spinRequested);
-  assert(input(1500,1500,1500,1551).spinRequested);
+  assert(!input(1500,1500,1500,1575).spinRequested);
+  assert(!input(1500,1500,1500,1650).spinRequested);
+  assert(input(1500,1500,1500,1651).spinRequested);
   assert(input(1500,1500,1500,1540,true).spinRequested);
   assert(!input(1500,1500,1500,1530,true).spinRequested);
   CycloneControl c;
