@@ -32,6 +32,8 @@ CSV列 ch01 对应通道ID0；通道31是自旋保护原因位，激光计数保
 
 本水平标定build的已结束记录可用 `inspect_recording.py RAW --metadata METADATA --boot BOOT [--start SECONDS --end SECONDS]` 作只读JSON核验。metadata接受Agent录制对象或stop响应；工具严格核对build和CRC，拒绝未结束或截断记录，输出源缺样、模式变化、通道统计及窗口末STATE。估计航向变化不是独立物理转角测量；缺样时不插值，不能用本工具的样本均值替代完整动态辨识。
 
+用户已完成[120°往返航向核验](../../docs/CYCLONE_YAW_ANGLE_CHECK_20261105.md)，实际参考角明确为120°，不是90°；方向及角度量级相符，静置残余随时间变化，尚未写入比例或零偏修正。标定停机时飞行／自旋授权均已关闭，后续试飞前需重新检查和恢复所需授权。
+
 ## 构建离线模型文档
 
 ```sh
