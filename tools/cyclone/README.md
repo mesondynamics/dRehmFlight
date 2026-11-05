@@ -1,6 +1,6 @@
 # Cyclone 开发工具
 
-本次准备下载v3入口确认版 `drehm-cyclone-rotor-v3-entry-20261105`，应用／设备使用独立v3 ID，32波形／59状态／109参数／8窗口。进入阈值、确认计时、入口状态59和试验步骤见[v3设计](../../docs/CYCLONE_SPIN_ENTRY_V3_20261105.md)。先导入但保持原选择，待新固件下载并确认build后再选择v3；`inspect_recording.py`同时支持波形布局一致的水平标定版和v3版。
+当前待下载为v4入口滞回版 `drehm-cyclone-rotor-v4-entry-hys-20261105`；v3实测发现就绪闪烁，证据、双门槛与撤销计时见[v4设计](../../docs/CYCLONE_SPIN_ENTRY_HYSTERESIS_20261105.md)。应用／设备沿用v3 ID及布局：32波形／59状态／109参数／8窗口；它已在v3下载后选中，v4无需切换配置。`inspect_recording.py`支持波形布局一致的水平标定版、v3和v4，历史记录仍保留其原Profile快照。
 
 当前已下载build为 `drehm-cyclone-rotor-v2-level-20261105`，加入独立找平后的 IMU 安装角补偿，20项ASan/UBSan主机程序和构建通过，停机500µs周期与水平示值已核对；用户反馈普通模式前飘“现在好很多了”，尚非位置闭环验收。首次低速自旋进入Spin后触发超速制动及制动超时，用户反馈S1无明显持续自旋；自旋授权已在停机时关闭，尚未通过实际自旋验收。详情见[首次自旋诊断](../../docs/CYCLONE_SPIN_DIAGNOSTIC_20261105.md)及[本轮标定与下载记录](../../docs/CYCLONE_LEVEL_ALIGNMENT_20261105.md)。动力学与接线以[模型文档](../../docs/CYCLONE_ROTOR_MODEL.md)为准。激光使能后，普通模式解锁时常亮，自旋／制动／归并时按相位闪亮，停机熄灭。工具不会下载固件、解锁、电机试转或自动写飞行参数。
 

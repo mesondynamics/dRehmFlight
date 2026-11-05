@@ -88,21 +88,54 @@ static void vibrationMustNotPermanentlyBlockEntry() {
   // Short alternating rate fluctuations within the original tracking guard
   // must not make an otherwise stationary nose permanently ineligible.
   for(unsigned i=0;i<2400;++i)
-    r.tick(1500,7*std::sin(2*3.14159265f*8*i*dt));
+    r.tick(1500,12*std::sin(2*3.14159265f*8*i*dt));
   assert(r.control.spinEntryState()==SpinEntryState::Ready);
   for(unsigned i=0;i<620;++i)
-    r.tick(2000,7*std::sin(2*3.14159265f*8*i*dt));
+    r.tick(2000,12*std::sin(2*3.14159265f*8*i*dt));
   assert(r.out.mode==FlightMode::Spin && !r.control.supervisor().inhibited());
 
   Rig moving; moving.run(1700,1500); moving.run(200,2000);
-  moving.tick(2000,12); // a genuine instantaneous turn still rejects pending entry
+  moving.run(600,2000,30); // a sustained turn cancels, without a delayed start
   moving.run(2000,2000);
   assert(moving.out.mode==FlightMode::Normal &&
          moving.control.spinEntryState()==SpinEntryState::CenterRequired);
   assert(!moving.control.supervisor().inhibited());
 }
+static void readinessHysteresisAndConfirmation() {
+  SpinEntryGuard guard;
+  auto tick=[&](bool request,bool settled,bool envelope,bool yawCentered=true) {
+    return guard.step(request,!request,yawCentered,settled,envelope,true,false,dt);
+  };
+  for(unsigned i=0;i<1700;++i) assert(!tick(false,true,true));
+  assert(guard.state()==SpinEntryState::Ready);
+  for(unsigned i=0;i<6000;++i) assert(!tick(false,false,true));
+  assert(guard.state()==SpinEntryState::Ready); // no flicker in the wider band
+  for(unsigned i=0;i<200;++i) assert(!tick(true,false,true));
+  for(unsigned i=0;i<400;++i) assert(!tick(true,false,false)); // 200 ms pauses
+  assert(guard.state()==SpinEntryState::Confirming);
+  for(unsigned i=0;i<390;++i) assert(!tick(true,false,true));
+  bool accepted=false;
+  for(unsigned i=0;i<20;++i) accepted|=tick(true,false,true);
+  assert(accepted); // both previous good intervals count, the excursion does not
+
+  guard.reset();
+  for(unsigned i=0;i<1700;++i) tick(false,true,true);
+  for(unsigned i=0;i<520;++i) assert(!tick(true,false,false));
+  assert(guard.state()==SpinEntryState::CenterRequired);
+  for(unsigned i=0;i<4000;++i) assert(!tick(true,true,true));
+  assert(guard.state()==SpinEntryState::CenterRequired);
+  for(unsigned i=0;i<1700;++i) tick(false,true,true);
+  assert(guard.state()==SpinEntryState::Ready);
+  assert(!tick(true,true,true,false)); // Yaw steering revokes entry immediately
+  assert(guard.state()==SpinEntryState::CenterRequired);
+
+  guard.reset();
+  for(unsigned i=0;i<6000;++i) assert(!tick(false,false,true));
+  assert(guard.state()==SpinEntryState::Settling); // retention alone cannot qualify
+}
 int main() {
   earlyRequestMustNotConsumeFlight(); deliberateRequestAndSlew(); targetReadinessAndAbortStillApply();
   vibrationMustNotPermanentlyBlockEntry();
+  readinessHysteresisAndConfirmation();
   std::puts("Captured early request, later deliberate entry, debounce, target readiness and unchanged abort/reset passed");
 }

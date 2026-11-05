@@ -156,13 +156,23 @@ class CycloneControl {
         entryTargetRate_+=alpha*(allocatedRateTarget_-entryTargetRate_);
       }
     }
+    // Match the existing overspeed envelope rather than treating a one-frame
+    // excursion above the requested 10 deg/s as an entry fault. Qualification
+    // and retention remain separate from the unchanged airborne supervisor.
+    const float entryInstantLimit=spinRateLimit+safety.overspeedMarginDps;
+    const bool entryEnvelope=haveFeedback &&
+        std::fabs(measuredYawRate)<=entryInstantLimit &&
+        std::fabs(entryMeasuredRate_)<=std::fmin(8.f,spinRateLimit) &&
+        std::fabs(entryTargetRate_)<=std::fmin(8.f,spinRateLimit) &&
+        std::fabs(entryTargetRate_-entryMeasuredRate_)<=std::fmin(8.f,safety.rateErrorDps) &&
+        currentTiltError<=std::fmin(7.f,safety.tiltErrorDeg);
     const bool entrySettled=haveFeedback &&
-        std::fabs(measuredYawRate)<=spinRateLimit &&
+        std::fabs(measuredYawRate)<=entryInstantLimit &&
         std::fabs(entryMeasuredRate_)<=entryRate && std::fabs(entryTargetRate_)<=entryRate &&
         std::fabs(entryTargetRate_-entryMeasuredRate_)<=entryError &&
         currentTiltError<=std::fmin(5.f,safety.tiltErrorDeg);
     spinSelected_ = haveSpinModel ?
-        entry_.step(in.spinRequested,in.spin==0,std::fabs(in.yaw)<.001f,entrySettled,
+        entry_.step(in.spinRequested,in.spin==0,std::fabs(in.yaw)<.001f,entrySettled,entryEnvelope,
                     mode_==FlightMode::Normal,supervisor_.inhibited(),dt) :
         (in.spinRequested && !supervisor_.inhibited());
     if (spinSelected_ && mode_ != FlightMode::Spin) {
