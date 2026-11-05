@@ -1,8 +1,8 @@
 {
   "format_version": 1,
-  "id": "drehmflight-cyclone-rotor-v3",
-  "revision": 2,
-  "name": "普通／低速自旋三旋翼 · 入口与方向激光",
+  "id": "drehmflight-cyclone-rotor-v6",
+  "revision": 1,
+  "name": "普通／60RPM自旋三旋翼 · 转速与方向激光",
   "data": {
     "kind": "application",
     "target_profile": "teensy40-usb",
@@ -38,7 +38,7 @@
       },
       {
         "id": "rate",
-        "name": "航向率与机体 GyroZ（°/s）",
+        "name": "自旋转速（RPM，正为俯视逆时针）",
         "channels": [
           8,
           9,
@@ -87,7 +87,7 @@
       },
       {
         "id": "inertial",
-        "name": "独立惯性观测（°/s、g）",
+        "name": "惯性观测（X/Y为°/s、Z为RPM、加速度g）",
         "channels": [
           20,
           21,
@@ -184,29 +184,29 @@
       {
         "id": 8,
         "name": "目标航向率",
-        "unit": "°/s",
+        "unit": "RPM",
         "precision": 2,
         "color": "#68e0ba",
         "visible": true,
-        "scale": 1
+        "scale": 0.16666666666666666
       },
       {
         "id": 9,
         "name": "测得航向率（含姿态换算）",
-        "unit": "°/s",
+        "unit": "RPM",
         "precision": 2,
         "color": "#f6be73",
         "visible": true,
-        "scale": 1
+        "scale": 0.16666666666666666
       },
       {
         "id": 10,
         "name": "滤波航向率",
-        "unit": "°/s",
+        "unit": "RPM",
         "precision": 2,
         "color": "#91baff",
         "visible": true,
-        "scale": 1
+        "scale": 0.16666666666666666
       },
       {
         "id": 11,
@@ -265,11 +265,11 @@
       {
         "id": 17,
         "name": "标定后机体 GyroZ",
-        "unit": "°/s",
+        "unit": "RPM",
         "precision": 2,
         "color": "#f6be73",
         "visible": true,
-        "scale": 1
+        "scale": 0.16666666666666666
       },
       {
         "id": 18,
@@ -345,7 +345,7 @@
       },
       {
         "id": 26,
-        "name": "需求 Roll 力矩",
+        "name": "分配 Roll 力矩（含旋转补偿）",
         "unit": "N·m",
         "precision": 4,
         "color": "#91baff",
@@ -354,7 +354,7 @@
       },
       {
         "id": 27,
-        "name": "需求 Pitch 力矩",
+        "name": "分配 Pitch 力矩（含旋转补偿）",
         "unit": "N·m",
         "precision": 4,
         "color": "#eb96b7",
@@ -1314,7 +1314,7 @@
       },
       {
         "id": 82,
-        "name": "自旋最大航向率 (°/s，限90)",
+        "name": "自旋最大航向率 (°/s，360=60RPM)",
         "enabled": true
       },
       {
@@ -1475,6 +1475,16 @@
       {
         "id": 114,
         "name": "机架真实水平时原始 Pitch 示值 (°)",
+        "enabled": true
+      },
+      {
+        "id": 115,
+        "name": "自旋差动推力相位补偿比例 (0–1)",
+        "enabled": true
+      },
+      {
+        "id": 116,
+        "name": "激光姿态估计延迟补偿 (ms)",
         "enabled": true
       }
     ],

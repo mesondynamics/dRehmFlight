@@ -1,6 +1,8 @@
 # Cyclone 开发工具
 
-当前已下载为v5方向激光版 `drehm-cyclone-rotor-v5-laser-20261105`，已完成30°/s单方向自旋，用户反馈旋转与激光正常，见[v4／v5实测](../../docs/CYCLONE_V4_SPIN_AND_V5_LASER_20261105.md)。v4已修正入口闪烁，证据、双门槛与撤销计时见[入口设计](../../docs/CYCLONE_SPIN_ENTRY_HYSTERESIS_20261105.md)。应用／设备沿用v3 ID及布局：32波形／59状态／109参数／8窗口；当前应用revision2将激光观测卡置顶，已安装并回读。`inspect_recording.py`支持波形布局一致的水平标定版、v3、v4和v5，历史记录仍保留其原Profile快照。
+当前待下载为v6 `drehm-cyclone-rotor-v6-60rpm-20261105`，目标60 RPM（360°/s），新增差动推力相位补偿及激光延迟预测，模型与预设见[60 RPM准备](../../docs/CYCLONE_60RPM_PREPARATION_20261105.md)。应用／设备采用新v6 ID，32波形／59状态／111参数／8窗口；转速波形8／9／10／17在Web乘1/6显示RPM，原始RMPLOG仍为°/s。`inspect_recording.py`支持布局一致的水平标定版及v3／v4／v5／v6，历史记录仍保留其原Profile快照。
+
+硬件最后确认运行v5方向激光版，已完成30°/s（5 RPM）单方向自旋，用户反馈旋转与激光正常，见[v4／v5实测](../../docs/CYCLONE_V4_SPIN_AND_V5_LASER_20261105.md)。该轮32波形／59状态／109参数使用旧v3 ID应用revision2；它的实飞与周期结果不能当作v6硬件验收。v6预设 `docs/remote-mcu/cyclone-v6-60rpm-test-parameters.json` 含16项，最终目标360°/s；首次应用时覆盖82为90，落地核验后再改为180和360，无需各级重新刷固件。
 
 历史水平标定版加入独立找平后的IMU安装角补偿，用户反馈普通模式前飘“现在好很多了”，尚非位置闭环验收。首次低速自旋曾触发超速制动和制动超时，原始诊断保留于[首次自旋记录](../../docs/CYCLONE_SPIN_DIAGNOSTIC_20261105.md)及[水平标定记录](../../docs/CYCLONE_LEVEL_ALIGNMENT_20261105.md)，不代表当前v5状态。动力学与接线以[模型文档](../../docs/CYCLONE_ROTOR_MODEL.md)为准。激光使能后，普通模式解锁时常亮，自旋／制动／归并时仅在广义前方窗口有时限点亮，停机熄灭；状态36包含对齐切入事件，不能当圈数。v5试验预设为 `docs/remote-mcu/cyclone-v5-test-parameters.json`，每次重启后仅停机恢复并回读；分析工具不会下载固件、解锁、电机试转或自动写飞行参数。
 
@@ -43,7 +45,7 @@ npm ci --prefix tools/cyclone --ignore-scripts
 node tools/cyclone/build_model.cjs
 ```
 
-也可把依赖安装在临时目录，将其 `node_modules` 路径作为构建脚本的第一个参数。内容只编辑 `docs/CYCLONE_ROTOR_MODEL.md`；构建产物为 `docs/reports/cyclone-rotor-model.html`。构建时使用固定版本的Marked和MathJax，所有公式转成内嵌SVG，生成HTML无需网络、JavaScript或远程字体。
+也可把依赖安装在临时目录，将其 `node_modules` 路径作为第一个参数。默认源文件为 `docs/CYCLONE_ROTOR_MODEL.md`，产物为 `docs/reports/cyclone-rotor-model.html`；第二、第三参数可指定Markdown源文件与HTML目标，如本次60 RPM准备报告。构建时使用固定版本的Marked和MathJax，所有公式转成内嵌SVG，生成HTML无需网络、JavaScript或远程字体。
 
 ## 软件验证
 

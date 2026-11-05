@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[2]
 FILES = [ROOT / 'docs/remote-mcu' / name for name in
          ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json')]
-PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 115))
+PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 117))
 
 
 def check(condition, message):

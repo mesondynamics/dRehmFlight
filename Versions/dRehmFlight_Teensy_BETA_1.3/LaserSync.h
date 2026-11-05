@@ -8,9 +8,11 @@ enum class LaserMode : uint8_t { Off, Continuous, PhasePulse };
 struct LaserSyncConfig {
   float alignWindowDeg=2;
   uint32_t pulseUs=200000, minIntervalUs=200000;
+  float phaseLeadSeconds=0; // Explicit measured/estimated AHRS latency, zero preserves v5.
   bool valid() const {
     return std::isfinite(alignWindowDeg) && alignWindowDeg>0 && alignWindowDeg<45 &&
-           pulseUs>0 && pulseUs<=200000 && minIntervalUs>=pulseUs && minIntervalUs<=2000000;
+           pulseUs>0 && pulseUs<=200000 && minIntervalUs>=pulseUs && minIntervalUs<=2000000 &&
+           std::isfinite(phaseLeadSeconds) && phaseLeadSeconds>=0 && phaseLeadSeconds<=.03f;
   }
 };
 
@@ -28,12 +30,12 @@ class LaserSync {
       tracking_=inside_=pulsing_=false;
       return mode==LaserMode::Continuous && cfg.valid();
     }
-    phase=wrapDegrees(phase);
     if (!cfg.valid() || !std::isfinite(phase) ||
         !std::isfinite(relativeRateDps)) {
       tracking_=inside_=pulsing_=false;
       return false;
     }
+    phase=wrapDegrees(phase+relativeRateDps*cfg.phaseLeadSeconds);
     const bool inside=std::fabs(phase)<=cfg.alignWindowDeg;
     const bool entered=inside && (!tracking_ || !inside_);
     tracking_=true; inside_=inside;

@@ -1,0 +1,30 @@
+{
+  "name": "v6 60RPM自旋目标与逐级验证",
+  "expected_build": "drehm-cyclone-rotor-v6-60rpm-20261105",
+  "storage": "RAM-only; require fresh stopped state, current revision and complete readback; never software-arm",
+  "units": "firmware rates are deg/s; Web rate plot displays RPM using scale 1/6",
+  "stages": [
+    {"name": "15RPM", "max_rate_deg_s": 90},
+    {"name": "30RPM", "max_rate_deg_s": 180},
+    {"name": "60RPM target", "max_rate_deg_s": 360}
+  ],
+  "first_download": "apply the values below with ID82 overridden to 90; advance stages only while landed and SA stopped after reviewing the prior recording",
+  "values": [
+    {"id": 1, "type": 3, "value": 1},
+    {"id": 2, "type": 3, "value": 1},
+    {"id": 75, "type": 3, "value": 1},
+    {"id": 76, "type": 1, "value": 0.08},
+    {"id": 82, "type": 1, "value": 360},
+    {"id": 83, "type": 1, "value": 30},
+    {"id": 84, "type": 1, "value": 1},
+    {"id": 85, "type": 1, "value": 200},
+    {"id": 86, "type": 1, "value": 200},
+    {"id": 87, "type": 3, "value": 1},
+    {"id": 97, "type": 1, "value": 5},
+    {"id": 104, "type": 1, "value": 20},
+    {"id": 106, "type": 1, "value": 18},
+    {"id": 112, "type": 1, "value": 10},
+    {"id": 115, "type": 1, "value": 1},
+    {"id": 116, "type": 1, "value": 4.5}
+  ]
+}

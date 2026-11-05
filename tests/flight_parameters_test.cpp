@@ -31,7 +31,8 @@ int main() {
   assert(!p.config().initialModelEnabled && p.config().model.valid(false));
   assert(p.config().model.tiltLimitDeg==15);
   assert(p.config().model.massKg==.75f && p.config().model.izz==.0625f);
-  assert(p.config().level.valid() && tricopter::FlightParameters::count==109);
+  assert(p.config().level.valid() && tricopter::FlightParameters::count==111);
+  assert(p.config().cyclicLeadScale==0);
   for (unsigned rotor=0;rotor<3;++rotor) {
     assert(p.config().tiltMappingReady[rotor]);
     for (unsigned j=0;j<9;++j)
@@ -105,7 +106,20 @@ int main() {
     assert(batch(p,{{86,invalid}})[8]!=RMP_APPLIED);
     assert(p.revision()==laserRevision);
   }
-  assert(batch(p,{{82,91}})[8]==RMP_OUT_OF_RANGE);
+  assert(batch(p,{{82,360},{115,1}})[8]==RMP_APPLIED);
+  assert(p.config().spin.maxRateDps==360 && p.config().cyclicLeadScale==1);
+  const auto spinRevision=p.revision();
+  assert(batch(p,{{82,360.1f}})[8]!=RMP_APPLIED);
+  assert(batch(p,{{115,1.01f}})[8]==RMP_OUT_OF_RANGE);
+  assert(batch(p,{{115,.5f}},false)[8]==RMP_UNSAFE);
+  assert(p.revision()==spinRevision && p.config().spin.maxRateDps==360);
+  assert(batch(p,{{116,4.5f}})[8]==RMP_APPLIED);
+  assert(std::fabs(p.config().laser.phaseLeadSeconds-.0045f)<1e-6f);
+  const auto phaseRevision=p.revision();
+  assert(batch(p,{{116,30.1f}})[8]!=RMP_APPLIED);
+  assert(batch(p,{{116,5}},false)[8]==RMP_UNSAFE);
+  assert(p.revision()==phaseRevision);
+  assert(batch(p,{{116,30}})[8]==RMP_APPLIED && p.config().laser.valid());
   assert(batch(p,{{88,.25f},{93,.06f},{94,2},{95,.5f}})[8]==RMP_APPLIED);
   assert(p.config().rollKp==.25f && p.config().pitchKd==.06f && p.config().spinRateKp==2);
   assert(batch(p,{{2,0,RMP_PARAM_BOOL},{87,0,RMP_PARAM_BOOL}})[8]==RMP_APPLIED);

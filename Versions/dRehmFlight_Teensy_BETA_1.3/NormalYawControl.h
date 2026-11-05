@@ -24,6 +24,7 @@ struct NormalYawConfig {
   float maxRateDps=30, maxAccelDps2=60, rateFilterHz=12, maxHeadingError=45;
   float antiWindupGain=2, servoSlew=60, servoLag=.08f, integralLimit=2, damping=0;
   float motorLag=.04f;
+  float cyclicLeadScale=0; // Spin-only transverse motor-lag inverse; ordinary path unchanged.
 };
 struct NormalYawOutput {
   MotorMix motors{};
@@ -141,6 +142,9 @@ class NormalYawControl {
       torque=effectiveInertia*(rateKp*rateError+proposed)+feedforward+
              coupling.z+headingCoupling;
       coupling.z+=headingCoupling;
+      const Vec3 commanded=cyclicMotorLead({target.y,target.z,torque},omega.z,
+                                          c.motorLag,c.cyclicLeadScale);
+      target.y=commanded.x; target.z=commanded.y;
     }
     allocationTime_+=dt;
     if (allocationTime_>=.005f) { // allocation 200 Hz; estimation/rate feedback 2 kHz

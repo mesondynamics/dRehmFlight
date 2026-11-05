@@ -9,7 +9,7 @@
 namespace tricopter {
 class FlightParameters {
  public:
-  static constexpr unsigned count=109;
+  static constexpr unsigned count=111;
   void begin() {
     added_=0;
     add(1,"flight_enable",RMP_PARAM_BOOL,0,1,0);
@@ -54,7 +54,7 @@ class FlightParameters {
     add(79,"spin_damping_Nm_s_rad",RMP_PARAM_F32,0,1,0);
     add(80,"spin_quadratic_damping",RMP_PARAM_F32,0,1,0);
     add(81,"spin_feedforward_scale",RMP_PARAM_F32,0,1,1);
-    add(82,"spin_max_deg_s",RMP_PARAM_F32,1,90,15);
+    add(82,"spin_max_deg_s",RMP_PARAM_F32,1,360,15);
     add(83,"spin_max_accel_deg_s2",RMP_PARAM_F32,1,180,10);
     add(84,"laser_align_window_deg",RMP_PARAM_F32,.1,30,2);
     add(85,"laser_pulse_ms",RMP_PARAM_F32,1,200,200);
@@ -87,6 +87,8 @@ class FlightParameters {
     add(112,"spin_braking_settle_timeout_s",RMP_PARAM_F32,2,20,5);
     add(113,"imu_level_roll_deg",RMP_PARAM_F32,-5,5,measuredLevelRollDeg);
     add(114,"imu_level_pitch_deg",RMP_PARAM_F32,-5,5,measuredLevelPitchDeg);
+    add(115,"spin_cyclic_lead_scale",RMP_PARAM_F32,0,1,0);
+    add(116,"laser_phase_lead_ms",RMP_PARAM_F32,0,30,0);
     rmp_params_init(&parameters_,definitions_,count,nullptr,nullptr);
     rebuild();
   }
@@ -165,6 +167,8 @@ class FlightParameters {
     c.safety.allocationMinScale=number(v,104); c.safety.allocationDwellSeconds=number(v,105);
     c.safety.brakingSettleSeconds=number(v,106);
     c.level.set(number(v,107),number(v,108));
+    c.cyclicLeadScale=number(v,109);
+    c.laser.phaseLeadSeconds=number(v,110)/1000;
     c.ready=a>0 && b>0 && d>0 && c.model.valid(false) && c.level.valid() &&
         (c.model.calibrated || c.initialModelEnabled);
     c.spinReady=c.ready && c.spin.valid() && c.safety.valid() && c.model.ixx>0 && c.model.iyy>0;

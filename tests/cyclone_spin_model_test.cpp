@@ -62,7 +62,7 @@ static void laserChecks() {
   LaserSyncConfig invalid=cfg; invalid.minIntervalUs=0;
   assert(!marker.update(LaserMode::Continuous,0,0,1301500,invalid));
 
-  for(float speed : {10.f,30.f,90.f}) for(float sign : {-1.f,1.f}) {
+  for(float speed : {10.f,30.f,90.f,180.f,360.f}) for(float sign : {-1.f,1.f}) {
     LaserSync sweep;
     const uint32_t duration=static_cast<uint32_t>(720e6f/speed);
     unsigned lit=0;

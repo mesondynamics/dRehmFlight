@@ -118,6 +118,16 @@ inline Wrench wrench(const DynamicsModel &model,const float thrust[3],float serv
 inline Vec3 gyroscopicTorque(Vec3 inertia,Vec3 omega) {
   return omega.cross({inertia.x*omega.x,inertia.y*omega.y,inertia.z*omega.z});
 }
+
+// A world-fixed transverse torque rotates in body axes: d(tau_B)/dt is
+// -omega_z cross tau_B. Invert the known first-order motor lag for this cyclic
+// component only: command = desired + motorLag*d(desired)/dt. This is bounded
+// phase lead, not a derivative of noisy error. Collective and servo yaw stay
+// unchanged; the physical allocator still enforces all positive-thrust limits.
+inline Vec3 cyclicMotorLead(Vec3 torque,float bodyYawRadS,float motorLag,float scale) {
+  const float lead=clamp(bodyYawRadS*motorLag*scale,-1,1);
+  return {torque.x+lead*torque.y,torque.y-lead*torque.x,torque.z};
+}
 inline Vec3 angularAcceleration(Vec3 inertia,Vec3 omega,Vec3 torque) {
   const Vec3 momentum{inertia.x*omega.x,inertia.y*omega.y,inertia.z*omega.z};
   const Vec3 net=torque-omega.cross(momentum);
