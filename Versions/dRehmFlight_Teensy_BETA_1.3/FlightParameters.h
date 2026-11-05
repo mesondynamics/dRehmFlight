@@ -57,8 +57,8 @@ class FlightParameters {
     add(82,"spin_max_deg_s",RMP_PARAM_F32,1,90,15);
     add(83,"spin_max_accel_deg_s2",RMP_PARAM_F32,1,180,10);
     add(84,"laser_align_window_deg",RMP_PARAM_F32,.1,30,2);
-    add(85,"laser_pulse_ms",RMP_PARAM_F32,1,200,10);
-    add(86,"laser_min_interval_ms",RMP_PARAM_F32,10,2000,100);
+    add(85,"laser_pulse_ms",RMP_PARAM_F32,1,200,200);
+    add(86,"laser_min_interval_ms",RMP_PARAM_F32,10,2000,200);
     add(87,"laser_enable",RMP_PARAM_BOOL,0,1,0);
     add(88,"roll_angle_kp",RMP_PARAM_F32,0,3,.2f);
     add(89,"roll_angle_ki",RMP_PARAM_F32,0,3,.3f);

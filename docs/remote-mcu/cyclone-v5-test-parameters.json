@@ -1,0 +1,18 @@
+{
+  "name": "v5方向激光与30度每秒自旋测试",
+  "expected_build": "drehm-cyclone-rotor-v5-laser-20261105",
+  "storage": "RAM-only; apply with fresh stopped state and current revision",
+  "values": [
+    {"id": 1, "type": 3, "value": 1},
+    {"id": 2, "type": 3, "value": 1},
+    {"id": 14, "type": 3, "value": 0},
+    {"id": 75, "type": 3, "value": 1},
+    {"id": 82, "type": 1, "value": 30},
+    {"id": 83, "type": 1, "value": 10},
+    {"id": 84, "type": 1, "value": 1},
+    {"id": 85, "type": 1, "value": 200},
+    {"id": 86, "type": 1, "value": 200},
+    {"id": 87, "type": 3, "value": 1},
+    {"id": 97, "type": 1, "value": 5}
+  ]
+}

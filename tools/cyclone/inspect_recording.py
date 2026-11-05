@@ -16,7 +16,8 @@ import zlib
 
 BUILD = "drehm-cyclone-rotor-v2-level-20261105"
 SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
-                    "drehm-cyclone-rotor-v4-entry-hys-20261105")
+                    "drehm-cyclone-rotor-v4-entry-hys-20261105",
+                    "drehm-cyclone-rotor-v5-laser-20261105")
 CHANNELS = (
     "S1_us", "servo_us", "mode", "phase_deg", "roll_input_us",
     "pitch_input_us", "heading_deg", "reference_deg", "target_rate_dps",

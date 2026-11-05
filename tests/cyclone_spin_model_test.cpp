@@ -14,48 +14,69 @@ static void laserChecks() {
   for (float direction : {-1.f,1.f}) {
     LaserSync sync;
     assert(!sync.update(LaserMode::Off,0,45,100,cfg));
-    assert(!sync.update(LaserMode::PhasePulse,-direction*.1f,direction*45,1000,cfg));
-    assert(sync.update(LaserMode::PhasePulse,direction*.01f,direction*45,1500,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,-direction*3,direction*45,1000,cfg));
+    assert(sync.update(LaserMode::PhasePulse,-direction*1.9f,direction*45,1500,cfg));
     assert(sync.pulseCount()==1 && sync.lastPulseUs()==1500);
-    assert(sync.update(LaserMode::PhasePulse,direction*.1f,direction*45,5000,cfg));
-    assert(!sync.update(LaserMode::PhasePulse,direction*.2f,direction*45,11500,cfg));
-    assert(!sync.update(LaserMode::PhasePulse,-direction*.01f,-direction*45,12000,cfg)); // no retrigger
-    assert(!sync.update(LaserMode::PhasePulse,-direction*179.9f,direction*45,200000,cfg));
-    assert(!sync.update(LaserMode::PhasePulse,direction*179.9f,direction*45,201000,cfg)); // wrap is not front
-    assert(!sync.update(LaserMode::PhasePulse,-direction*.1f,direction*45,250000,cfg));
-    assert(sync.update(LaserMode::PhasePulse,direction*.01f,direction*45,250500,cfg));
+    assert(sync.update(LaserMode::PhasePulse,0,direction*45,10000,cfg));
+    assert(sync.update(LaserMode::PhasePulse,direction*1.9f,direction*45,100000,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,direction*2.01f,direction*45,100500,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,-direction*.01f,-direction*45,110000,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,0,0,220000,cfg)); // no delayed retry inside
+    assert(!sync.update(LaserMode::PhasePulse,-direction*179.9f,direction*45,230000,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,direction*179.9f,direction*45,240000,cfg));
+    assert(!sync.update(LaserMode::PhasePulse,-direction*3,direction*45,250000,cfg));
+    assert(sync.update(LaserMode::PhasePulse,-direction*1.9f,direction*45,251500,cfg));
     assert(sync.pulseCount()==2);
-    assert(!sync.update(LaserMode::Off,0,45,251000,cfg)); // stop/fault cancels this tick
+    assert(!sync.update(LaserMode::Off,0,45,252000,cfg)); // stop/fault cancels this tick
     assert(sync.pulseCount()==2);
   }
   LaserSync rollover;
-  assert(!rollover.update(LaserMode::PhasePulse,-.01f,45,UINT32_MAX-2000,cfg));
-  assert(rollover.update(LaserMode::PhasePulse,.01f,45,UINT32_MAX-1000,cfg));
+  assert(!rollover.update(LaserMode::PhasePulse,-3,45,UINT32_MAX-2000,cfg));
+  assert(rollover.update(LaserMode::PhasePulse,-1.9f,45,UINT32_MAX-1000,cfg));
   assert(rollover.update(LaserMode::PhasePulse,.1f,45,3000,cfg));
-  assert(!rollover.update(LaserMode::PhasePulse,.2f,45,9000,cfg));
+  assert(!rollover.update(LaserMode::PhasePulse,2.01f,45,9000,cfg));
   assert(rollover.pulseCount()==1);
   LaserSync stopped;
-  assert(!stopped.update(LaserMode::PhasePulse,-.01f,0,1000,cfg));
-  assert(!stopped.update(LaserMode::PhasePulse,.01f,0,2000,cfg));
-  assert(!stopped.update(LaserMode::PhasePulse,std::numeric_limits<float>::quiet_NaN(),45,3000,cfg));
-  assert(stopped.pulseCount()==0);
+  assert(stopped.update(LaserMode::PhasePulse,0,0,1000,cfg)); // aligned mode entry
+  assert(!stopped.update(LaserMode::PhasePulse,0,0,201000,cfg)); // bounded even without rotation
+  assert(!stopped.update(LaserMode::PhasePulse,0,0,300000,cfg)); // one burst per visit
+  assert(!stopped.update(LaserMode::PhasePulse,3,0,301000,cfg));
+  assert(stopped.update(LaserMode::PhasePulse,0,0,302000,cfg));
+  assert(!stopped.update(LaserMode::PhasePulse,std::numeric_limits<float>::quiet_NaN(),45,303000,cfg));
+  assert(!stopped.update(LaserMode::PhasePulse,0,std::numeric_limits<float>::infinity(),304000,cfg));
+  assert(stopped.pulseCount()==2);
 
   LaserSync marker;
   assert(marker.update(LaserMode::Continuous,160,0,1000,cfg));
   assert(marker.update(LaserMode::Continuous,-120,0,1000000,cfg)); // no pulse timeout
   assert(marker.pulseCount()==0 && marker.lastPulseUs()==0);
-  assert(!marker.update(LaserMode::PhasePulse,.01f,10,1000500,cfg)); // no inherited crossing
-  assert(marker.update(LaserMode::PhasePulse,-.01f,-10,1001000,cfg));
+  assert(marker.update(LaserMode::PhasePulse,.01f,1,1000500,cfg)); // already inside, no 5 deg/s gate
+  assert(!marker.update(LaserMode::PhasePulse,120,10,1001000,cfg));
   assert(marker.pulseCount()==1);
   assert(marker.update(LaserMode::Continuous,120,0,1001500,cfg));
   assert(!marker.update(LaserMode::Off,120,0,1002000,cfg));
   assert(marker.pulseCount()==1); // continuous/stop do not fabricate pulse events
-  assert(!marker.update(LaserMode::PhasePulse,.01f,10,1200000,cfg));
-  assert(!marker.update(LaserMode::PhasePulse,179,10,1200500,cfg));
-  assert(!marker.update(LaserMode::PhasePulse,-179,10,1201000,cfg));
+  assert(!marker.update(LaserMode::PhasePulse,179,10,1300000,cfg));
+  assert(!marker.update(LaserMode::PhasePulse,-179,10,1300500,cfg));
   assert(marker.pulseCount()==1);
   LaserSyncConfig invalid=cfg; invalid.minIntervalUs=0;
-  assert(!marker.update(LaserMode::Continuous,0,0,1201500,invalid));
+  assert(!marker.update(LaserMode::Continuous,0,0,1301500,invalid));
+
+  for(float speed : {10.f,30.f,90.f}) for(float sign : {-1.f,1.f}) {
+    LaserSync sweep;
+    const uint32_t duration=static_cast<uint32_t>(720e6f/speed);
+    unsigned lit=0;
+    for(uint32_t t=0;t<duration;t+=500) {
+      const float phase=wrapDegrees(sign*(-90+speed*t*1e-6f));
+      const bool high=sweep.update(LaserMode::PhasePulse,phase,sign*speed,t,cfg);
+      if(high) {
+        ++lit;
+        assert(std::fabs(phase)<=cfg.alignWindowDeg);
+        assert(static_cast<uint32_t>(t-sweep.lastPulseUs())<cfg.pulseUs);
+      }
+    }
+    assert(lit>0 && sweep.pulseCount()==2); // every front visit, never the back
+  }
 }
 
 static void kinematicChecks() {
@@ -257,5 +278,6 @@ int main() {
   unifiedPlant(15,.16f,.5f,1,true,spinOverspeed);
   unifiedPlant(15,.16f,2,1,true);
   for(float scale:{.7f,1.3f}) unifiedPlant(15,.16f,1,scale,true);
+  for(float inertia : {.5f,1.f,2.f}) unifiedPlant(30,.16f,inertia,1,true);
   std::puts("Unified model allocation, mode handoff, Euler coupling, phase marker and clock wrap passed");
 }

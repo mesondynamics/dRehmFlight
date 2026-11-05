@@ -98,7 +98,7 @@ int main() {
   // also be defined for malformed floating-point milliseconds before validation.
   const auto laserRevision=p.revision();
   assert(batch(p,{{85,150},{86,100}})[8]==RMP_UNSAFE);
-  assert(p.revision()==laserRevision && p.config().laser.pulseUs==10000);
+  assert(p.revision()==laserRevision && p.config().laser.pulseUs==200000);
   for (float invalid : {std::numeric_limits<float>::quiet_NaN(),
        std::numeric_limits<float>::infinity(),-1.f}) {
     assert(batch(p,{{85,invalid}})[8]!=RMP_APPLIED);

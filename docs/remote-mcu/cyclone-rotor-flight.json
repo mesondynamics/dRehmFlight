@@ -1,8 +1,8 @@
 {
   "format_version": 1,
   "id": "drehmflight-cyclone-rotor-v3",
-  "revision": 1,
-  "name": "普通／低速自旋三旋翼 v3 · 进入确认与锁止提示",
+  "revision": 2,
+  "name": "普通／低速自旋三旋翼 · 入口与方向激光",
   "data": {
     "kind": "application",
     "target_profile": "teensy40-usb",
@@ -400,6 +400,33 @@
     ],
     "cards": [
       {
+        "id": 35,
+        "name": "GPIO14 激光高电平（低频采样可能漏看闪光）",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 36,
+        "name": "激光相位点亮累计次数（常亮不计、非圈数）",
+        "enabled": true,
+        "unit": "",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
+        "id": 45,
+        "name": "最近激光点亮时刻（micros32）",
+        "enabled": true,
+        "unit": "µs",
+        "precision": 0,
+        "warning_min": null,
+        "warning_max": null
+      },
+      {
         "id": 59,
         "name": "自旋入口 0待机 1回中 2待稳 3就绪 4确认 5运行 6锁止 7禁用",
         "enabled": true,
@@ -733,24 +760,6 @@
         "warning_max": 0
       },
       {
-        "id": 35,
-        "name": "GPIO14 当前高电平",
-        "enabled": true,
-        "unit": "",
-        "precision": 0,
-        "warning_min": null,
-        "warning_max": null
-      },
-      {
-        "id": 36,
-        "name": "激光累计相位脉冲数（常亮不计）",
-        "enabled": true,
-        "unit": "",
-        "precision": 0,
-        "warning_min": null,
-        "warning_max": null
-      },
-      {
         "id": 37,
         "name": "允许旋转模式",
         "enabled": true,
@@ -819,15 +828,6 @@
         "enabled": true,
         "unit": "N·m",
         "precision": 5,
-        "warning_min": null,
-        "warning_max": null
-      },
-      {
-        "id": 45,
-        "name": "最近激光脉冲目标时刻（micros32）",
-        "enabled": true,
-        "unit": "µs",
-        "precision": 0,
         "warning_min": null,
         "warning_max": null
       },
