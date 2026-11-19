@@ -79,6 +79,41 @@ static void laserChecks() {
   }
 }
 
+static void laserExitChecks() {
+  LaserSync marker;
+  LaserSyncConfig cfg;
+  const uint32_t start=UINT32_MAX-100000u; // Dwell crosses micros() rollover.
+  auto exitBeam=[&](uint32_t elapsed,float bodyRate,float targetRate,float phase=90.f) {
+    return marker.update(LaserMode::CenteredSpinExit,phase,bodyRate,start+elapsed,
+                         cfg,bodyRate,targetRate);
+  };
+  assert(exitBeam(0,12,0,0));        // Fast braking still emits a phase event.
+  assert(!exitBeam(500,5,2));
+  assert(!exitBeam(200000,5.1f,2));  // Interrupted dwell starts over.
+  assert(!exitBeam(200500,5,2));
+  assert(!exitBeam(500499,-5,-2));
+  assert(exitBeam(500500,-5,-2));    // Body marker is visible away from phase zero.
+  assert(exitBeam(501000,-10,5));
+  assert(marker.pulseCount()==1);    // Continuous illumination adds no event.
+  assert(!exitBeam(501500,-10.1f,0));
+  assert(!exitBeam(502000,0,2.1f));
+  assert(!exitBeam(502500,0,0));
+  assert(exitBeam(802500,0,0));
+  assert(!exitBeam(803000,0,5.1f));  // Target can revoke before motion resumes.
+
+  assert(!exitBeam(803500,0,0));
+  assert(exitBeam(1103500,0,0));
+  // Displacing S1 restores the phase marker even at low speed in a locked exit.
+  assert(!marker.update(LaserMode::PhasePulse,90,0,start+1104000,cfg));
+  assert(!exitBeam(1104500,0,0));
+  assert(exitBeam(1404500,0,0));
+  assert(!marker.update(LaserMode::Off,0,0,start+1405000,cfg));
+  assert(!exitBeam(1405500,0,0));
+  assert(exitBeam(1705500,0,0));
+  assert(!exitBeam(1706000,std::numeric_limits<float>::quiet_NaN(),0));
+  assert(!exitBeam(1706500,0,0));   // Invalid input extinguishes and resets dwell.
+}
+
 static void kinematicChecks() {
   SpinDynamicsModel spin;
   spin.viscousDampingNmS=.01f; spin.quadraticDampingNmS2=.002f;
@@ -260,7 +295,7 @@ static void spinEntryChecks() {
   assert(entry.referenceRate==cfg.generalizedYawMaxDps);
 }
 int main() {
-  laserChecks(); kinematicChecks(); physicalSaturationChecks(); spinEntryChecks();
+  laserChecks(); laserExitChecks(); kinematicChecks(); physicalSaturationChecks(); spinEntryChecks();
   for (float speed : {45.f,90.f}) for (float lag : {.04f,.08f,.12f}) unifiedPlant(speed,lag);
   unifiedPlant(15,.16f,1,1,true);
   unifiedPlant(15,.16f,.5f,1,true);

@@ -1,4 +1,4 @@
-"""Guard build-specific waveform and Web profile assignments across v12–v18."""
+"""Guard build-specific waveform and Web profile assignments across v12–v19."""
 import json
 from pathlib import Path
 import struct
@@ -81,7 +81,10 @@ class CycloneRecordingLayoutTest(unittest.TestCase):
 
     def test_direct_s1_profile_distinguishes_selector_status_from_flight_mode(self):
         profiles = [json.loads((PROFILE_DIR / name).read_text()) for name in PROFILE_FILES['v18']]
-        validate(profiles, 'v18')
+        for version in ('v18', 'v19'):
+            with self.subTest(version=version):
+                self.assertEqual(PROFILE_FILES[version], PROFILE_FILES['v18'])
+                validate(profiles, version)
         old_app = json.loads((PROFILE_DIR / PROFILE_FILES['v17'][0]).read_text())
         cards = {c['id']: c['name'] for c in profiles[0]['data']['cards']}
         old_cards = {c['id']: c['name'] for c in old_app['data']['cards']}

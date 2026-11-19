@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 namespace tricopter {
-enum class LaserMode : uint8_t { Off, Continuous, PhasePulse };
+enum class LaserMode : uint8_t { Off, Continuous, PhasePulse, CenteredSpinExit };
 
 struct LaserSyncConfig {
   float alignWindowDeg=2;
@@ -16,7 +16,7 @@ struct LaserSyncConfig {
   }
 };
 
-// Normal flight holds the direction marker high. During spin and its exit,
+// Normal flight holds the direction marker high. During spin and fast braking,
 // emit one bounded high interval on entering the generalized +X phase window,
 // including an already aligned mode entry. Leave the window -> low this tick.
 // Azimuth is gyro-referenced, not an absolute compass direction. No delay(),
@@ -25,15 +25,21 @@ struct LaserSyncConfig {
 class LaserSync {
  public:
   bool update(LaserMode mode,float phase,float relativeRateDps,uint32_t now,
-              const LaserSyncConfig &cfg) {
+              const LaserSyncConfig &cfg,float bodyRateDps=NAN,float targetRateDps=NAN) {
+    if (mode!=LaserMode::Off && !cfg.valid()) mode=LaserMode::Off;
+    if ((mode==LaserMode::PhasePulse || mode==LaserMode::CenteredSpinExit) &&
+        (!std::isfinite(phase) || !std::isfinite(relativeRateDps))) mode=LaserMode::Off;
+    if (mode==LaserMode::CenteredSpinExit &&
+        (!std::isfinite(bodyRateDps) || !std::isfinite(targetRateDps))) mode=LaserMode::Off;
+    if (mode==LaserMode::CenteredSpinExit) {
+      mode=showBodyHeading(std::fabs(bodyRateDps),std::fabs(targetRateDps),now) ?
+          LaserMode::Continuous : LaserMode::PhasePulse;
+    } else {
+      exitMarker_=ExitMarker::Waiting;
+    }
     if (mode!=LaserMode::PhasePulse) {
       tracking_=inside_=pulsing_=false;
-      return mode==LaserMode::Continuous && cfg.valid();
-    }
-    if (!cfg.valid() || !std::isfinite(phase) ||
-        !std::isfinite(relativeRateDps)) {
-      tracking_=inside_=pulsing_=false;
-      return false;
+      return mode==LaserMode::Continuous;
     }
     phase=wrapDegrees(phase+relativeRateDps*cfg.phaseLeadSeconds);
     const bool inside=std::fabs(phase)<=cfg.alignWindowDeg;
@@ -49,6 +55,26 @@ class LaserSync {
   uint32_t pulseCount() const { return pulseCount_; }
   uint32_t lastPulseUs() const { return lastPulseUs_; }
  private:
+  enum class ExitMarker : uint8_t { Waiting, Timing, Steady };
+  // The beam now identifies the physical nose, even while the yaw controller
+  // is still braking or aligning. These thresholds affect only the indicator.
+  bool showBodyHeading(float bodySpeed,float targetSpeed,uint32_t now) {
+    if (exitMarker_==ExitMarker::Steady && bodySpeed<=10 && targetSpeed<=5)
+      return true;
+    if (bodySpeed>5 || targetSpeed>2) {
+      exitMarker_=ExitMarker::Waiting;
+      return false;
+    }
+    if (exitMarker_==ExitMarker::Waiting) {
+      exitMarker_=ExitMarker::Timing;
+      exitSlowSince_=now;
+    }
+    if (static_cast<uint32_t>(now-exitSlowSince_)>=300000u)
+      exitMarker_=ExitMarker::Steady;
+    return exitMarker_==ExitMarker::Steady;
+  }
+  ExitMarker exitMarker_=ExitMarker::Waiting;
+  uint32_t exitSlowSince_=0;
   bool tracking_=false, inside_=false, pulsing_=false, havePulse_=false;
   uint32_t lastPulseUs_=0, pulseCount_=0;
 };

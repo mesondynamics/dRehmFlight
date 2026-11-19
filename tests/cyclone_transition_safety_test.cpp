@@ -175,6 +175,61 @@ static void supervisorReasons() {
     supervisor.clear();assert(!supervisor.inhibited() && supervisor.count()==1);
   }
 }
+static void spinAccelerationTracking() {
+  SpinSafetyConfig c;
+  assert(c.trackingLimit(false)==8 && c.trackingLimit(true)==18);
+  c.rateErrorDps=4; assert(c.trackingLimit(false)==4 && c.trackingLimit(true)==9);
+  c.rateErrorDps=22; assert(c.trackingLimit(false)==22 && c.trackingLimit(true)==22);
+  c.rateErrorDps=8;
+  SpinSupervisor threshold;
+  const auto rampError=[&](float error) {
+    threshold.update(c,true,360,50,50-error,0,1,1,false,0,5,dt,true);
+  };
+  for(unsigned i=0;i<2200;++i) rampError(18);
+  assert(!threshold.inhibited());
+  for(unsigned i=0;i<1980;++i) rampError(18.1f);
+  assert(!threshold.inhibited());
+  for(unsigned i=0;i<30;++i) rampError(18.1f);
+  assert(threshold.reasons()==spinRateError);
+
+  for(float sign : {-1.f,1.f}) {
+    Rig r; r.config.spin.maxRateDps=360;
+    PilotInput in{.5f,0,0,0,sign,true};
+    r.tick(in);
+    const auto frame=[&](float physicalTarget) {
+      r.control.applyAllocationFeedback(1,1,false,physicalTarget);
+      return r.tick(in,physicalTarget-sign*14);
+    };
+    for(unsigned i=0;i<2200;++i) frame(sign*(25+i*.01f));
+    assert(r.out.mode==FlightMode::Spin && r.control.supervisor().rateErrorTime()==0);
+    // Same S1 position, but a stationary physical target. An ongoing 14 deg/s
+    // error must now trip the original 8 deg/s protection after its full dwell.
+    const float held=sign*46.99f;
+    for(unsigned i=0;i<1980;++i) frame(held);
+    assert(!r.control.supervisor().inhibited());
+    for(unsigned i=0;i<30;++i) frame(held);
+    assert(r.out.mode==FlightMode::Braking && r.control.supervisor().reasons()==spinRateError);
+  }
+  Rig r; r.config.spin.maxRateDps=360;
+  PilotInput in{.5f,0,0,0,1,true};
+  r.tick(in);
+  const auto timed=[&](float physicalTarget) {
+    r.control.applyAllocationFeedback(1,1,false,physicalTarget);
+    r.tick(in,physicalTarget-14);
+    return r.control.supervisor().rateErrorTime();
+  };
+  timed(20); assert(timed(21)==0);
+  in.spin=-1; assert(timed(22)>0); // Stick reversed while last target was still increasing.
+  assert(timed(21)>dt);            // Magnitude is decreasing on the original side.
+  assert(timed(-1)>2*dt);          // Crossing zero is not a same-direction ramp sample.
+  assert(timed(-2)==0);            // Now accelerating on the other side.
+  in.spin=0; in.spinRequested=false;
+  assert(timed(-3)>0 && r.out.mode==FlightMode::Braking);
+  in.spin=-1; in.spinRequested=true;
+  assert(timed(-4)>dt && r.out.mode==FlightMode::Spin);
+  assert(timed(-5)>2*dt);          // Re-entry starts a new pair of physical targets.
+  assert(timed(-6)==0);
+}
 static void allocationAbortAndReset() {
   Rig r;NormalYawControl yaw;
   PilotInput in{.5f,0,0,0,.1f,true};
@@ -217,7 +272,7 @@ static void collectiveBeforeYaw() {
 int main() {
   stoppingMustBeMeasured();dwellAndReacceleration();vibrationAndResidualRotation();
   boundedHandoff(1);boundedHandoff(-1);
-  yawDuringAlignment();physicalRateTargetMustStop();supervisorReasons();
+  yawDuringAlignment();physicalRateTargetMustStop();supervisorReasons();spinAccelerationTracking();
   allocationAbortAndReset();collectiveBeforeYaw();
   std::puts("Low-speed transition boundaries, pilot handoff, spin supervision and reset interlocks passed");
 }

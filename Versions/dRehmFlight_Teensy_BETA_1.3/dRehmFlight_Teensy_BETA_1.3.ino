@@ -692,11 +692,16 @@ void updateLaserSync() {
   if (active) {
     if (flightOutput.mode==tricopter::FlightMode::Normal)
       mode=tricopter::LaserMode::Continuous;
-    else if (config.spinEnabled && config.spinReady && normalYawOutput.active)
-      mode=tricopter::LaserMode::PhasePulse;
+    else if (config.spinEnabled && config.spinReady && normalYawOutput.active) {
+      const bool exiting=flightOutput.mode==tricopter::FlightMode::Braking ||
+          flightOutput.mode==tricopter::FlightMode::Aligning;
+      mode=exiting && tricopter::spinCentered(channel_6_pwm) ?
+          tricopter::LaserMode::CenteredSpinExit : tricopter::LaserMode::PhasePulse;
+    }
   }
   const bool high=laserSync.update(mode,flightOutput.phase,
-      flightOutput.yawRate-flightOutput.referenceRate,current_time,config.laser);
+      flightOutput.yawRate-flightOutput.referenceRate,current_time,config.laser,
+      flightOutput.yawRate,normalYawOutput.rateTarget);
   if (high!=laserSyncHigh) digitalWrite(laserSyncPin,high ? HIGH : LOW);
   laserSyncHigh=high;
 }

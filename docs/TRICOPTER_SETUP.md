@@ -2,6 +2,8 @@
 
 当前分支 `feature/cyclone-rotor-tricopter` 的 v15 在普通模式使用 CH7/LS 调前后配平、CH8/RS 调左右配平，每轴范围 ±5°。v14 的每轴范围为 ±2°，复现旧倾角时需要重新选择滑杆位置。CH1 控制 Yaw、CH4 控制 Roll，CH5 为 SA、CH6 为 S1。本版方向、换算和实测端点见[控制模型第 5.1 节](CYCLONE_ROTOR_MODEL.md)及[离线 HTML](reports/cyclone-rotor-model.html)。按飞控版本选择 [v15 应用配置](remote-mcu/cyclone-v15-xy-trim-5deg-flight.json)或 [v14 应用配置](remote-mcu/cyclone-v14-xy-trim-flight.json)。以下为先前版本的调试记录。
 
+v19 试验版本在自旋加速时采用单独的速率误差门槛；S1 回中且机体持续接近停转时，激光可在制动或归并阶段切换为常亮，显示实际机头。网页继续使用 v18 配置。两轮 v18 实飞触发跟踪保护的原因和 v19 轨迹回放见[模型第 7–9 节](CYCLONE_ROTOR_MODEL.md)。
+
 v18 已下载，启动预设的 112 项参数已在停机状态核对。CH6 S1 直接选择普通／自旋模式。已解锁且有动力时，1470–1530 µs 为普通或制动，离开零区即可选择自旋；两端目标分别为 +60、−60 RPM，角加速度限制 30°/s²。v18 本机启动预设启用 S1，SA 解锁流程仍有效。实际模式读状态 11。使用 [v18 应用配置](remote-mcu/cyclone-v18-s1-direct-flight.json)及[设备配置](remote-mcu/cyclone-v18-s1-direct-device.json)。
 
 v16、v17 使用本机普通悬停上电预设，配平范围与 v15 相同，沿用 v15 网页面板。有效启动时自动加载普通模式参数，自旋关闭，电机保持停机，飞手仍需完成遥控解锁。网页临时调参仅在本次上电期间生效。v17 的 15 RPM 试验仅在本次上电启用自旋。入口的航向率趋势与物理目标率趋势绝对值各可达 16°/s，两者差限 8°/s。冷启动预设和本轮试验参数见[模型第 8 节](CYCLONE_ROTOR_MODEL.md)。

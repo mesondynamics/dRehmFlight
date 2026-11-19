@@ -24,7 +24,7 @@ def read_flight(path, metadata_path):
     if (metadata["state"] != "complete" or metadata["dropped_frames"] or metadata["error"] or
             target["build_id"] not in (HOVER_SLOPE_BUILD, *XY_TRIM_BUILDS) or target["sample_rate_hz"] != 100 or
             target["channels"] != 32 or target["schema_id"] != 1):
-        raise ValueError("Expected a sealed 100 Hz v13–v18 recording with no recording drops")
+        raise ValueError("Expected a sealed 100 Hz v13–v19 recording with no recording drops")
     if metadata["mode"] != "hardware" or target["device_id"] != "teensy40-1881bf":
         raise ValueError("Incorrect data source")
     sessions, frames, digest = read_recording(path, include_parameter_pages=True)

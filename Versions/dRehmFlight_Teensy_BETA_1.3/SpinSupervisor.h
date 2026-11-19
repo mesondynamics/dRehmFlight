@@ -19,6 +19,10 @@ struct SpinSafetyConfig {
     return std::isfinite(allocationMinScale) && allocationMinScale>=.5f && allocationMinScale<1;
   }
   float stoppedRate(float maxRate) const { return std::fmin(stopRateDps,.1f*maxRate); }
+  float trackingLimit(bool accelerating) const {
+    if(!accelerating) return rateErrorDps;
+    return std::fmax(rateErrorDps,std::fmin(18.f,rateErrorDps*2.25f));
+  }
 };
 enum SpinAbortReason : uint32_t {
   spinOverspeed=1, spinRateError=2, spinTiltError=4,
@@ -40,11 +44,12 @@ class SpinSupervisor {
   void idle() { overspeed_=rateError_=tiltError_=allocation_=0; }
   void update(const SpinSafetyConfig &c,bool enabled,float rateLimit,float targetRate,
               float measuredRate,float tiltError,float liftScale,float attitudeScale,
-              bool yawLimited,float brakingTime,float brakingBudget,float dt) {
+              bool yawLimited,float brakingTime,float brakingBudget,float dt,
+              bool accelerating=false) {
     if(!enabled) { idle(); return; }
     dwell(overspeed_,std::fabs(measuredRate)>rateLimit+c.overspeedMarginDps,dt);
     const float error=std::fabs(targetRate-measuredRate);
-    dwell(rateError_,error>c.rateErrorDps,dt);
+    dwell(rateError_,error>c.trackingLimit(accelerating),dt);
     dwell(tiltError_,tiltError>c.tiltErrorDeg,dt);
     dwell(allocation_,liftScale<c.allocationMinScale || attitudeScale<c.allocationMinScale ||
           (yawLimited && error>c.stoppedRate(rateLimit)),dt);

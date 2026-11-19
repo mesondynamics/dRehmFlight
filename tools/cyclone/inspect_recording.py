@@ -21,7 +21,9 @@ XY_TRIM_5DEG_BUILD = "drehm-cyclone-rotor-v15-xy-trim-5deg-20261119"
 HOVER_STARTUP_BUILD = "drehm-cyclone-rotor-v16-hover-startup-20261119"
 SPIN_ENTRY_16_BUILD = "drehm-cyclone-rotor-v17-spin-entry-16-20261119"
 S1_DIRECT_BUILD = "drehm-cyclone-rotor-v18-s1-direct-20261119"
-XY_TRIM_BUILDS = (XY_TRIM_BUILD, XY_TRIM_5DEG_BUILD, HOVER_STARTUP_BUILD, SPIN_ENTRY_16_BUILD, S1_DIRECT_BUILD)
+SPIN_RAMP_LASER_BUILD = "drehm-cyclone-rotor-v19-spin-ramp-laser-20261119"
+XY_TRIM_BUILDS = (XY_TRIM_BUILD, XY_TRIM_5DEG_BUILD, HOVER_STARTUP_BUILD, SPIN_ENTRY_16_BUILD,
+                  S1_DIRECT_BUILD, SPIN_RAMP_LASER_BUILD)
 SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v4-entry-hys-20261105",
                     "drehm-cyclone-rotor-v5-laser-20261105",

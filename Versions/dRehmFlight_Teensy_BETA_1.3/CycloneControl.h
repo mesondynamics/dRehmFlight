@@ -133,6 +133,16 @@ class CycloneControl {
     // Allocation feedback is consumed once, from the preceding 500 us frame.
     const bool haveFeedback=feedbackValid_;
     feedbackValid_=false;
+    // Compare consecutive physical PI setpoints. A held rate has exactly zero
+    // increment once the slew limiter reaches it. A reversal, reduced demand or
+    // centered S1 immediately uses the ordinary tracking limit.
+    const bool spinFeedback=mode_==FlightMode::Spin && haveFeedback;
+    const float requestedSpinRate=in.spin*spinRateLimit;
+    const bool accelerating=spinFeedback && previousSpinFeedback_ && in.spinRequested &&
+        ((previousSpinTarget_>=0 && allocatedRateTarget_>previousSpinTarget_ && requestedSpinRate>=allocatedRateTarget_) ||
+         (previousSpinTarget_<=0 && allocatedRateTarget_<previousSpinTarget_ && requestedSpinRate<=allocatedRateTarget_));
+    previousSpinTarget_=allocatedRateTarget_;
+    previousSpinFeedback_=spinFeedback;
     const float currentTiltError=haveSpinModel ?
         vectorAngle(rotation.bz*(-1),desiredUp_)*degrees : 0;
     if(mode_==FlightMode::Braking) brakingTime_+=dt;
@@ -143,7 +153,7 @@ class CycloneControl {
           haveFeedback ? allocatedLiftScale_ : 1,
           haveFeedback ? allocatedAttitudeScale_ : 1,
           haveFeedback && allocatedYawLimited_,
-          mode_==FlightMode::Braking ? brakingTime_ : 0,brakingBudget_,dt);
+          mode_==FlightMode::Braking ? brakingTime_ : 0,brakingBudget_,dt,accelerating);
     // Maintain the 1 Hz stop estimate across mode changes for braking and alignment.
     if(haveSpinModel && haveFeedback) {
       if(!stopTrendInitialized_) {
@@ -352,6 +362,7 @@ class CycloneControl {
     yawRate_ = stoppedTime_ = alignTime_ = brakingTime_ = 0;
     brakingBudget_=120;
     feedbackValid_=false;
+    previousSpinFeedback_=false;
     desiredUp_={0,0,-1};
     supervisor_.idle(); // The abort latch is cleared only by the explicit cut-state check.
     stopRateTrend_=0; stopTrendInitialized_=false;
@@ -370,6 +381,8 @@ class CycloneControl {
   float stopRateTrend_=0;
   bool stopTrendInitialized_=false;
   bool feedbackValid_=false,allocatedYawLimited_=false;
+  bool previousSpinFeedback_=false;
+  float previousSpinTarget_=0;
   float allocatedLiftScale_=1,allocatedAttitudeScale_=1,allocatedRateTarget_=0;
   float integralRoll_ = 0, integralPitch_ = 0;
   float priorIntegralRoll_=0, priorIntegralPitch_=0, requestedRoll_=0, requestedPitch_=0;

@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 PROFILE_DIR = Path(__file__).resolve().parents[2] / 'docs/remote-mcu'
 TRIM_5DEG_PROFILE = ('cyclone-v15-xy-trim-5deg-flight.json', 'cyclone-v15-xy-trim-5deg-device.json')
+S1_DIRECT_PROFILE = ('cyclone-v18-s1-direct-flight.json', 'cyclone-v18-s1-direct-device.json')
 PROFILE_FILES = {
     'v12': ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json'),
     'v13': ('cyclone-v13-hover-slope-flight.json', 'cyclone-v13-hover-slope-device.json'),
@@ -17,7 +18,8 @@ PROFILE_FILES = {
     'v15': TRIM_5DEG_PROFILE,
     'v16': TRIM_5DEG_PROFILE,
     'v17': TRIM_5DEG_PROFILE,
-    'v18': ('cyclone-v18-s1-direct-flight.json', 'cyclone-v18-s1-direct-device.json'),
+    'v18': S1_DIRECT_PROFILE,
+    'v19': S1_DIRECT_PROFILE,
 }
 PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 118))
 
@@ -36,6 +38,8 @@ def validate(profiles, version='v12'):
     check(version in PROFILE_FILES, 'Unknown profile version')
     if version in ('v16', 'v17'):
         version = 'v15'  # These builds share the v15 telemetry layout and Web profile IDs.
+    elif version == 'v19':
+        version = 'v18'  # The S1 selector, mode and laser-event fields retain their wire meanings.
     app, device = profiles
     for p in profiles:
         check(set(p) == {'format_version', 'id', 'revision', 'name', 'data'}, 'Unknown profile fields')
