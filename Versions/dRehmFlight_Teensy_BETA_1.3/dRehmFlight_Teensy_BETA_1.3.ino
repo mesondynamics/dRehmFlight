@@ -186,13 +186,13 @@ float MagScaleY = 1.0;
 float MagScaleZ = 1.0;
 
 //IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-// Static installed-level calibration: 2026-10-15, MPU6050; see docs/imu-calibration.json.
-float AccErrorX = 0.04727974f;
-float AccErrorY = -0.02008748f;
-float AccErrorZ = -0.07755037f;
-float GyroErrorX = -3.01755089f;
-float GyroErrorY = 0.67561323f;
-float GyroErrorZ = -0.54787786f;
+// Static installed-level calibration: 2026-11-19, MPU6050; see docs/CYCLONE_IMU_CALIBRATION_20261119.md.
+float AccErrorX = 0.03006190f;
+float AccErrorY = 0.01493748f;
+float AccErrorZ = -0.08442668f;
+float GyroErrorX = -2.95879213f;
+float GyroErrorY = 1.07403380f;
+float GyroErrorZ = -0.69499031f;
 
 //Controller parameters (take note of defaults before modifying!): 
 float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)

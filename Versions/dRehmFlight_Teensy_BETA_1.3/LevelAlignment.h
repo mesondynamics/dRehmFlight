@@ -3,10 +3,10 @@
 #include "FlightMath.h"
 
 namespace tricopter {
-// Aircraft level reference measured with an independent level, motors stopped,
-// 2026-11-05. These are RAW indicated angles at physical level, not commands.
-constexpr float measuredLevelRollDeg=.04f;
-constexpr float measuredLevelPitchDeg=-.15f;
+// The 2026-11-19 single-pose accelerometer offsets already reference the
+// level airframe. Apply only newly measured residual angles on top of them.
+constexpr float measuredLevelRollDeg=0;
+constexpr float measuredLevelPitchDeg=0;
 
 inline Quaternion quaternionProduct(Quaternion a,Quaternion b) {
   return {a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z,

@@ -1,6 +1,8 @@
 # Cyclone 开发工具
 
-当前固件为v7 `drehm-cyclone-rotor-v7-stop-20261105`，111项参数回读一致；15 RPM回退增益后完成一轮接近60 RPM的实机记录，用户反馈整体可用但有轻微晃动，实机调试暂时暂停。模型、预设与部署记录见[完整动力学模型](../../docs/CYCLONE_ROTOR_MODEL.md)和[v7停转资格记录](../../docs/CYCLONE_V7_STOP_QUALIFICATION_20261105.md)。应用／设备采用v7 ID，32波形／59状态／111参数／8窗口；转速波形8／9／10／17在Web乘1/6显示RPM，原始RMPLOG仍为°/s。`inspect_recording.py`支持v3／v4／v5／v6／v7历史Profile，不能跨版本解释状态语义。
+2026-11-19 静态标定版 `drehm-cyclone-rotor-v8-imu-20261119` 已烧录并停机复核。它沿用 v7 的应用配置及遥测布局，新增标定数据和独立复核结果见 [IMU 静态标定](../../docs/CYCLONE_IMU_CALIBRATION_20261119.md)。
+
+上一轮实飞使用v7 `drehm-cyclone-rotor-v7-stop-20261105`，111项参数回读一致。15 RPM回退增益后完成一轮接近60 RPM的实机记录，用户反馈整体可用但有轻微晃动。模型、预设与部署记录见[完整动力学模型](../../docs/CYCLONE_ROTOR_MODEL.md)和[v7停转资格记录](../../docs/CYCLONE_V7_STOP_QUALIFICATION_20261105.md)。应用／设备采用v7 ID，32波形／59状态／111参数／8窗口。转速波形8／9／10／17在Web乘1/6显示RPM，原始RMPLOG仍为°/s。`inspect_recording.py`支持v3至v8的对应布局，状态含义以记录的Profile为准。
 
 此前v5方向激光版已完成30°/s（5 RPM）单方向自旋，用户反馈旋转与激光正常，见[v4／v5实测](../../docs/CYCLONE_V4_SPIN_AND_V5_LASER_20261105.md)。该轮32波形／59状态／109参数使用旧v3 ID应用revision2；它的实飞与周期结果不能当作v7硬件验收。v7停转预设 `docs/remote-mcu/cyclone-v7-stop-test-parameters.json` 保留稳定PI 1.5／0.4；60 RPM单项预设 `docs/remote-mcu/cyclone-v7-60rpm-test-parameters.json` 只将参数82设为360°/s，必须在落地、SA停机时使用。60 RPM实机记录已归档，不能将一次记录当作参数辨识完成。
 
