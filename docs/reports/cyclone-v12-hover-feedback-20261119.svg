@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg
+  PUBLIC '-//W3C//DTD SVG 1.0//EN'
+  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'>
+<svg width="1100" height="508" preserveAspectRatio="xMinYMin meet" viewBox="0 0 1100 508" xmlns="http://www.w3.org/2000/svg" version="1.0" fill-rule="evenodd" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<title>v12 悬停中的姿态突动与机载加速度</title>
+	<desc>固定油门时，103.585 至 103.785 秒内横滚下降 4.41 度，俯仰下降 1.49 度。陀螺积分与融合姿态的变化一致。静止时机载 Z 轴加速度接近 1 g，悬停时波动增大。遥测采样率为 100 Hz。</desc>
+	<clipPath id="clip">
+		<rect x="0" y="0" width="1100" height="508"/>
+	</clipPath>
+	<g id="group" transform="scale(1,-1) translate(0,-508)" style="clip-path: url(#clip)">
+		<g transform="">
+			<rect x="0" y="0" width="1100" height="508" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="30" y="470" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-weight: bold; font-size: 27px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,940) scale(1,-1)">悬停中的姿态突动与机载加速度</text>
+			<text x="30" y="440" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 16px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,880) scale(1,-1)">普通模式 v12  ·  固定油门 1327 µs  ·  主分析窗 64–124 s  ·  飞控端遥测 100 Hz</text>
+			<path d="M 30,420 L 1068,420 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 1;"/>
+			<text x="30" y="386" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-weight: bold; font-size: 20px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,772) scale(1,-1)">一次 0.20 s 姿态突动</text>
+			<text x="580" y="386" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-weight: bold; font-size: 20px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,772) scale(1,-1)">机载 Z 轴加速度</text>
+			<path d="M 31,365 L 55,365 Z" style="stroke: rgb(0%,43%,47%); stroke-linecap: butt; stroke-width: 2;"/>
+			<text x="61" y="360" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,720) scale(1,-1)">融合姿态</text>
+			<path d="M 168,365 L 192,365 Z" style="stroke: rgb(63%,30%,0%); stroke-linecap: butt; stroke-width: 2; stroke-dasharray: 5, 3;"/>
+			<text x="198" y="360" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,720) scale(1,-1)">陀螺积分</text>
+			<path d="M 580,365 L 604,365 Z" style="stroke: rgb(0%,43%,47%); stroke-linecap: butt; stroke-width: 2;"/>
+			<text x="610" y="360" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,720) scale(1,-1)">悬停片段</text>
+			<path d="M 730,365 L 754,365 Z" style="stroke: rgb(63%,30%,0%); stroke-linecap: butt; stroke-width: 2; stroke-dasharray: 5, 3;"/>
+			<text x="760" y="360" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,720) scale(1,-1)">静置片段</text>
+			<text x="31" y="332" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,664) scale(1,-1)">横滚角（°）</text>
+			<rect x="207.67857142857142" y="250" width="121.42857142857147" height="70" style="stroke: none; stroke-linecap: butt; stroke-width: 0; fill: rgb(100%,94%,84%); fill-rule: evenodd;"/>
+			<g transform="">
+				<g transform="">
+					<g transform="">
+						<path d="M 62,250 L 490,250 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<path d="M 95.357143,250 L 95.357143,245 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 156.071429,250 L 156.071429,245 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 216.785714,250 L 216.785714,245 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 277.5,250 L 277.5,245 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 338.214286,250 L 338.214286,245 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 398.928571,250 L 398.928571,245 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 459.642857,250 L 459.642857,245 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<g transform=" matrix(1,0,0,1,95.357143,245)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.40</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,156.071429,245)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.50</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,216.785714,245)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.60</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,277.5,245)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.70</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,338.214286,245)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.80</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,398.928571,245)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.90</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,459.642857,245)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">1.00</text>
+						</g>
+					</g>
+				</g>
+				<g transform="">
+					<g transform="">
+						<path d="M 65,247 L 65,320 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<path d="M 65,258.75 L 60,258.75 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 65,276.25 L 60,276.25 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 65,293.75 L 60,293.75 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 65,311.25 L 60,311.25 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<g transform=" matrix(1,0,0,1,60,258.75)">
+							<text x="-10.668" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">-2</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,60,276.25)">
+							<text x="-6.672000000000001" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">0</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,60,293.75)">
+							<text x="-6.672000000000001" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">2</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,60,311.25)">
+							<text x="-6.672000000000001" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">4</text>
+						</g>
+					</g>
+				</g>
+				<path d="M 65,258.75 L 490,258.75 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 65,276.25 L 490,276.25 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 65,293.75 L 490,293.75 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 65,311.25 L 490,311.25 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<g transform="">
+					<polyline points="67.93675 310.8548, 74.00818 311.3527, 80.07961 311.8622, 86.15104 312.3295, 92.22246 312.7925, 98.29389 313.1824, 104.3653 313.597, 110.4367 313.9492, 116.8111 314.2557, 122.8826 314.5025, 128.954 314.6953, 134.7225 314.756, 140.7939 314.7728, 146.8653 314.6671, 152.9368 314.4864, 159.0082 314.1646, 165.0796 313.7436, 171.151 313.2205, 177.5254 312.5056, 183.5969 311.6766, 189.3653 310.7256, 195.4367 309.6065, 201.8118 308.2418, 207.8826 306.8269, 213.651 305.3736, 219.7225 303.7477, 225.7939 301.9614, 231.8653 300.1387, 238.2397 298.1406, 244.3117 296.1781, 250.3832 294.142, 256.454 292.0879, 262.5254 290.0477, 268.5969 287.9833, 274.6689 285.8696, 280.4367 283.8519, 286.5082 281.7212, 292.8832 279.5047, 298.9546 277.4271, 304.7225 275.4635, 310.7939 273.4687, 316.8653 271.5817, 322.9368 269.8148, 329.0082 268.2035, 335.0796 266.7321, 341.151 265.3408, 347.2225 264.0875, 353.2939 262.9584, 359.3653 261.9488, 365.7403 261.0839, 371.8118 260.4116, 377.5796 259.9217, 383.651 259.5364, 389.7225 259.3204, 395.7939 259.1197, 402.1689 259.0244, 408.2403 259.0611, 414.0082 259.1773, 420.0796 259.3209, 426.151 259.582, 432.526 259.887, 438.5975 260.2558, 444.6683 260.6674, 450.7397 261.0624, 456.5082 261.4708, 462.5796 261.9024, 468.9546 262.344, 475.026 262.7311, 480.7939 263.0873, 486.8653 263.4097" style="stroke: rgb(0%,43%,47%); stroke-linecap: round; stroke-width: 2.5; fill: None; fill-rule: evenodd;"/>
+					<polyline points="67.93675 310.8548, 74.00818 311.4641, 80.07961 311.8614, 86.15104 312.0344, 92.22246 312.0808, 98.29389 312.0887, 104.3653 312.1073, 110.4367 312.218, 116.8111 312.3557, 122.8826 312.4718, 128.954 312.6779, 134.7225 312.8288, 140.7939 312.7713, 146.8653 312.5024, 152.9368 312.1151, 159.0082 311.6918, 165.0796 311.2545, 171.151 310.8113, 177.5254 310.2678, 183.5969 309.6616, 189.3653 308.9668, 195.4367 307.985, 201.8118 306.7491, 207.8826 305.3831, 213.651 303.7331, 219.7225 301.7023, 225.7939 299.6173, 231.8653 297.5917, 238.2397 295.4892, 244.3117 293.5192, 250.3832 291.6647, 256.454 289.8337, 262.5254 287.905, 268.5969 285.8668, 274.6689 283.7989, 280.4367 281.8794, 286.5082 279.8953, 292.8832 277.8388, 298.9546 275.8294, 304.7225 273.7378, 310.7939 271.4826, 316.8653 269.4229, 322.9368 267.6001, 329.0082 265.9233, 335.0796 264.31, 341.151 262.8035, 347.2225 261.5442, 353.2939 260.6054, 359.3653 259.9313, 365.7403 259.3837, 371.8118 258.9186, 377.5796 258.4533, 383.651 257.9733, 389.7225 257.5954, 395.7939 257.354, 402.1689 257.2464, 408.2403 257.2237, 414.0082 257.1514, 420.0796 257.0203, 426.151 256.9609, 432.526 256.989, 438.5975 257.1479, 444.6683 257.5369, 450.7397 258.1513, 456.5082 258.8407, 462.5796 259.478, 468.9546 260.0274, 475.026 260.412, 480.7939 260.4974, 486.8653 260.4268" style="stroke: rgb(63%,30%,0%); stroke-linecap: round; stroke-width: 1.8; fill: None; fill-rule: evenodd; stroke-dasharray: 5, 3;"/>
+				</g>
+			</g>
+			<text x="31" y="198" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,396) scale(1,-1)">俯仰角（°）</text>
+			<rect x="207.67857142857142" y="116" width="121.42857142857147" height="70" style="stroke: none; stroke-linecap: butt; stroke-width: 0; fill: rgb(100%,94%,84%); fill-rule: evenodd;"/>
+			<g transform="">
+				<g transform="">
+					<g transform="">
+						<path d="M 62,116 L 490,116 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<path d="M 95.357143,116 L 95.357143,111 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 156.071429,116 L 156.071429,111 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 216.785714,116 L 216.785714,111 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 277.5,116 L 277.5,111 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 338.214286,116 L 338.214286,111 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 398.928571,116 L 398.928571,111 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 459.642857,116 L 459.642857,111 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<g transform=" matrix(1,0,0,1,95.357143,111)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.40</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,156.071429,111)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.50</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,216.785714,111)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.60</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,277.5,111)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.70</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,338.214286,111)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.80</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,398.928571,111)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.90</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,459.642857,111)">
+							<text x="-11.676" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">1.00</text>
+						</g>
+					</g>
+				</g>
+				<g transform="">
+					<g transform="">
+						<path d="M 65,113 L 65,186 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<path d="M 65,116 L 60,116 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 65,139.333333 L 60,139.333333 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 65,162.666667 L 60,162.666667 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 65,186 L 60,186 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<g transform=" matrix(1,0,0,1,60,116)">
+							<text x="-10.668" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">-4</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,60,139.333333)">
+							<text x="-10.668" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">-2</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,60,162.666667)">
+							<text x="-6.672000000000001" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">0</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,60,186)">
+							<text x="-6.672000000000001" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">2</text>
+						</g>
+					</g>
+				</g>
+				<path d="M 65,139.333333 L 490,139.333333 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 65,162.666667 L 490,162.666667 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 65,186 L 490,186 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<g transform="">
+					<polyline points="67.93675 161.8272, 74.00818 162.0157, 80.07961 162.1829, 86.15104 162.376, 92.22246 162.5329, 98.29389 162.7442, 104.3653 162.9723, 110.4367 163.1463, 116.8111 163.2826, 122.8826 163.3667, 128.954 163.4263, 134.7225 163.3619, 140.7939 163.2361, 146.8653 163.0222, 152.9368 162.8004, 159.0082 162.4543, 165.0796 162.0347, 171.151 161.5677, 177.5254 161.0078, 183.5969 160.4086, 189.3653 159.7302, 195.4367 158.9859, 201.8118 158.1192, 207.8826 157.2289, 213.651 156.351, 219.7225 155.3567, 225.7939 154.3448, 231.8653 153.3256, 238.2397 152.2292, 244.3117 151.1596, 250.3832 150.0995, 256.454 149.1168, 262.5254 148.1433, 268.5969 147.2277, 274.6689 146.3454, 280.4367 145.4922, 286.5082 144.6778, 292.8832 143.7928, 298.9546 143.0522, 304.7225 142.3784, 310.7939 141.7457, 316.8653 141.0482, 322.9368 140.4038, 329.0082 139.8127, 335.0796 139.234, 341.151 138.7417, 347.2225 138.3345, 353.2939 137.9922, 359.3653 137.6794, 365.7403 137.4367, 371.8118 137.2934, 377.5796 137.2348, 383.651 137.276, 389.7225 137.3996, 395.7939 137.6709, 402.1689 138.0474, 408.2403 138.4531, 414.0082 138.8984, 420.0796 139.4043, 426.151 139.9657, 432.526 140.563, 438.5975 141.2054, 444.6683 141.8104, 450.7397 142.4145, 456.5082 142.942, 462.5796 143.4708, 468.9546 143.94, 475.026 144.3, 480.7939 144.5902, 486.8653 144.7087" style="stroke: rgb(0%,43%,47%); stroke-linecap: round; stroke-width: 2.5; fill: None; fill-rule: evenodd;"/>
+					<polyline points="67.93675 161.8272, 74.00818 162.076, 80.07961 162.4387, 86.15104 162.7789, 92.22246 163.0153, 98.29389 163.0638, 104.3653 162.9401, 110.4367 162.7982, 116.8111 162.6153, 122.8826 162.4796, 128.954 162.5014, 134.7225 162.553, 140.7939 162.4673, 146.8653 162.152, 152.9368 161.6581, 159.0082 161.1212, 165.0796 160.6245, 171.151 160.2092, 177.5254 159.8048, 183.5969 159.3852, 189.3653 158.9118, 195.4367 158.2114, 201.8118 157.3035, 207.8826 156.3015, 213.651 155.1502, 219.7225 153.8541, 225.7939 152.6638, 231.8653 151.6418, 238.2397 150.6647, 244.3117 149.8058, 250.3832 149.0214, 256.454 148.2043, 262.5254 147.2651, 268.5969 146.1551, 274.6689 144.8972, 280.4367 143.6783, 286.5082 142.4828, 292.8832 141.2819, 298.9546 140.2152, 304.7225 139.4669, 310.7939 138.9959, 316.8653 138.7384, 322.9368 138.5927, 329.0082 138.3815, 335.0796 137.9745, 341.151 137.3692, 347.2225 136.6447, 353.2939 135.9394, 359.3653 135.3219, 365.7403 134.7644, 371.8118 134.3571, 377.5796 134.2416, 383.651 134.4555, 389.7225 134.8897, 395.7939 135.4272, 402.1689 136.0645, 408.2403 136.6879, 414.0082 137.0836, 420.0796 137.2949, 426.151 137.5155, 432.526 137.8158, 438.5975 138.2239, 444.6683 138.8398, 450.7397 139.6064, 456.5082 140.3332, 462.5796 140.9308, 468.9546 141.3561, 475.026 141.5361, 480.7939 141.4596, 486.8653 141.2604" style="stroke: rgb(63%,30%,0%); stroke-linecap: round; stroke-width: 1.8; fill: None; fill-rule: evenodd; stroke-dasharray: 5, 3;"/>
+				</g>
+			</g>
+			<text x="112" y="75" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,150) scale(1,-1)">飞控时间减去 103 s（秒）</text>
+			<text x="581" y="333" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,666) scale(1,-1)">传感器 Z 轴（g）</text>
+			<g transform="">
+				<g transform="">
+					<g transform="">
+						<path d="M 621,142 L 1050,142 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<path d="M 624,142 L 624,137 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 709.2,142 L 709.2,137 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 794.4,142 L 794.4,137 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 879.6,142 L 879.6,137 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 964.8,142 L 964.8,137 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 1050,142 L 1050,137 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<g transform=" matrix(1,0,0,1,624,137)">
+							<text x="-8.34" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.0</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,709.2,137)">
+							<text x="-8.34" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.2</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,794.4,137)">
+							<text x="-8.34" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.4</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,879.6,137)">
+							<text x="-8.34" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.6</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,964.8,137)">
+							<text x="-8.34" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">0.8</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,1050,137)">
+							<text x="-8.34" y="-12.0" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-24) scale(1,-1)">1.0</text>
+						</g>
+					</g>
+				</g>
+				<g transform="">
+					<g transform="">
+						<path d="M 624,139 L 624,316 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<path d="M 624,142 L 619,142 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 624,185.5 L 619,185.5 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 624,229 L 619,229 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 624,272.5 L 619,272.5 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+						<path d="M 624,316 L 619,316 Z" style="stroke: rgb(28%,34%,41%); stroke-linecap: butt; stroke-width: 0.7;"/>
+					</g>
+					<g transform="">
+						<g transform=" matrix(1,0,0,1,619,142)">
+							<text x="-23.352" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">0.50</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,619,185.5)">
+							<text x="-23.352" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">0.75</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,619,229)">
+							<text x="-23.352" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">1.00</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,619,272.5)">
+							<text x="-23.352" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">1.25</text>
+						</g>
+						<g transform=" matrix(1,0,0,1,619,316)">
+							<text x="-23.352" y="-4.800000000000001" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 12px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,-9) scale(1,-1)">1.50</text>
+						</g>
+					</g>
+				</g>
+				<path d="M 624,185.5 L 1050,185.5 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 624,229 L 1050,229 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 624,272.5 L 1050,272.5 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<path d="M 624,316 L 1050,316 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 0.7;"/>
+				<g transform="">
+					<polyline points="626.0606 262.5137, 630.3206 254.7273, 634.5806 231.7832, 638.8406 204.4569, 643.1006 187.3053, 647.3606 195.8332, 651.6206 220.721, 655.8806 250.8701, 660.3531 259.0114, 664.6131 280.5699, 668.8731 281.2865, 672.9206 238.577, 677.1806 213.6042, 681.4406 191.3972, 685.7006 186.275, 689.9606 204.6382, 694.2206 235.9438, 698.4806 264.5814, 702.9531 276.5265, 707.2131 282.2312, 711.2606 230.9725, 715.5206 203.1643, 719.9936 192.3876, 724.2531 179.7729, 728.3006 200.582, 732.5606 218.1631, 736.8206 242.0685, 741.0806 260.2853, 745.5531 262.0888, 749.8136 244.9325, 754.0736 256.5701, 758.3331 265.9228, 762.5931 271.3195, 766.8531 264.8954, 771.1136 245.4856, 775.1606 195.1524, 779.4206 179.1971, 783.8936 196.0249, 788.1536 187.8641, 792.2006 194.7515, 796.4606 203.5659, 800.7206 217.7766, 804.9806 232.835, 809.2406 242.5322, 813.5006 250.6246, 817.7606 252.1212, 822.0206 252.5668, 826.2806 255.1621, 830.5406 252.4528, 835.0136 245.2321, 839.2736 250.9282, 843.3206 243.8534, 847.5806 227.2712, 851.8406 217.1187, 856.1006 203.237, 860.5736 208.5716, 864.8336 190.5997, 868.8806 192.4089, 873.1406 219.5646, 877.4006 242.0201, 881.8736 235.5038, 886.1336 254.1786, 890.3931 269.2787, 894.6531 274.3827, 898.7006 240.0203, 902.9606 209.3813, 907.4336 217.5716, 911.6936 199.1622, 915.7406 188.639, 920.0006 202.0735, 924.2606 221.4566, 928.5206 247.5742, 932.9936 242.1441, 937.2536 258.8104, 941.5131 266.9193, 945.5606 246.1099, 949.8206 221.7323, 954.081 197.7425, 958.3406 182.3675, 962.8136 188.5662, 967.0731 184.3928, 971.1206 210.0846, 975.3806 239.7752, 979.8536 235.9446, 984.1136 254.31, 988.3731 262.723, 992.4206 251.7197, 996.6806 229.0126, 1000.941 204.8747, 1005.414 207.3015, 1009.461 208.1942, 1013.721 193.3787, 1017.981 210.7348, 1022.241 231.1711, 1026.501 242.935, 1030.761 247.8296, 1035.021 243.933, 1039.281 229.3893, 1043.541 204.9494, 1047.801 188.4531" style="stroke: rgb(0%,43%,47%); stroke-linecap: round; stroke-width: 1.7; fill: None; fill-rule: evenodd;"/>
+					<polyline points="626.2684 229.007, 630.5285 228.9775, 634.7884 229.236, 639.0485 228.8926, 643.3084 228.4817, 647.5684 228.5687, 651.8285 228.9774, 656.7274 228.5908, 660.3485 228.311, 664.6084 229.552, 668.8685 228.4001, 673.1284 228.3742, 677.3885 229.3594, 681.6485 228.9659, 685.9084 228.5221, 690.1685 228.5404, 694.4284 229.6386, 698.6885 228.4183, 702.9484 228.5519, 707.2085 228.5677, 711.4684 229.1671, 715.7284 229.2951, 719.9885 229.1834, 724.2484 228.7374, 728.5085 228.8154, 732.7684 228.7, 737.0285 229.2573, 741.2884 228.6706, 745.5485 228.9271, 749.8084 229.532, 754.0684 229.4717, 758.3285 228.7469, 762.5884 228.9355, 766.8485 229.2149, 771.1084 228.6662, 775.3685 228.2054, 779.6284 229.1836, 783.8885 228.1608, 788.1485 228.7711, 792.4084 228.9298, 796.6685 228.6735, 800.9293 228.917, 805.1885 228.6951, 809.4484 229.174, 813.7085 228.7057, 817.9684 228.9606, 822.2285 229.3804, 826.4885 229.1869, 830.7484 228.7201, 835.0085 228.4899, 839.2684 228.1344, 843.5285 228.9349, 847.7884 228.7318, 852.0485 229.1564, 856.3084 228.8561, 860.5684 228.6306, 864.8285 229.1909, 869.0884 228.647, 873.3485 228.3642, 877.6084 228.4914, 881.8685 228.4503, 886.1284 228.3322, 890.3885 228.6411, 894.6485 228.7355, 898.9084 228.9503, 903.1685 228.346, 907.4284 229.0172, 911.6885 228.7031, 915.9484 228.0844, 920.2085 228.8291, 924.4684 228.6333, 928.7285 228.571, 932.9885 229.2596, 937.2484 228.965, 941.5085 228.8095, 945.7684 228.8036, 950.0285 228.5359, 954.2884 228.7485, 958.5485 229.3099, 962.8084 228.7251, 967.0684 228.8658, 971.3285 228.9007, 975.5884 228.6455, 979.8485 228.7755, 984.1084 229.1366, 988.3685 228.474, 992.6284 228.7806, 996.8885 228.5015, 1001.148 228.5132, 1005.408 228.6688, 1009.668 228.1456, 1013.928 229.1653, 1018.188 228.48, 1022.448 228.8718, 1026.708 228.6, 1030.968 228.8377, 1035.228 228.5793, 1039.488 228.4593, 1043.748 229.0824, 1048.008 228.9811" style="stroke: rgb(63%,30%,0%); stroke-linecap: round; stroke-width: 2.1; fill: None; fill-rule: evenodd; stroke-dasharray: 5, 3;"/>
+				</g>
+			</g>
+			<text x="692" y="101" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(9%,13%,18%); stroke:none;" transform="translate(0,202) scale(1,-1)">各片段起点后的时间（秒）</text>
+			<text x="580" y="75" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 14px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,150) scale(1,-1)">悬停起点 103.35 s，静置起点 22.00 s。</text>
+			<path d="M 30,54 L 1068,54 Z" style="stroke: rgb(86%,89%,91%); stroke-linecap: butt; stroke-width: 1;"/>
+			<text x="30" y="29" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 13px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,58) scale(1,-1)">阴影为 103.585–103.785 s。陀螺积分与融合姿态共用同一 IMU，积分起点与姿态对齐。</text>
+			<text x="30" y="10" style="font-family: Helvetica, Arial, PingFang SC, sans-serif; font-size: 13px;fill: rgb(28%,34%,41%); stroke:none;" transform="translate(0,20) scale(1,-1)">Z 轴为机载传感器方向。记录未包含水平位置或地速。</text>
+		</g>
+	</g>
+</svg>

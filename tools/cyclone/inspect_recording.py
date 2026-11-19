@@ -37,7 +37,7 @@ CHANNELS = (
 )
 
 
-def read_recording(path):
+def read_recording(path, *, include_parameter_pages=False):
     data = path.read_bytes()
     if data[:8] != b"RMPLOG1\n":
         raise ValueError("Not an RMPLOG1 recording")
@@ -89,6 +89,26 @@ def read_recording(path):
                     raise ValueError("Invalid state entry")
                 state[key] = struct.unpack("<f", struct.pack("<I", bits))[0] if kind == 1 else bits
             session["states"][timestamp] = state
+        elif include_parameter_pages and frame[5] == 71:
+            if len(payload) < 24:
+                raise ValueError("Truncated parameter readback")
+            status, request, count, reserved, revision, _, total, start = struct.unpack_from(
+                "<BBBBIIHH", payload, 8)
+            if status != 0:
+                continue
+            if (request != 70 or reserved or not 0 < count <= 16 or
+                    start + count > total or len(payload) != 24 + 8 * count):
+                raise ValueError("Malformed parameter readback")
+            page = []
+            for index in range(count):
+                key, kind, reserved, bits = struct.unpack_from("<HBBI", payload, 24 + 8 * index)
+                if reserved or kind not in (1, 2, 3) or (kind == 3 and bits > 1):
+                    raise ValueError("Invalid parameter type or value")
+                value = struct.unpack("<f", struct.pack("<I", bits))[0] if kind == 1 else bits
+                if not math.isfinite(value):
+                    raise ValueError("Nonfinite parameter readback")
+                page.append((key, kind, value))
+            session.setdefault("parameter_pages", []).append((timestamp, revision, total, start, page))
         elif frame[5] == 18:
             if len(payload) < 4:
                 raise ValueError("Truncated LOG")
