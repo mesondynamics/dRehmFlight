@@ -36,9 +36,9 @@ let body = marked.parse(markdown, {renderer});
 body = body.replace(/MATH_(\d+)/g, (_, id) => svg[Number(id)]);
 // Resolve source-relative links from the generated document's directory.
 const linkBase = path.relative(path.dirname(output), path.dirname(source)).split(path.sep).join('/');
-body = body.replace(/href="([^"#]+)"/g, (attribute, href) => {
+body = body.replace(/\b(href|src)="([^"#]+)"/g, (attribute, name, href) => {
   if (/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(href)) return attribute;
-  return `href="${path.posix.join(linkBase, href)}"`;
+  return `${name}="${path.posix.join(linkBase, href)}"`;
 });
 if (body.includes('MATH_') || body.includes('data-mjx-error')) throw new Error('Unrendered formula');
 const toc = headings.filter(h => !h.hidden).map(h => `<a href="#${h.id}">${h.text}</a>`).join('');
@@ -55,12 +55,12 @@ nav{align-self:start;position:sticky;top:20px;max-height:94vh;overflow:auto;font
 main{background:#fff;padding:30px 38px;border:1px solid var(--line);border-radius:8px;min-width:0}
 h1{font-size:30px;line-height:1.5;margin:0 0 20px}h2{font-size:23px;border-top:2px solid var(--line);padding-top:28px;margin-top:38px;line-height:1.5}h3{font-size:18px;color:#14535c;line-height:1.6;margin-top:26px}
 p{margin:14px 0}a{color:var(--accent)}code{font:13px/1.7 ui-monospace,SFMono-Regular,monospace;background:#edf3f5;padding:2px 4px;border-radius:3px;overflow-wrap:anywhere}
-table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0}th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}th{background:#eaf2f4;text-align:left}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0}th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}th{background:#eaf2f4;text-align:left}main img{max-width:100%;height:auto}
 .equation{overflow-x:auto;overflow-y:hidden;padding:14px 8px;margin:20px 0;background:#f7fafb;border-left:3px solid #76b9bf;text-align:center;font-size:96%}mjx-container{display:inline-block;max-width:none}mjx-container svg{max-width:none}strong{font-weight:650}
 footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:#526b78}
 @media(max-width:900px){.layout{display:block;padding:0 12px;margin:12px auto}nav{position:static;max-height:none;display:flex;overflow-x:auto;gap:12px;margin:0 0 14px;white-space:nowrap}main{padding:22px 18px}h1{font-size:25px}}
 @media print{body{background:white;font-size:11pt}.bar,nav{display:none}.layout{display:block;margin:0;padding:0}main{border:0;padding:0}h2,h3{break-after:avoid}table,.equation{break-inside:avoid}.equation{overflow:visible;font-size:75%}a{color:inherit}}
-</style></head><body><div class="bar">dRehmFlight · Cyclone Rotor / 工程模型与实测记录 · 2026-11-05</div>
+</style></head><body><div class="bar">dRehmFlight · Cyclone Rotor / 工程模型与实测记录</div>
 <div class="layout"><nav aria-label="目录">${toc}</nav><main>${body}
 <footer>由 <a href="${escapeHtml(path.relative(path.dirname(output), source).split(path.sep).join('/'))}">Markdown 源文档</a>构建，断网可读。公式在构建时转换为SVG；实测、仿真及待验收项目按正文各自标注。</footer>
 </main></div></body></html>\n`;

@@ -16,6 +16,7 @@ extern "C" {
 #define RMP_HELLO 1u
 #define RMP_HEARTBEAT 2u
 #define RMP_TELEMETRY 16u
+#define RMP_LOG 18u
 #define RMP_PING 32u
 #define RMP_PONG 33u
 

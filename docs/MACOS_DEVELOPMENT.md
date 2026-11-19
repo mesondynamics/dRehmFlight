@@ -5,13 +5,13 @@
 ## 已配置项目
 
 - Arduino IDE Boards Manager 已添加 PJRC URL：`https://www.pjrc.com/teensy/package_teensy_index.json`，安装了 Teensy 1.62.0。
-- CRSFforArduino 安装在 `~/Documents/Arduino/libraries/CRSFforArduino`。重装此库后，从仓库根目录运行：
+- CRSFforArduino 安装在 `~/Documents/Arduino/libraries/CRSFforArduino`。v10 直接读取接收机串口并校验 CRSF 帧，沿用库头文件中的波特率和信号质量阈值。构建 v10 时可使用原版库。若重新构建曾使用该库回调的 v9 或更早飞行版本，须先关闭库的下行遥测：
 
   ```sh
   python3 tools/configure_crsf_realtime.py "$HOME/Documents/Arduino/libraries/CRSFforArduino"
   ```
 
-  这会关闭本固件不使用的 CRSF 下行遥测，避免接收库等待 UART 发完数据；固件会在编译时检查该设置。
+  该设置防止旧接收路径等待串口发送完成。
 - `arduino-cli` 已用 Homebrew 安装并加入 PATH。板卡包数据与 Arduino IDE 共用 `~/Library/Arduino15`，用户库在 `~/Documents/Arduino/libraries`。
 - Teensy USB 驱动由 macOS 自带，无需安装 Linux udev 规则。接入的 Teensy 4.0 会显示为 Teensy 上传设备和 `/dev/cu.usbmodem...` 串口。
 

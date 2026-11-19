@@ -50,12 +50,7 @@ void radioSetup() {
     Serial3.begin(115000);
   //CRSF receiver on Teensy 4.0 Serial5 (RX pin 21, TX pin 20)
   #elif defined USE_CRSF_RX
-    crsfReceiver.setRcChannelsCallback(onCRSFChannels);
-    crsfReceiver.setLinkUpCallback(onCRSFLinkUp);
-    crsfReceiver.setLinkDownCallback(onCRSFLinkDown);
-    if (!crsfReceiver.begin()) {
-      crsfFailsafe = true;
-    }
+    Serial5.begin(crsfProtocol::BAUD_RATE);
   #else
     #error No RX type defined...
   #endif

@@ -1,5 +1,6 @@
 #pragma once
 #include "src/RemoteMcu/rmp.h"
+#include "CrsfFlightReceiver.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -8,7 +9,7 @@ namespace remote_mcu {
 constexpr unsigned channelCount = 32; // RemoteMCU v0.3 hard limit (agent + web).
 constexpr unsigned stateCount = 59;
 static_assert(8+stateCount*8+RMP_HEADER_SIZE+4<=512,"STATE must fit one nonblocking USB buffer");
-constexpr const char *buildId = "drehm-cyclone-rotor-v9-pitch-trim-20261119";
+constexpr const char *buildId = "drehm-cyclone-rotor-v10-arm-guard-20261119";
 
 struct Snapshot {
   float values[channelCount];
@@ -27,6 +28,33 @@ class Telemetry {
     handler_=handler; context_=context; parameterCount_=count;
   }
   uint32_t session() const { return session_; }
+  // Called after each DShot send. Capture edges even between waveform samples.
+  // Words describe the local driver; on a driver fault it reports zero.
+  void observeMotorOutput(uint32_t now, uint16_t sa, uint16_t throttle, bool receiverReady,
+                          bool armed, bool driverFault, unsigned padMask, const uint16_t (&words)[3]) {
+    const unsigned motorMask=(words[0]!=0) | ((words[1]!=0)<<1) | ((words[2]!=0)<<2);
+    const bool armPosition=sa<=tricopter::CrsfArmSwitch::armMaxUs;
+    const bool cutPosition=sa>=tricopter::CrsfArmSwitch::cutMinUs;
+    // During flight the waveforms carry individual motor levels. While cut, also
+    // preserve changes of individual motor on/off state at control-loop rate.
+    const bool unexpectedIdleOutput=motorMask && throttle<=tricopter::CrsfArmSwitch::idleMaxUs;
+    const bool driving=armed && armPosition && receiverReady && !driverFault && !unexpectedIdleOutput;
+    const unsigned activeOutputs=driving ? unsigned(motorMask!=0) : motorMask;
+    const unsigned flags=armPosition | (cutPosition<<1) | (receiverReady<<2) | (armed<<3) | (driverFault<<4);
+    const unsigned signature=flags | (activeOutputs<<5) | (padMask<<8) | (unexpectedIdleOutput<<11);
+    if (motorObserved_ && signature==lastMotorSignature_) return;
+    motorObserved_=true;
+    lastMotorSignature_=signature;
+    if (motorCount_==motorCapacity) {
+      motorHead_=(motorHead_+1)%motorCapacity;
+      --motorCount_;
+      ++motorOverwritten_;
+    }
+    MotorEvent &event=motorEvents_[(motorHead_+motorCount_)%motorCapacity];
+    event={++motorSequence_,now,sa,throttle,{words[0],words[1],words[2]},
+           receiverReady,armed,driverFault,uint8_t(padMask)};
+    ++motorCount_;
+  }
   // Seed once from a hardware-random nonzero boot nonce during setup. Boot time
   // in micros() can repeat after power cycling, which makes the Agent reject a
   // reused retired session. All subsequent stream/USB sessions share this one
@@ -96,6 +124,9 @@ class Telemetry {
       for (unsigned i=0;i<channelCount;++i)
         rmp_put_f32(payload+12+4*i,std::isfinite(snapshot.values[i]) ? snapshot.values[i] : 0);
       if (!send(port,RMP_TELEMETRY,payload,sizeof(payload))) ++droppedSamples_;
+    } else if (motorCount_ && static_cast<uint32_t>(now-lastMotorLog_)>=50000u) {
+      lastMotorLog_=now;
+      sendMotorLog(port);
     }
 
     uint8_t input[32];
@@ -109,6 +140,37 @@ class Telemetry {
   }
 
  private:
+  struct MotorEvent {
+    uint32_t sequence, timeUs;
+    uint16_t sa, throttle, words[3];
+    bool receiverReady, armed, driverFault;
+    uint8_t padMask;
+  };
+  template<class SerialPort>
+  void sendMotorLog(SerialPort &port) {
+    uint8_t body[196]={};
+    if (port.availableForWrite()<static_cast<int>(sizeof(body)+RMP_HEADER_SIZE+4)) return;
+    const MotorEvent &e=motorEvents_[motorHead_];
+    const bool unexpected=(!e.armed || e.sa>tricopter::CrsfArmSwitch::armMaxUs || !e.receiverReady ||
+                           e.throttle<=tricopter::CrsfArmSwitch::idleMaxUs) &&
+                          (e.words[0] || e.words[1] || e.words[2]);
+    body[0]=e.driverFault || unexpected ? 4 : 2;
+    // Frame time is dispatch time. Keep the observation's original boot clock
+    // in the text, also when USB was unavailable at the time of the edge.
+    const int n=std::snprintf(reinterpret_cast<char *>(body+4),sizeof(body)-4,
+        "motor seq=%lu us32=%lu sa=%u thr=%u rc_ok=%u arm=%u fault=%u pads=%u "
+        "M2=%u M3=%u M4=%u lost=%lu",
+        static_cast<unsigned long>(e.sequence),static_cast<unsigned long>(e.timeUs),
+        unsigned(e.sa),unsigned(e.throttle),unsigned(e.receiverReady),unsigned(e.armed),
+        unsigned(e.driverFault),unsigned(e.padMask),unsigned(e.words[0]),unsigned(e.words[1]),
+        unsigned(e.words[2]),static_cast<unsigned long>(motorOverwritten_));
+    if (n<=0 || n>=static_cast<int>(sizeof(body)-4)) return;
+    rmp_put_u16(body+2,n);
+    if (send(port,RMP_LOG,body,4+n)) {
+      motorHead_=(motorHead_+1)%motorCapacity;
+      --motorCount_;
+    }
+  }
   uint32_t nextSession() {
     ++sessionSerial_;
     if (!sessionSerial_) ++sessionSerial_;
@@ -141,7 +203,7 @@ class Telemetry {
         "\"channels\":32,\"sample_rate_hz\":%lu,\"samples_per_frame\":1,"
         "\"stream_enabled\":%s,\"source\":\"drehmflight-control\","
         "\"safe_to_flash\":%s,\"device_id\":\"%s\","
-        "\"capabilities\":[\"telemetry\",\"state\",\"parameters\",\"stream-control\"],"
+        "\"capabilities\":[\"telemetry\",\"state\",\"parameters\",\"stream-control\",\"logs\"],"
         "\"parameter_count\":%u,\"parameter_paging\":true}",
         buildId,static_cast<unsigned long>(sampleRate_),streamEnabled_ ? "true" : "false",
         s.safeToFlash ? "true" : "false",deviceId_,parameterCount_);
@@ -215,6 +277,11 @@ class Telemetry {
   uint64_t clock_=0;
   uint32_t previousMicros_=0,session_=0,sessionSerial_=0,frameSequence_=0;
   bool sessionSeedReady_=false;
+  static constexpr unsigned motorCapacity=16;
+  MotorEvent motorEvents_[motorCapacity]{};
+  unsigned motorHead_=0,motorCount_=0,lastMotorSignature_=0;
+  bool motorObserved_=false;
+  uint32_t motorSequence_=0,motorOverwritten_=0,lastMotorLog_=0;
   uint32_t sampleSequence_=0,droppedSamples_=0,lastSample_=0,lastManagement_=0;
   bool wasConnected_=false,lastSafe_=false;
   unsigned management_=0;

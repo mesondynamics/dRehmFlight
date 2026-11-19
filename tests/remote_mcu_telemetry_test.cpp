@@ -180,6 +180,54 @@ static void rebootIdentityChecks() {
   assert(rollover.session()==1); // Zero is never a session ID.
 }
 
+static void motorDiagnostics() {
+  Port port;
+  remote_mcu::Telemetry telemetry;
+  remote_mcu::Snapshot sample{};
+  assert(telemetry.setBootNonce(148));
+  uint16_t words[3]={};
+  telemetry.observeMotorOutput(100,2000,1000,true,false,false,0,words);
+  words[1]=130;
+  telemetry.observeMotorOutput(600,2000,1000,true,false,false,0,words);
+  telemetry.observeMotorOutput(1100,2000,1000,true,false,false,0,words);
+  words[1]=0;
+  telemetry.observeMotorOutput(1600,2000,1000,true,false,true,2,words);
+  port.capacity=0;
+  for (unsigned now=2000;now<120000;now+=500) telemetry.poll(port,sample,now);
+  assert(port.output.empty());
+  port.capacity=512;
+  for (unsigned now=120000;now<420000;now+=500) telemetry.poll(port,sample,now);
+  unsigned logs=0;
+  for (const auto &f : port.output) if (f[5]==RMP_LOG) {
+    const auto size=rmp_get_u16(f.data()+30);
+    assert(f.size()==size+36u && f[29]==0);
+    const std::string line(f.begin()+32,f.end()-4);
+    if (logs==0) assert(f[28]==2 && line.find("us32=100 ")!=std::string::npos);
+    if (logs==1) assert(f[28]==4 && line.find("us32=600 ")!=std::string::npos &&
+                        line.find("M2=0 M3=130 M4=0 lost=0")!=std::string::npos);
+    if (logs==2) assert(f[28]==4 && line.find("fault=1 pads=2")!=std::string::npos);
+    ++logs;
+  }
+  assert(logs==3);
+  port.connected=false;
+  telemetry.poll(port,sample,420000);
+  for (unsigned i=0;i<20;++i) {
+    words[0]=i%2 ? 100 : 0;
+    telemetry.observeMotorOutput(420100+i,1000,1200,true,true,false,0,words);
+  }
+  port.connected=true;
+  const auto boundary=port.output.size();
+  for (unsigned now=421000;now<1500000;now+=500) telemetry.poll(port,sample,now);
+  logs=0;
+  for (auto i=boundary;i<port.output.size();++i) if (port.output[i][5]==RMP_LOG) {
+    const std::string line(port.output[i].begin()+32,port.output[i].end()-4);
+    assert(line.find("lost=4")!=std::string::npos);
+    if (!logs) assert(line.find("seq=8 us32=420104 ")!=std::string::npos);
+    ++logs;
+  }
+  assert(logs==16);
+}
+
 int main() {
   Port port;
   port.capacity=512; // Expanded STATE still fits one bounded USB transmit buffer.
@@ -280,5 +328,6 @@ int main() {
   assert(rmp_get_u64(port.output.back().data()+20)>rmp_get_u64(previous.data()+20));
   controlIntegration();
   rebootIdentityChecks();
+  motorDiagnostics();
   std::puts("RemoteMCU framing, calibration snapshots, safety updates, bounded I/O, drops and reconnect passed");
 }

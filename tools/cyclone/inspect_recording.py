@@ -21,7 +21,8 @@ SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v6-60rpm-20261105",
                     "drehm-cyclone-rotor-v7-stop-20261105",
                     "drehm-cyclone-rotor-v8-imu-20261119",
-                    "drehm-cyclone-rotor-v9-pitch-trim-20261119")
+                    "drehm-cyclone-rotor-v9-pitch-trim-20261119",
+                    "drehm-cyclone-rotor-v10-arm-guard-20261119")
 CHANNELS = (
     "S1_us", "servo_us", "mode", "phase_deg", "roll_input_us",
     "pitch_input_us", "heading_deg", "reference_deg", "target_rate_dps",
@@ -56,7 +57,7 @@ def read_recording(path):
         boot = struct.unpack_from("<I", frame, 12)[0]
         timestamp = struct.unpack_from("<Q", frame, 20)[0]
         payload = frame[28:-4]
-        session = sessions.setdefault(boot, {"rows": {}, "states": {}, "duplicates": 0})
+        session = sessions.setdefault(boot, {"rows": {}, "states": {}, "duplicates": 0, "motor_events": []})
         if frame[5] == 16:
             if len(payload) < 12:
                 raise ValueError("Truncated telemetry header")
@@ -86,6 +87,15 @@ def read_recording(path):
                     raise ValueError("Invalid state entry")
                 state[key] = struct.unpack("<f", struct.pack("<I", bits))[0] if kind == 1 else bits
             session["states"][timestamp] = state
+        elif frame[5] == 18:
+            if len(payload) < 4:
+                raise ValueError("Truncated LOG")
+            level, reserved, length = struct.unpack_from("<BBH", payload)
+            if level not in (1, 2, 3, 4) or reserved or not 1 <= length <= 240 or len(payload) != 4 + length:
+                raise ValueError("Invalid LOG")
+            message = payload[4:].decode("utf-8")
+            if message.startswith("motor "):
+                session["motor_events"].append({"dispatch_s": timestamp / 1e6, "level": level, "text": message})
     return sessions, frames, hashlib.sha256(data).hexdigest()
 
 
@@ -153,6 +163,9 @@ def main():
     result = {"recording_id": metadata["id"], "build_id": build, "boot": args.boot,
               "raw_sha256": digest, "validated_frames": frames, "crc_errors": 0,
               "boots": sorted(sessions), **summarize(sessions[args.boot], args.start, args.end)}
+    result["motor_events_by_dispatch_time"] = [
+        event for event in sessions[args.boot]["motor_events"] if args.start <= event["dispatch_s"] <= args.end
+    ]
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
 
 

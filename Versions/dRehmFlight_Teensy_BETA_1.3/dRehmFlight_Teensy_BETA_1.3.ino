@@ -87,8 +87,8 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #endif
 
 #if defined USE_CRSF_RX
+  #include "CrsfFlightReceiver.h"
   #include <CRSFforArduino.hpp> //CRSFforArduino 2025.12.11, AGPL-3.0; see THIRD_PARTY_NOTICES.md
-  static_assert(CRSF_TELEMETRY_ENABLED == 0, "Run tools/configure_crsf_realtime.py to disable blocking CRSF telemetry");
 #endif
 
 #if defined USE_MPU6050_I2C
@@ -293,32 +293,39 @@ unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channe
   DSM1024 DSM;
 #endif
 #if defined USE_CRSF_RX
-  CRSFforArduino crsfReceiver(&Serial5);
-  uint16_t crsfInputChannelsUs[6] = {0, 0, 0, 0, 0, 0};
+  tricopter::CrsfFlightReceiver crsfReceiver;
+  tricopter::CrsfArmSwitch crsfArmSwitch;
+  const uint16_t (&crsfInputChannelsUs)[6] = crsfReceiver.channelsUs;
   uint16_t crsfChannelsUs[6] = {1000, 1500, 1500, 1500, 2000, 1500};
   bool crsfLinkUp = false;
   bool crsfFailsafe = true;
   bool crsfChannelsReady = false;
 
-  void onCRSFChannels(serialReceiverLayer::rcChannels_t *channels) {
-    for (uint8_t i = 0; i < 6; i++) {
-      crsfInputChannelsUs[i] = constrain(crsfReceiver.rcToUs(channels->value[i]), 1000, 2000);
+  void readFlightReceiver() {
+    const uint32_t now = micros();
+    bool statisticsFresh = crsfReceiver.statisticsFresh(now);
+    if (!statisticsFresh) crsfArmSwitch.expirePreparation();
+    if (crsfLinkUp && !crsfReceiver.fresh(now)) {
+      crsfLinkUp = false;
+      crsfFailsafe = true;
+      crsfChannelsReady = false;
+      crsfArmSwitch.reset();
     }
-
-    // Raw CH1 yaw / CH4 roll; internal slots remain throttle, roll, pitch, yaw.
-    tricopter::mapCrsfChannels(crsfInputChannelsUs, crsfChannelsUs);
-    crsfFailsafe = channels->failsafe;
-    if (crsfFailsafe) crsfChannelsReady = false;
-  }
-
-  void onCRSFLinkUp() {
-    crsfLinkUp = true;
-  }
-
-  void onCRSFLinkDown() {
-    crsfLinkUp = false;
-    crsfFailsafe = true;
-    crsfChannelsReady = false;
+    for (int left = 64; left && Serial5.available(); --left) {
+      const auto event = crsfReceiver.consume(Serial5.read(), now);
+      if (event == tricopter::CrsfFlightReceiver::Event::LinkStatistics) {
+        statisticsFresh = true;
+        crsfFailsafe = crsfReceiver.uplinkQuality <= CRSF_FAILSAFE_LQI_THRESHOLD ||
+                       crsfReceiver.uplinkRssi >= CRSF_FAILSAFE_RSSI_THRESHOLD;
+        if (crsfFailsafe) { crsfChannelsReady = false; crsfArmSwitch.reset(); }
+      } else if (event == tricopter::CrsfFlightReceiver::Event::Channels) {
+        crsfLinkUp = true;
+        tricopter::mapCrsfChannels(crsfInputChannelsUs, crsfChannelsUs);
+        if (!crsfFailsafe) {
+          crsfArmSwitch.onChannels(crsfChannelsUs[0], crsfChannelsUs[4], crsfChannelsUs[5], now, statisticsFresh);
+        }
+      }
+    }
   }
 #endif
 
@@ -835,28 +842,23 @@ void writeYawServo(float logical) {
 }
 
 void armedStatus() {
+  bool available = !flightControl.faulted() && !tricopter::fullRangeBenchTest;
 #if DREHM_REMOTE_MCU
   if (channel_5_pwm>=1500 && channel_1_pwm<1050) normalYawFaultLatched=false;
-  if (!flightParameters.config().flightEnabled || !flightParameters.config().ready || normalYawFaultLatched) {
-    armedFly=false; return;
-  }
+  available = available && flightParameters.config().flightEnabled && flightParameters.config().ready && !normalYawFaultLatched;
 #endif
-  if (flightControl.faulted() || tricopter::fullRangeBenchTest) { armedFly = false; return; }
 #if DREHM_ESC_DSHOT_RATE
-  if (!dshotOutput.ready()) { armedFly = false; return; }
+  available = available && dshotOutput.ready();
 #endif
-  //DESCRIPTION: Check if the throttle cut is off and the throttle input is low to prepare for flight.
-  bool receiverReady = true;
 #if defined USE_CRSF_RX
-  receiverReady = crsfChannelsReady && crsfLinkUp && !crsfFailsafe;
-#endif
-  if (!receiverReady || channel_5_pwm >= 1500) {
-    armedFly = false;
-    return;
-  }
-  if (tricopter::canArm(receiverReady, channel_1_pwm, channel_5_pwm, channel_6_pwm)) {
+  if (!available || !crsfChannelsReady || !crsfLinkUp || crsfFailsafe) crsfArmSwitch.reset();
+  armedFly = crsfArmSwitch.armed() && channel_5_pwm <= tricopter::CrsfArmSwitch::armMaxUs;
+#else
+  if (!available || channel_5_pwm >= 1500) armedFly = false;
+  else if (tricopter::canArm(true, channel_1_pwm, channel_5_pwm, channel_6_pwm)) {
     armedFly = true;
   }
+#endif
 }
 
 void IMUinit() {
@@ -1522,7 +1524,7 @@ void getCommands() {
     }
 
   #elif defined USE_CRSF_RX
-    crsfReceiver.update();
+    readFlightReceiver();
 
     // Require a live link, a low throttle, and the project's throttle-cut switch before accepting controls.
     if (!crsfLinkUp || crsfFailsafe) {
@@ -1605,10 +1607,19 @@ void failSafe() {
 
 void commandMotors() {
 #if DREHM_ESC_DSHOT_RATE
-  const bool enabled = armedFly && channel_1_pwm > 1040 && dshotOutput.ready();
+  bool enabled = armedFly && channel_5_pwm < 1500 && channel_1_pwm > 1040 && dshotOutput.ready();
+#if defined USE_CRSF_RX
+  enabled = enabled && crsfArmSwitch.armed() && crsfChannelsUs[4] <= tricopter::CrsfArmSwitch::armMaxUs &&
+            crsfChannelsUs[0] > tricopter::CrsfArmSwitch::idleMaxUs && crsfLinkUp && !crsfFailsafe && crsfChannelsReady;
+#endif
   dshotOutput.send(dshot::fromPulseScale(m2_command_PWM, enabled),
                    dshot::fromPulseScale(m3_command_PWM, enabled),
                    dshot::fromPulseScale(m4_command_PWM, enabled));
+#if DREHM_REMOTE_MCU && defined(USE_CRSF_RX)
+  remoteTelemetry.observeMotorOutput(micros(), crsfInputChannelsUs[4], crsfInputChannelsUs[2],
+      crsfChannelsReady && crsfLinkUp && !crsfFailsafe, armedFly, dshotOutput.fault(),
+      dshotOutput.padErrorMask(), dshotOutput.last);
+#endif
 #else
   //DESCRIPTION: Send pulses to motor pins, oneshot125 protocol
   /*
