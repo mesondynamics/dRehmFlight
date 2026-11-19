@@ -2,7 +2,7 @@
 
 当前分支 `feature/cyclone-rotor-tricopter` 的 v15 在普通模式使用 CH7/LS 调前后配平、CH8/RS 调左右配平，每轴范围 ±5°。v14 的每轴范围为 ±2°，复现旧倾角时需要重新选择滑杆位置。CH1 控制 Yaw、CH4 控制 Roll，CH5 为 SA、CH6 为 S1。本版方向、换算和实测端点见[控制模型第 5.1 节](CYCLONE_ROTOR_MODEL.md)及[离线 HTML](reports/cyclone-rotor-model.html)。按飞控版本选择 [v15 应用配置](remote-mcu/cyclone-v15-xy-trim-5deg-flight.json)或 [v14 应用配置](remote-mcu/cyclone-v14-xy-trim-flight.json)。以下为先前版本的调试记录。
 
-v16 增加普通悬停上电预设，配平范围与 v15 相同，沿用 v15 网页面板。有效启动时自动加载普通模式参数，自旋关闭，电机保持停机，飞手仍需完成遥控解锁。网页临时调参仅在本次上电期间生效。首次冷启动读回的参数和状态见[模型第 8 节](CYCLONE_ROTOR_MODEL.md)。
+v16、v17 使用本机普通悬停上电预设，配平范围与 v15 相同，沿用 v15 网页面板。有效启动时自动加载普通模式参数，自旋关闭，电机保持停机，飞手仍需完成遥控解锁。网页临时调参仅在本次上电期间生效。v17 的 15 RPM 试验仅在本次上电启用自旋。入口的航向率趋势与物理目标率趋势绝对值各可达 16°/s，两者差限 8°/s。冷启动预设和本轮试验参数见[模型第 8 节](CYCLONE_ROTOR_MODEL.md)。
 
 当前进度：完整动力学Yaw闭环已下载；±8g修正版在约250g配重持续拉紧的系留试飞中未复现健康停机，用户报告可稳定离地。原始数据与限制见[系留试飞记录](YAW_TETHERED_TEST_20261029.md)。按用户随后纠正，最新源码接收映射为CH1→Yaw、CH4→Roll，CH2→Pitch、CH3→油门、CH5→SA、CH6→S1；**这与下方历史AETR表不同**。当前应用revision5：32路波形、34状态、71参数，四轴复测及下载进度见[测试准备](YAW_FOUR_AXIS_TEST_20261029.md)。
 

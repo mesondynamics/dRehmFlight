@@ -16,6 +16,7 @@ PROFILE_FILES = {
     'v14': ('cyclone-v14-xy-trim-flight.json', 'cyclone-v14-xy-trim-device.json'),
     'v15': TRIM_5DEG_PROFILE,
     'v16': TRIM_5DEG_PROFILE,
+    'v17': TRIM_5DEG_PROFILE,
 }
 PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 118))
 
@@ -32,8 +33,8 @@ def label(value, maximum=128):
 
 def validate(profiles, version='v12'):
     check(version in PROFILE_FILES, 'Unknown profile version')
-    if version == 'v16':
-        version = 'v15'  # v16 changes startup values only. Both builds use the same Web profile IDs.
+    if version in ('v16', 'v17'):
+        version = 'v15'  # These builds share the v15 telemetry layout and Web profile IDs.
     app, device = profiles
     for p in profiles:
         check(set(p) == {'format_version', 'id', 'revision', 'name', 'data'}, 'Unknown profile fields')

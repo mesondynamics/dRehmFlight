@@ -1,4 +1,4 @@
-"""Guard build-specific waveform and Web profile assignments across v12–v16."""
+"""Guard build-specific waveform and Web profile assignments across v12–v17."""
 import json
 from pathlib import Path
 import struct
@@ -72,9 +72,12 @@ class CycloneRecordingLayoutTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "firmware differs"):
             summarize(sample_boot(V12), 0, 1, HOVER_SLOPE_BUILD)
 
-    def test_hover_startup_build_reuses_the_five_degree_profile(self):
-        self.assertEqual(PROFILE_FILES['v16'], PROFILE_FILES['v15'])
-        validate([json.loads((PROFILE_DIR / name).read_text()) for name in PROFILE_FILES['v16']], 'v16')
+    def test_hover_and_spin_entry_builds_reuse_the_five_degree_profile(self):
+        profiles = [json.loads((PROFILE_DIR / name).read_text()) for name in PROFILE_FILES['v15']]
+        for version in ('v16', 'v17'):
+            with self.subTest(version=version):
+                self.assertEqual(PROFILE_FILES[version], PROFILE_FILES['v15'])
+                validate(profiles, version)
 
 
 if __name__ == "__main__":

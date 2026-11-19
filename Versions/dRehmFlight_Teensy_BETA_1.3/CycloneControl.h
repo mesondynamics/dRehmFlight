@@ -157,10 +157,10 @@ class CycloneControl {
         entryTargetRate_+=alpha*(allocatedRateTarget_-entryTargetRate_);
       }
     }
-    // Use the same rate bounds to acquire and retain readiness, with a tighter
-    // tilt bound for acquisition. The airborne supervisor is independent.
+    // Permit a modest, well-tracked normal-mode turn during the handoff.
+    // Keep the target-to-actual error bound independent of this speed allowance.
     const float entryInstantLimit=spinRateLimit+safety.overspeedMarginDps;
-    const float entryRate=std::fmin(8.f,spinRateLimit);
+    const float entryRate=std::fmin(16.f,spinRateLimit);
     const float entryError=std::fmin(8.f,safety.rateErrorDps);
     const bool entryEnvelope=haveFeedback &&
         std::fabs(measuredYawRate)<=entryInstantLimit &&

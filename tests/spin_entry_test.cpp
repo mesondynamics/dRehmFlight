@@ -103,9 +103,10 @@ static void vibrationMustNotPermanentlyBlockEntry() {
 }
 static void qualificationRateLimitsAt15Rpm() {
   struct Rates { float actual, target; };
-  // At 90 deg/s max rate and the default 8 deg/s supervisor error limit,
-  // each of the three entry criteria can independently approach 8 deg/s.
-  for(const auto rates : {Rates{7.9f,4}, Rates{4,7.9f}, Rates{3.95f,-3.95f}}) {
+  // At 15 RPM either trend can approach 16 deg/s if the physical Yaw
+  // controller is tracking. The error between trends is still capped at 8.
+  for(const auto rates : {Rates{15.9f,9}, Rates{9,15.9f}, Rates{-15.9f,-9},
+                          Rates{-9,-15.9f}, Rates{3.95f,-3.95f}}) {
     Rig r;
     r.spin.maxRateDps=90;
     r.run(1500,1500,rates.actual,rates.target);
@@ -117,7 +118,8 @@ static void qualificationRateLimitsAt15Rpm() {
     r.run(50,2000,rates.actual,rates.target);
     assert(r.out.mode==FlightMode::Spin);
   }
-  for(const auto rates : {Rates{8.2f,4}, Rates{4,8.2f}, Rates{4.1f,-4.1f}}) {
+  for(const auto rates : {Rates{16.2f,10}, Rates{10,16.2f}, Rates{-16.2f,-10},
+                          Rates{-10,-16.2f}, Rates{4.1f,-4.1f}, Rates{-4.1f,4.1f}}) {
     Rig r;
     r.spin.maxRateDps=90;
     r.run(2000,1500,rates.actual,rates.target);
@@ -125,6 +127,16 @@ static void qualificationRateLimitsAt15Rpm() {
     r.run(700,2000,rates.actual,rates.target);
     assert(r.out.mode==FlightMode::Normal && r.control.spinEntryState()==SpinEntryState::CenterRequired);
   }
+  // A lower configured spin speed or tracking limit still tightens admission.
+  Rig slow; slow.spin.maxRateDps=10;
+  slow.run(2000,1500,10.2f,10.2f);
+  assert(slow.control.spinEntryState()==SpinEntryState::Settling);
+  Rig strict; strict.spin.maxRateDps=90; strict.safety.rateErrorDps=6;
+  strict.run(2000,1500,12,5.8f);
+  assert(strict.control.spinEntryState()==SpinEntryState::Settling);
+  Rig wide; wide.spin.maxRateDps=90; wide.safety.rateErrorDps=18;
+  wide.run(2000,1500,12,3.8f);
+  assert(wide.control.spinEntryState()==SpinEntryState::Settling);
 }
 static void readinessHysteresisAndConfirmation() {
   SpinEntryGuard guard;
