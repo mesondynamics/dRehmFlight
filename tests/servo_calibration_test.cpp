@@ -60,7 +60,7 @@ int main() {
   const ControlGains gains{{.01f,0,0},{.01f,0,0},defaultYawGains()};
   CycloneControl controller;
   for (int ch6 : channels) {
-    const auto pilot=pilotInput(1000,1500,1500,1500,ch6,false);
+    const auto pilot=pilotInput(1000,1500,1500,1500,ch6);
     const auto out=controller.step(pilot,{1,0,0,0},{0,0,0},.0005f,false,true,true,gains);
     assert(out.motors.m2==0 && out.motors.m4==0 && out.motors.m3==0);
     assert(!canArm(true,1000,2000,ch6));

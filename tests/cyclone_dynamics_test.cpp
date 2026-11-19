@@ -47,7 +47,7 @@ int main() {
       unsigned spin=1500;
       if (t>=15 && t<40) spin=1000; // positive spin
       if (t>=40 && t<65) spin=2000; // negative spin
-      auto in=pilotInput(1500,1500,1500,1500,spin,controller.spinning());
+      auto in=pilotInput(1500,1500,1500,1500,spin);
       in.spin *= speed/spinMaxDps;
       const Vec3 gyro{plant.omega.x,-plant.omega.y,-plant.omega.z};
       out=controller.step(in,plant.q,gyro,dt,true,false,true,gains);

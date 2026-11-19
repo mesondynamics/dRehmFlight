@@ -46,25 +46,26 @@ static void normalHoverStartup() {
   assert(!p.config().flightEnabled && !p.config().laserEnabled && !p.config().ready);
   assert(p.applyNormalHoverAtStartup(0x001881bf) && p.revision()==2);
   assert(p.config().ready && p.config().flightEnabled && p.config().initialModelEnabled);
-  assert(!p.config().model.calibrated && !p.config().spinEnabled && p.config().laserEnabled);
+  assert(!p.config().model.calibrated && p.config().spinEnabled && p.config().spinReady && p.config().laserEnabled);
+  assert(p.config().spin.maxRateDps==360 && p.config().spin.maxAccelDps2==30 && p.config().maxRateDps==20);
   assert(p.config().motorLag==.04f && p.config().headingKp==.8f &&
          p.config().reference.normalPitchTrimDeg==-.5f && p.config().cyclicLeadScale==1);
   const auto startup=readAllParameters(p);
   // CRC32 of the 112 wire entries (ID, type, reserved, little-endian value)
-  // in the 2026-11-19 v15 preflight readback. Includes unchanged defaults.
-  assert(rmp_crc32(startup.data(),startup.size())==0x0da7c008u);
+  // in the v15 preflight readback with #2=1 and #82=360. Includes every other default.
+  assert(rmp_crc32(startup.data(),startup.size())==0xc6d8b071u);
   tricopter::FlightParameters remote; remote.begin();
-  assert(batch(remote,{{1,1,RMP_PARAM_BOOL},{75,1,RMP_PARAM_BOOL},{82,90},{83,30},{84,1},
+  assert(batch(remote,{{1,1,RMP_PARAM_BOOL},{2,1,RMP_PARAM_BOOL},{75,1,RMP_PARAM_BOOL},{82,360},{83,30},{84,1},
                        {87,1,RMP_PARAM_BOOL},{97,5},{115,1},{116,4.5f},{117,-.5f}})[8]==RMP_APPLIED);
   assert(readAllParameters(remote)==startup);
   // RAM edits survive a telemetry reconnect. A new cold boot uses the fixed
-  // ordinary preset again, regardless of the last session's spin command.
-  assert(batch(p,{{2,1,RMP_PARAM_BOOL},{117,.5f}})[8]==RMP_APPLIED);
+  // S1 preset again, even if the previous session forced ordinary flight.
+  assert(batch(p,{{2,0,RMP_PARAM_BOOL},{117,.5f}})[8]==RMP_APPLIED);
   p.newSession();
-  assert(!p.applyNormalHoverAtStartup(0x1881bf) && p.config().spinEnabled);
+  assert(!p.applyNormalHoverAtStartup(0x1881bf) && !p.config().spinEnabled);
   p.begin(); assert(!p.config().flightEnabled);
   assert(p.applyNormalHoverAtStartup(0x1881bf));
-  assert(readAllParameters(p)==startup && !p.config().spinEnabled);
+  assert(readAllParameters(p)==startup && p.config().spinEnabled);
   // An already-active SA cannot start the aircraft on power-up. Only fresh
   // physical cut, low throttle, centered S1 and a confirmed arm edge can.
   tricopter::CrsfArmSwitch arm;

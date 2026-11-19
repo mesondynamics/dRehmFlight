@@ -8,7 +8,7 @@ using namespace tricopter;
 static PilotInput decode(const uint16_t raw[6]) {
   uint16_t mapped[6]{};
   mapCrsfChannels(raw,mapped);
-  return pilotInput(mapped[0],mapped[1],mapped[2],mapped[3],mapped[5],false);
+  return pilotInput(mapped[0],mapped[1],mapped[2],mapped[3],mapped[5]);
 }
 
 int main() {

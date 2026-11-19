@@ -132,10 +132,7 @@ inline NormalSliderTrim normalSliderTrim(unsigned ch7Us, unsigned ch8Us) {
 constexpr float rollDirection = 1.0f;
 constexpr float pitchDirection = 1.0f;
 constexpr float spinDirection = -1.0f; // raw CH6 left -> positive/CCW
-// A deliberate 30% knob movement starts entry qualification. Small adjustments
-// around center must not consume a flight's spin authorization while taking off.
-constexpr float spinEnterUs = 150.0f;
-constexpr float spinExitUs = 30.0f;
+constexpr float spinDeadbandUs = 30.0f;
 constexpr float normalTiltDeg = 30.0f;
 constexpr float spinTiltDeg = 15.0f;
 constexpr float tiltLimitSlewDps = 15.0f;
@@ -193,7 +190,7 @@ inline float centered(float us, float deadband = stickDeadbandUs) {
   return 0;
 }
 inline bool spinCentered(unsigned us) {
-  return us >= stickCenterUs-spinExitUs && us <= stickCenterUs+spinExitUs;
+  return us >= stickCenterUs-spinDeadbandUs && us <= stickCenterUs+spinDeadbandUs;
 }
 inline bool canArm(bool receiverReady, unsigned throttleUs, unsigned cutUs, unsigned ch6Us) {
   return receiverReady && throttleUs < 1050 && cutUs < 1500 && spinCentered(ch6Us);
@@ -220,7 +217,7 @@ static_assert(yawFeedbackStartThrottle < yawFeedbackFullThrottle &&
               yawIntegralStartThrottle < yawFeedbackFullThrottle, "Invalid yaw throttle ramp");
 static_assert(yawRateFilterHz > 0 && yawDerivativeFilterHz > 0 && yawServoFilterHz > 0 &&
               yawServoSlewDegPerSec > 0, "Invalid yaw filtering or slew limit");
-static_assert(spinExitUs < spinEnterUs && spinEnterUs < 500, "Invalid CH6 hysteresis");
+static_assert(spinDeadbandUs > 0 && spinDeadbandUs < 500, "Invalid CH6 center range");
 static_assert(spinTiltIntegralScale > 0 && spinTiltIntegralScale <= 1, "Invalid spin integral scale");
 static_assert(spinMaxDps > 0 && spinMaxDps <= 360, "High-speed winged flight is not supported yet");
 static_assert(servoCenterDeg - yawServoLimitDeg >= 0 && servoCenterDeg + yawServoLimitDeg <= 180,

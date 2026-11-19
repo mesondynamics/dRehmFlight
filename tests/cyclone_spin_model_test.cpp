@@ -252,22 +252,12 @@ static void spinEntryChecks() {
   PilotInput pilot{.5f,0,0,1,0,false};
   for (unsigned i=0;i<4000;++i)
     reference.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,gains,&spin,&cfg);
-  pilot.yaw=0; pilot.spin=.1f; pilot.spinRequested=true;
-  auto entry=reference.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,gains,&spin,&cfg);
-  assert(entry.mode==FlightMode::Normal); // no settled physical feedback yet
-  pilot.spin=0; pilot.spinRequested=false;
-  for(unsigned i=0;i<1700;++i) {
-    reference.applyAllocationFeedback(1,1,false,0);
-    reference.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,gains,&spin,&cfg);
-  }
-  assert(reference.spinEntryState()==SpinEntryState::Ready);
   pilot.spin=.1f; pilot.spinRequested=true;
-  for(unsigned i=0;i<620;++i) {
-    reference.applyAllocationFeedback(1,1,false,0);
-    entry=reference.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,gains,&spin,&cfg);
-    if(entry.mode==FlightMode::Spin) break;
-  }
+  auto entry=reference.step(pilot,{1,0,0,0},{0,0,0},.0005f,true,false,true,gains,&spin,&cfg);
+  // A previous ordinary Yaw command and the absence of past allocation
+  // feedback do not postpone the pilot's frame change.
   assert(entry.mode==FlightMode::Spin && entry.yawTarget>0 && entry.yawTarget<.02f);
+  assert(entry.referenceRate==cfg.generalizedYawMaxDps);
 }
 int main() {
   laserChecks(); kinematicChecks(); physicalSaturationChecks(); spinEntryChecks();

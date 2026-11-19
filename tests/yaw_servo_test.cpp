@@ -79,7 +79,7 @@ static void repeatedThrottleDoesNotCapMotors() {
   for (int cycle=0;cycle<3;++cycle) {
     for (unsigned throttle : {1000u,1060u,1150u,1300u,1500u,1800u,2000u}) {
       for (int i=0;i<100;++i) {
-        const auto pilot=pilotInput(throttle,1500,1500,1500,1500,control.spinning());
+        const auto pilot=pilotInput(throttle,1500,1500,1500,1500);
         const auto out=control.step(pilot,{1,0,0,0},{0,0,20},dt,true,false,true,gains);
         assert(!out.fault);
         assert(std::fabs(out.motors.m2+out.motors.m3+out.motors.m4-3*pilot.throttle)<1e-5f);

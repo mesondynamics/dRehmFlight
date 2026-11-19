@@ -590,8 +590,7 @@ void loop() {
 
 void controlCyclone() {
   tricopter::PilotInput pilot = tricopter::pilotInput(
-      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_6_pwm,
-      flightControl.spinning());
+      channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_6_pwm);
 #if DREHM_REMOTE_MCU
   // Keep the real S1 position for fault/abort reset qualification even while
   // spinning is disabled. Only suppress the request, never synthesize center.
@@ -823,11 +822,9 @@ void serviceRemoteMcu() {
   sample.state[56]=supervisor.count();
   const float stopRateTrend=flightControl.qualifiedRateDps();
   memcpy(&sample.state[57],&stopRateTrend,4);
-  const auto &entryConfig=flightParameters.config();
-  const auto entryState=flightControl.supervisor().inhibited() ? tricopter::SpinEntryState::AbortLocked :
-      (!entryConfig.flightEnabled || !entryConfig.spinEnabled || !entryConfig.spinReady ?
-       tricopter::SpinEntryState::Disabled : flightControl.spinEntryState());
-  sample.state[58]=static_cast<uint32_t>(entryState);
+  const auto &config=flightParameters.config();
+  sample.state[58]=static_cast<uint32_t>(flightControl.spinStatus(
+      config.flightEnabled && config.spinEnabled && config.spinReady));
   sample.safeToFlash=!armedFly && motorsStopped && channel_5_pwm>=1500 &&
       channel_1_pwm<1050 && tricopter::spinCentered(channel_6_pwm);
   sample.safeToConfigure=!armedFly && motorsStopped && channel_5_pwm>=1500 && channel_1_pwm<1050;

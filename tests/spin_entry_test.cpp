@@ -1,4 +1,7 @@
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/CycloneControl.h"
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/FlightParameters.h"
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/src/RemoteMcu/rmp.c"
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/src/RemoteMcu/parameters.c"
 #include <cassert>
 #include <cstdio>
 #include <initializer_list>
@@ -6,174 +9,103 @@
 using namespace tricopter;
 static constexpr float dt=.0005f;
 static const ControlGains gains{{.002f,.003f,.0005f},{.002f,.003f,.0005f},defaultYawGains()};
+
 struct Rig {
+  FlightParameters parameters;
   CycloneControl control;
-  SpinDynamicsModel spin;
-  AttitudeReferenceConfig reference;
-  SpinSafetyConfig safety;
+  NormalYawControl yaw;
   ControlOutput out{};
+  NormalYawOutput physical{};
   float heading=0;
-  Rig() { spin.maxRateDps=10; spin.maxAccelDps2=10; }
-  void tick(unsigned s1,float actual=0,float physicalTarget=0,bool cut=false,float throttle=.3f) {
-    heading=wrapDegrees(heading+actual*dt);
-    const Quaternion q{std::cos(heading*radians*.5f),0,0,-std::sin(heading*radians*.5f)};
-    control.applyAllocationFeedback(1,1,false,physicalTarget);
-    const auto in=pilotInput(1000+static_cast<unsigned>(throttle*1000),1500,1500,
-                             1500,s1,control.spinning());
-    out=control.step(in,q,{0,0,actual},dt,true,cut,true,gains,&spin,&reference,&safety);
-    assert(!out.fault);
+  Rig() {
+    parameters.begin();
+    assert(parameters.applyNormalHoverAtStartup(0x1881bf));
   }
-  void run(unsigned frames,unsigned s1,float actual=0,float target=0) {
-    for(unsigned i=0;i<frames;++i) tick(s1,actual,target);
+  void tick(uint16_t s1,float measuredRate,uint16_t yawUs=1500,uint16_t throttle=1500,
+            bool armed=true,bool cut=false,bool healthy=true) {
+    uint16_t rc[]={yawUs,1500,throttle,1500,uint16_t(cut ? 2000 : 1000),s1},mapped[6]{};
+    mapCrsfChannels(rc,mapped);
+    auto pilot=pilotInput(mapped[0],mapped[1],mapped[2],mapped[3],mapped[5]);
+    const auto &c=parameters.config();
+    if(!c.spinEnabled || !c.spinReady) pilot.spinRequested=false;
+    heading=wrapDegrees(heading+measuredRate*dt);
+    const Quaternion q{std::cos(heading*radians*.5f),0,0,-std::sin(heading*radians*.5f)};
+    const Vec3 gyro{0,0,measuredRate};
+    out=control.step(pilot,q,gyro,dt,armed,cut,healthy,gains,&c.spin,&c.reference,&c.safety);
+    YawControlRequest request;
+    request.rateMode=out.mode!=FlightMode::Normal;
+    request.rateTargetDps=out.yawTarget; request.attitude=q; request.gyroDps=gyro;
+    physical=yaw.step(c,out.motors,out.heading,out.yawRate,pilot.yaw,dt,
+                      armed && !cut && pilot.throttle>=.06f && !out.fault,request);
+    if(physical.active)
+      control.applyAllocationFeedback(physical.liftScale,physical.attitudeScale,
+                                      physical.limited,physical.rateTarget);
   }
 };
-static void earlyRequestMustNotConsumeFlight() {
+
+static void immediateRequestAndInhibition() {
   Rig r;
-  // Captured failure: normal Yaw still requesting +20 while the airframe turns
-  // the other way. CH6=1425 used to enter Spin and consume the abort latch.
-  r.run(3000,1425,-10,20);
-  assert(r.out.mode==FlightMode::Normal && !r.control.supervisor().inhibited());
-  r.run(2500,2000,-10,20); // even an endpoint cannot enter while unsettled
-  assert(r.out.mode==FlightMode::Normal && r.control.spinEntryState()==SpinEntryState::CenterRequired);
-  r.run(3000,2000); // stability alone must not start a previously rejected request
-  assert(r.out.mode==FlightMode::Normal && !r.control.supervisor().inhibited());
-  r.run(1700,1500);
-  assert(r.control.spinEntryState()==SpinEntryState::Ready);
-  r.run(620,2000);
-  assert(r.out.mode==FlightMode::Spin && r.out.yawTarget<0);
-  assert(!r.control.supervisor().inhibited());
+  assert(r.control.spinStatus(true)==SpinStatus::Idle);
+  r.tick(1469,24,1800,1000,false,true);
+  assert(r.out.mode==FlightMode::Normal && !r.physical.active);
+  // First active frame. Yaw is held, measured heading rate is above the old
+  // acquisition band and the allocator has not supplied a previous sample.
+  r.tick(1469,24,1800);
+  assert(r.out.mode==FlightMode::Spin && r.out.referenceRate<0 && r.physical.active);
+  assert(r.control.spinStatus(true)==SpinStatus::Active && !r.control.supervisor().inhibited());
+  r.tick(1470,24);
+  assert(r.out.mode==FlightMode::Braking);
+  r.tick(1531,24);
+  assert(r.out.mode==FlightMode::Spin);
+  r.tick(1530,24);
+  assert(r.out.mode==FlightMode::Braking);
+  // The aircraft-wide sensor fault still stops the active controller.
+  r.tick(2000,0,1500,1500,true,false,false);
+  assert(r.out.fault && r.out.mode==FlightMode::Normal && !r.physical.active);
 }
-static void deliberateRequestAndSlew() {
-  for(unsigned s1 : {1000u,2000u}) {
-    Rig r; r.run(1700,1500);
-    assert(r.control.spinEntryState()==SpinEntryState::Ready);
-    r.run(200,s1); // 100 ms accidental excursion is not a mode change
-    assert(r.out.mode==FlightMode::Normal);
-    r.run(30,1500);
-    r.run(590,s1);
-    assert(r.out.mode==FlightMode::Normal);
-    float previous=0;
-    for(unsigned i=0;i<100;++i) {
-      r.tick(s1);
-      assert(std::fabs(r.out.yawTarget-previous)<=.0051f);
-      previous=r.out.yawTarget;
+
+static void fullTravelAndBraking() {
+  Rig r;
+  r.tick(1500,0); assert(r.control.spinStatus(true)==SpinStatus::Normal);
+  assert(r.control.spinStatus(false)==SpinStatus::Disabled);
+  // Supply tracked measured rates to isolate RC mapping, mode selection and
+  // the actual allocator setpoint slew. This is a command-path regression.
+  for(uint16_t s1 : {1000,1235,2000}) {
+    for(unsigned i=0;i<50000;++i) {
+      const float previous=r.physical.rateTarget;
+      r.tick(s1,previous);
+      assert(r.out.mode==FlightMode::Spin && !r.physical.fault && !r.control.supervisor().inhibited());
+      assert(std::fabs(r.physical.rateTarget-previous)<=30.f*dt+.0001f);
+      assert(std::fabs(r.physical.rateTarget)<=360.f);
     }
-    assert(r.out.mode==FlightMode::Spin && !r.control.supervisor().inhibited());
-    assert(s1==1000 ? r.out.yawTarget>0 : r.out.yawTarget<0);
+    const float expected=s1==1000 ? 360.f : (s1==1235 ? 180.f : -360.f);
+    assert(std::fabs(r.physical.rateTarget-expected)<.001f);
+  }
+  for(unsigned i=0;i<2000;++i) {
+    const float previous=r.physical.rateTarget;
+    r.tick(1500,previous);
+    assert(r.out.mode==FlightMode::Braking && r.physical.active);
+    assert(r.physical.rateTarget>=previous && r.physical.rateTarget-previous<=30.f*dt+.0001f);
   }
 }
-static void targetReadinessAndAbortStillApply() {
-  Rig r; r.run(1700,1500,0,20); // measured rest alone does not prove a settled controller
-  assert(r.control.spinEntryState()==SpinEntryState::Settling);
-  r.run(1000,1000,0,20);
-  assert(r.out.mode==FlightMode::Normal && !r.control.supervisor().inhibited());
-  r.run(1700,1500); r.run(620,1000);
-  assert(r.out.mode==FlightMode::Spin);
-  r.run(550,1000,30,5); // real overspeed is still protected at the original dwell
-  assert(r.control.supervisor().reasons()&spinOverspeed);
-  assert(r.out.mode==FlightMode::Braking && r.out.motors.m2>0);
-  assert(r.control.spinEntryState()==SpinEntryState::AbortLocked);
-  r.tick(1000,0,0,false,0); // throttle alone never clears the abort
-  r.tick(1000,0,0,true,0); // SA cut with displaced S1 also cannot clear it
-  assert(r.control.supervisor().inhibited());
-  r.tick(1500,0,0,true,0);
-  assert(!r.control.supervisor().inhibited());
-  r.run(2000,1000); // after idle, S1 must be qualified from center again
-  assert(r.out.mode==FlightMode::Normal);
-  r.run(1700,1500); r.run(620,1000);
-  assert(r.out.mode==FlightMode::Spin);
-}
-static void vibrationMustNotPermanentlyBlockEntry() {
+
+static void overspeedLocksUntilCut() {
   Rig r;
-  // Short alternating rate fluctuations within the original tracking guard
-  // must not make an otherwise stationary nose permanently ineligible.
-  for(unsigned i=0;i<2400;++i)
-    r.tick(1500,12*std::sin(2*3.14159265f*8*i*dt));
-  assert(r.control.spinEntryState()==SpinEntryState::Ready);
-  for(unsigned i=0;i<620;++i)
-    r.tick(2000,12*std::sin(2*3.14159265f*8*i*dt));
-  assert(r.out.mode==FlightMode::Spin && !r.control.supervisor().inhibited());
-
-  Rig moving; moving.run(1700,1500); moving.run(200,2000);
-  moving.run(600,2000,30); // a sustained turn cancels, without a delayed start
-  moving.run(2000,2000);
-  assert(moving.out.mode==FlightMode::Normal &&
-         moving.control.spinEntryState()==SpinEntryState::CenterRequired);
-  assert(!moving.control.supervisor().inhibited());
+  r.tick(2000,-390);
+  assert(r.out.mode==FlightMode::Spin && std::fabs(r.out.yawTarget)<=360.f);
+  for(unsigned i=0;i<510;++i) r.tick(2000,-390);
+  assert((r.control.supervisor().reasons()&spinOverspeed)!=0);
+  assert(r.out.mode==FlightMode::Braking && r.physical.active);
+  r.tick(1000,0); assert(r.control.spinStatus(true)==SpinStatus::AbortLocked);
+  r.tick(1500,0); r.tick(2000,0);
+  assert(r.out.mode!=FlightMode::Spin && r.control.supervisor().inhibited());
+  r.tick(2000,0,1500,1000,false,true); assert(r.control.supervisor().inhibited());
+  r.tick(1500,0,1500,1000,false,true); assert(!r.control.supervisor().inhibited());
 }
-static void qualificationRateLimitsAt15Rpm() {
-  struct Rates { float actual, target; };
-  // At 15 RPM either trend can approach 16 deg/s if the physical Yaw
-  // controller is tracking. The error between trends is still capped at 8.
-  for(const auto rates : {Rates{15.9f,9}, Rates{9,15.9f}, Rates{-15.9f,-9},
-                          Rates{-9,-15.9f}, Rates{3.95f,-3.95f}}) {
-    Rig r;
-    r.spin.maxRateDps=90;
-    r.run(1500,1500,rates.actual,rates.target);
-    assert(r.control.spinEntryState()==SpinEntryState::Settling);
-    r.run(200,1500,rates.actual,rates.target);
-    assert(r.control.spinEntryState()==SpinEntryState::Ready);
-    r.run(580,2000,rates.actual,rates.target);
-    assert(r.out.mode==FlightMode::Normal && r.control.spinEntryState()==SpinEntryState::Confirming);
-    r.run(50,2000,rates.actual,rates.target);
-    assert(r.out.mode==FlightMode::Spin);
-  }
-  for(const auto rates : {Rates{16.2f,10}, Rates{10,16.2f}, Rates{-16.2f,-10},
-                          Rates{-10,-16.2f}, Rates{4.1f,-4.1f}, Rates{-4.1f,4.1f}}) {
-    Rig r;
-    r.spin.maxRateDps=90;
-    r.run(2000,1500,rates.actual,rates.target);
-    assert(r.control.spinEntryState()==SpinEntryState::Settling);
-    r.run(700,2000,rates.actual,rates.target);
-    assert(r.out.mode==FlightMode::Normal && r.control.spinEntryState()==SpinEntryState::CenterRequired);
-  }
-  // A lower configured spin speed or tracking limit still tightens admission.
-  Rig slow; slow.spin.maxRateDps=10;
-  slow.run(2000,1500,10.2f,10.2f);
-  assert(slow.control.spinEntryState()==SpinEntryState::Settling);
-  Rig strict; strict.spin.maxRateDps=90; strict.safety.rateErrorDps=6;
-  strict.run(2000,1500,12,5.8f);
-  assert(strict.control.spinEntryState()==SpinEntryState::Settling);
-  Rig wide; wide.spin.maxRateDps=90; wide.safety.rateErrorDps=18;
-  wide.run(2000,1500,12,3.8f);
-  assert(wide.control.spinEntryState()==SpinEntryState::Settling);
-}
-static void readinessHysteresisAndConfirmation() {
-  SpinEntryGuard guard;
-  auto tick=[&](bool request,bool settled,bool envelope,bool yawCentered=true) {
-    return guard.step(request,!request,yawCentered,settled,envelope,true,false,dt);
-  };
-  for(unsigned i=0;i<1700;++i) assert(!tick(false,true,true));
-  assert(guard.state()==SpinEntryState::Ready);
-  for(unsigned i=0;i<6000;++i) assert(!tick(false,false,true));
-  assert(guard.state()==SpinEntryState::Ready); // no flicker in the wider band
-  for(unsigned i=0;i<200;++i) assert(!tick(true,false,true));
-  for(unsigned i=0;i<400;++i) assert(!tick(true,false,false)); // 200 ms pauses
-  assert(guard.state()==SpinEntryState::Confirming);
-  for(unsigned i=0;i<390;++i) assert(!tick(true,false,true));
-  bool accepted=false;
-  for(unsigned i=0;i<20;++i) accepted|=tick(true,false,true);
-  assert(accepted); // both previous good intervals count, the excursion does not
 
-  guard.reset();
-  for(unsigned i=0;i<1700;++i) tick(false,true,true);
-  for(unsigned i=0;i<520;++i) assert(!tick(true,false,false));
-  assert(guard.state()==SpinEntryState::CenterRequired);
-  for(unsigned i=0;i<4000;++i) assert(!tick(true,true,true));
-  assert(guard.state()==SpinEntryState::CenterRequired);
-  for(unsigned i=0;i<1700;++i) tick(false,true,true);
-  assert(guard.state()==SpinEntryState::Ready);
-  assert(!tick(true,true,true,false)); // Yaw steering revokes entry immediately
-  assert(guard.state()==SpinEntryState::CenterRequired);
-
-  guard.reset();
-  for(unsigned i=0;i<6000;++i) assert(!tick(false,false,true));
-  assert(guard.state()==SpinEntryState::Settling); // retention alone cannot qualify
-}
 int main() {
-  earlyRequestMustNotConsumeFlight(); deliberateRequestAndSlew(); targetReadinessAndAbortStillApply();
-  vibrationMustNotPermanentlyBlockEntry();
-  qualificationRateLimitsAt15Rpm();
-  readinessHysteresisAndConfirmation();
-  std::puts("Captured early request, later deliberate entry, debounce, target readiness and unchanged abort/reset passed");
+  immediateRequestAndInhibition();
+  fullTravelAndBraking();
+  overspeedLocksUntilCut();
+  std::puts("Direct CH6 selection, 60 RPM endpoints, slew, braking and airborne lock passed");
 }

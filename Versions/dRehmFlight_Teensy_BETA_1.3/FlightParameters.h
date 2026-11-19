@@ -100,9 +100,10 @@ class FlightParameters {
         parameters_.revision!=1 || parameters_.count!=count) return false;
     struct Setting { uint16_t id; uint8_t type; float value; };
     static constexpr Setting changes[]={
-      {1,RMP_PARAM_BOOL,1},    // Ordinary flight permission; SA still controls arming.
+      {1,RMP_PARAM_BOOL,1},    // Flight permission; SA still controls arming.
+      {2,RMP_PARAM_BOOL,1},    // S1 selects spin, center selects ordinary flight.
       {75,RMP_PARAM_BOOL,1},   // Use provisional dynamics, keep model_verified false.
-      {82,RMP_PARAM_F32,90}, {83,RMP_PARAM_F32,30}, {84,RMP_PARAM_F32,1},
+      {82,RMP_PARAM_F32,360}, {83,RMP_PARAM_F32,30}, {84,RMP_PARAM_F32,1},
       {87,RMP_PARAM_BOOL,1},   // Heading laser.
       {97,RMP_PARAM_F32,5}, {115,RMP_PARAM_F32,1}, {116,RMP_PARAM_F32,4.5f},
       {117,RMP_PARAM_F32,-.5f} // Fixed normal pitch trim in addition to CH7/8.
@@ -119,7 +120,7 @@ class FlightParameters {
     if (!rmp_params_valid(&parameters_,candidate)) return false;
     const NormalYawConfig next=decode(candidate);
     if (!next.ready || !next.flightEnabled || !next.initialModelEnabled || next.model.calibrated ||
-        next.spinEnabled || !next.laserEnabled || !next.laser.valid()) return false;
+        !next.spinEnabled || !next.spinReady || !next.laserEnabled || !next.laser.valid()) return false;
     std::memcpy(parameters_.values,candidate,sizeof(candidate));
     config_=next;
     ++parameters_.revision;

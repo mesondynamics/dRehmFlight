@@ -17,6 +17,7 @@ PROFILE_FILES = {
     'v15': TRIM_5DEG_PROFILE,
     'v16': TRIM_5DEG_PROFILE,
     'v17': TRIM_5DEG_PROFILE,
+    'v18': ('cyclone-v18-s1-direct-flight.json', 'cyclone-v18-s1-direct-device.json'),
 }
 PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 118))
 
@@ -76,10 +77,10 @@ def validate(profiles, version='v12'):
           device['id'] == f'drehmflight-cyclone-rotor-device-{app_id_suffix}', 'Profile version mismatch')
     check(d == {'kind': 'device', 'target_profile': a['target_profile'],
                 'application_profile': app['id'], 'gateway_ip': gateway}, 'Device references')
-    if version in ('v13', 'v14', 'v15'):
+    if version in ('v13', 'v14', 'v15', 'v18'):
         channels = {c['id']: c for c in a['channels']}
         units = {3: '°', 11: 'g', 12: '码', 13: 'g', 14: 'g', 22: 'g'}
-        if version in ('v14', 'v15'):
+        if version in ('v14', 'v15', 'v18'):
             units.update({26: 'µs', 27: 'µs'})
             for card in a['cards']:
                 if card['id'] in (43, 44):

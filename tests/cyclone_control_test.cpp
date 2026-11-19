@@ -21,8 +21,8 @@ static Quaternion attitude(float roll, float pitch, float heading) {
                   {std::cos(r),std::sin(r),0,0});
 }
 static PilotInput input(unsigned r=1500, unsigned p=1500, unsigned y=1500, unsigned s=1500,
-                        bool spinning=false, unsigned t=1500) {
-  return pilotInput(t,r,p,y,s,spinning);
+                        unsigned t=1500) {
+  return pilotInput(t,r,p,y,s);
 }
 static ControlOutput tick(CycloneControl &c, PilotInput in, Quaternion q=level, Vec3 g={0,0,0},
                           const ControlGains &cg=gains) {
@@ -38,11 +38,10 @@ static void radioAndNormal() {
     in=input(v,v,v);
     assert(in.roll == 0 && in.pitch == 0 && in.yaw == 0);
   }
-  assert(!input(1500,1500,1500,1575).spinRequested);
-  assert(!input(1500,1500,1500,1650).spinRequested);
-  assert(input(1500,1500,1500,1651).spinRequested);
-  assert(input(1500,1500,1500,1540,true).spinRequested);
-  assert(!input(1500,1500,1500,1530,true).spinRequested);
+  assert(!input(1500,1500,1500,1470).spinRequested);
+  assert(!input(1500,1500,1500,1530).spinRequested);
+  assert(input(1500,1500,1500,1469).spinRequested);
+  assert(input(1500,1500,1500,1531).spinRequested);
   CycloneControl c;
   auto o=tick(c,input(2000));
   assert(o.motors.m2 > o.motors.m4 && o.roll > 0);
@@ -60,7 +59,7 @@ static void radioAndNormal() {
   assert(tick(feedback,input(),level,{0,0,30}).servoDeg > servoCenterDeg);
   // Cut/idle reset all integrators and the spin reference.
   for (int i=0;i<4000;++i) tick(c,input(2000,2000,2000,1000));
-  o=c.step(input(1500,1500,1500,1500,false,1000),level,{0,0,0},dt,false,true,true,gains);
+  o=c.step(input(1500,1500,1500,1500,1000),level,{0,0,0},dt,false,true,true,gains);
   assert(o.servoDeg == servoCenterDeg && o.motors.m2 == 0 && o.mode == FlightMode::Normal);
   o=tick(c,input());
   assert(near(o.roll,0) && near(o.pitch,0) && near(o.yaw,0));
@@ -134,8 +133,7 @@ static void normalPitchTrim() {
     assert(out.mode==FlightMode::Normal);
     assert(near(out.desiredUp.dot(forward),std::sin(-.5f*radians)));
     assert(near(out.desiredUp.dot(right),0) && out.pitch<0);
-    // A fully qualified request can enter spin. The reference slews
-    // away from the body trim rather than carrying it into the spin frame.
+    // On spin selection the reference slews away from the body trim.
     for (int i=0;i<800;++i) out=step(input(1500,1500,1500,1000));
     assert(out.mode==FlightMode::Spin && near(out.desiredUp.dot(forward),0));
     assert(near(out.desiredUp.dot(right),0));
@@ -198,10 +196,9 @@ static void normalSliderControl() {
   ControlOutput out{};
   for(int i=0;i<2200;++i) out=active(input());
   checkNormalTarget(out);
-  assert(c.spinEntryState()!=SpinEntryState::Ready); // Level airframe still misses the requested tilt by >5 deg.
-  q=attitude(-5,4.5f,90);
-  for(int i=0;i<2200;++i) out=active(input());
-  assert(c.spinEntryState()==SpinEntryState::Ready);
+  assert(out.tiltErrorDeg>5 && c.spinStatus(true)==SpinStatus::Normal);
+  out=active(input(1500,1500,1500,2000));
+  assert(out.mode==FlightMode::Spin && out.sliderContribution.leftDeg==0);
   for(int i=0;i<850;++i) out=active(input(1500,1500,1500,2000));
   assert(out.mode==FlightMode::Spin && near(out.desiredUp.z,-1));
   assert(out.sliderContribution.forwardDeg==0 && out.sliderContribution.leftDeg==0);
@@ -268,11 +265,11 @@ static void modesAndSaturation() {
   // Holding a measured 100 deg/s during braking legitimately builds torque
   // trim at the lower gain. Returning throttle to idle must clear it before
   // the next spool-up; releasing the yaw stick alone must preserve hover trim.
-  o=tick(c,input(1500,1500,1500,1500,false,1000));
+  o=tick(c,input(1500,1500,1500,1500,1000));
   assert(o.servoDeg==servoCenterDeg && o.yawIntegral==0);
   o=tick(c,input());
   assert(std::fabs(o.yaw)<1e-6f);
-  for (int i=0;i<20000;++i) o=tick(c,input(2000,2000,1500,1500,false,1999));
+  for (int i=0;i<20000;++i) o=tick(c,input(2000,2000,1500,1500,1999));
   assert(o.mixScale < 1);
   o=tick(c,input());
   assert(std::fabs(o.roll)<.001f && std::fabs(o.pitch)<.001f);
@@ -298,10 +295,10 @@ static void faultsAndFusion() {
     for (int i=0;i<1000;++i) o=tick(c,input());
     assert(o.fault); // healthy data alone cannot resume flight
     for (int i=0;i<1000;++i)
-      o=c.step(input(1500,1500,1500,2000,false,1000),level,{0,0,0},dt,false,true,true,gains);
+      o=c.step(input(1500,1500,1500,2000,1000),level,{0,0,0},dt,false,true,true,gains);
     assert(o.fault); // knob must be centered as well
     for (int i=0;i<610;++i)
-      o=c.step(input(1500,1500,1500,1500,false,1000),level,{0,0,0},dt,false,true,true,gains);
+      o=c.step(input(1500,1500,1500,1500,1000),level,{0,0,0},dt,false,true,true,gains);
     assert(!o.fault && o.motors.m2==0);
     assert(c.faultReason()==retainedReason && c.faultCount()==1);
     o=tick(c,input());
