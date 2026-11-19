@@ -8,9 +8,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-ROOT = Path(__file__).resolve().parents[2]
-FILES = [ROOT / 'docs/remote-mcu' / name for name in
-         ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json')]
+PROFILE_DIR = Path(__file__).resolve().parents[2] / 'docs/remote-mcu'
+PROFILE_FILES = {
+    'v12': ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json'),
+    'v13': ('cyclone-v13-hover-slope-flight.json', 'cyclone-v13-hover-slope-device.json'),
+}
 PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 118))
 
 
@@ -24,7 +26,7 @@ def label(value, maximum=128):
         not any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in value)
 
 
-def validate(profiles):
+def validate(profiles, version='v12'):
     app, device = profiles
     for p in profiles:
         check(set(p) == {'format_version', 'id', 'revision', 'name', 'data'}, 'Unknown profile fields')
@@ -61,8 +63,17 @@ def validate(profiles):
         check(len(w['channels']) <= 32 and len(set(w['channels'])) == len(w['channels']) and
               set(w['channels']) <= set(range(32)), 'Unknown/duplicate waveform channel')
     check(set(d) == {'kind', 'target_profile', 'application_profile', 'gateway_ip'}, 'Device fields')
+    app_id_suffix, gateway = ('v13', '192.168.0.134') if version == 'v13' else ('v7', '192.168.0.62')
+    check(app['id'] == f'drehmflight-cyclone-rotor-{app_id_suffix}' and
+          device['id'] == f'drehmflight-cyclone-rotor-device-{app_id_suffix}', 'Profile version mismatch')
     check(d == {'kind': 'device', 'target_profile': a['target_profile'],
-                'application_profile': app['id'], 'gateway_ip': '192.168.0.62'}, 'Device references')
+                'application_profile': app['id'], 'gateway_ip': gateway}, 'Device references')
+    if version == 'v13':
+        channels = {c['id']: c for c in a['channels']}
+        for channel, unit in {3: '°', 11: 'g', 12: '码', 13: 'g', 14: 'g', 22: 'g'}.items():
+            check(channels[channel]['unit'] == unit and channels[channel]['scale'] == 1 and
+                  channels[channel]['visible'] and any(channel in w['channels'] for w in windows),
+                  f'v13 diagnostic channel {channel}: unit, scaling or visibility mismatch')
 
 
 def exchange(agent, path, payload=None):
@@ -109,13 +120,15 @@ def install(agent, profiles, select=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--agent', default='http://127.0.0.1:47301')
+    parser.add_argument('--version', choices=tuple(PROFILE_FILES), default='v12',
+                        help='Match the firmware layout (default: existing v12 profile)')
     parser.add_argument('--install', action='store_true', help='Import into local Agent; preserve current selection')
     parser.add_argument('--select', action='store_true', help='Also select new UI AFTER matching firmware is installed')
     args = parser.parse_args()
     try:
         check(not args.select or args.install, '--select requires --install')
-        profiles = [json.loads(p.read_text()) for p in FILES]
-        validate(profiles)
+        profiles = [json.loads((PROFILE_DIR / name).read_text()) for name in PROFILE_FILES[args.version]]
+        validate(profiles, args.version)
         result = install(args.agent, profiles, args.select) if args.install else {
             'validation': 'passed', 'channels': 32, 'states': 59, 'parameters': len(PARAMETER_IDS),
             'windows': 8, 'agent_contacted': False}

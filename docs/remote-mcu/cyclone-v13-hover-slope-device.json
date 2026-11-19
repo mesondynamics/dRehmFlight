@@ -1,0 +1,12 @@
+{
+  "format_version": 1,
+  "id": "drehmflight-cyclone-rotor-device-v13",
+  "revision": 1,
+  "name": "悬停辨识 v13 · Teensy 4.0 / ESP32 192.168.0.134",
+  "data": {
+    "kind": "device",
+    "target_profile": "teensy40-usb",
+    "application_profile": "drehmflight-cyclone-rotor-v13",
+    "gateway_ip": "192.168.0.134"
+  }
+}

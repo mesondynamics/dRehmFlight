@@ -15,6 +15,7 @@ import zlib
 
 
 BUILD = "drehm-cyclone-rotor-v2-level-20261105"
+HOVER_SLOPE_BUILD = "drehm-cyclone-rotor-v13-hover-slope-20261119"
 SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v4-entry-hys-20261105",
                     "drehm-cyclone-rotor-v5-laser-20261105",
@@ -24,7 +25,7 @@ SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v9-pitch-trim-20261119",
                     "drehm-cyclone-rotor-v10-arm-guard-20261119",
                     "drehm-cyclone-rotor-v11-entry-888-20261119",
-                    "drehm-cyclone-rotor-v12-dshot-resolution-20261119")
+                    "drehm-cyclone-rotor-v12-dshot-resolution-20261119", HOVER_SLOPE_BUILD)
 CHANNELS = (
     "S1_us", "servo_us", "mode", "phase_deg", "roll_input_us",
     "pitch_input_us", "heading_deg", "reference_deg", "target_rate_dps",
@@ -35,6 +36,10 @@ CHANNELS = (
     "M3_dshot", "roll_torque_Nm", "pitch_torque_Nm", "period_us", "work_us",
     "tilt_error_deg", "abort_bits",
 )
+HOVER_SLOPE_CHANNELS = CHANNELS[:11] + (
+    "world_up_specific_force_filtered_g", "mean_wire_dshot_filtered_code",
+    "sensor_acc_x_g", "sensor_acc_y_g",
+) + CHANNELS[15:]
 
 
 def read_recording(path, *, include_parameter_pages=False):
@@ -60,7 +65,12 @@ def read_recording(path, *, include_parameter_pages=False):
         timestamp = struct.unpack_from("<Q", frame, 20)[0]
         payload = frame[28:-4]
         session = sessions.setdefault(boot, {"rows": {}, "states": {}, "duplicates": 0, "motor_events": []})
-        if frame[5] == 16:
+        if frame[5] == 1:
+            hello = json.loads(payload)
+            firmware = hello["build_id"]
+            if not isinstance(firmware, str) or session.setdefault("build_id", firmware) != firmware:
+                raise ValueError("Inconsistent firmware identity within a boot")
+        elif frame[5] == 16:
             if len(payload) < 12:
                 raise ValueError("Truncated telemetry header")
             schema, first, period, count, channels = struct.unpack_from("<IIHBB", payload)
@@ -121,7 +131,14 @@ def read_recording(path, *, include_parameter_pages=False):
     return sessions, frames, hashlib.sha256(data).hexdigest()
 
 
-def summarize(session, start, end):
+def summarize(session, start, end, build=None):
+    recorded_build = session.get("build_id")
+    if build is not None and recorded_build is not None and recorded_build != build:
+        raise ValueError("Selected boot's firmware differs from recording metadata")
+    layout_build = recorded_build or build
+    if layout_build not in SUPPORTED_BUILDS:
+        raise ValueError("Unknown firmware identity for waveform decoding")
+    channels = HOVER_SLOPE_CHANNELS if layout_build == HOVER_SLOPE_BUILD else CHANNELS
     ordered = sorted(session["rows"].items())
     if any(b[1][0] <= a[1][0] for a, b in zip(ordered, ordered[1:])):
         raise ValueError("Source time is not monotonic within this boot")
@@ -138,7 +155,7 @@ def summarize(session, start, end):
     # Wrapped heading change is an estimator output, not an independent measurement.
     delta = sum((b[2][6] - a[2][6] + 180) % 360 - 180 for a, b in zip(rows, rows[1:]))
     stats = {}
-    for index, name in enumerate(CHANNELS):
+    for index, name in enumerate(channels):
         values = [row[2][index] for row in rows]
         item = {"first": values[0], "last": values[-1], "min": min(values), "max": max(values)}
         if index in (3, 6, 7):
@@ -184,7 +201,7 @@ def main():
         raise ValueError("Requested boot absent")
     result = {"recording_id": metadata["id"], "build_id": build, "boot": args.boot,
               "raw_sha256": digest, "validated_frames": frames, "crc_errors": 0,
-              "boots": sorted(sessions), **summarize(sessions[args.boot], args.start, args.end)}
+              "boots": sorted(sessions), **summarize(sessions[args.boot], args.start, args.end, build)}
     result["motor_events_by_dispatch_time"] = [
         event for event in sessions[args.boot]["motor_events"] if args.start <= event["dispatch_s"] <= args.end
     ]

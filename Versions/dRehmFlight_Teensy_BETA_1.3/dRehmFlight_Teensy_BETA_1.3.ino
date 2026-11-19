@@ -74,6 +74,7 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include "RemoteMcuTelemetry.h"
 #include "FlightParameters.h"
 #include "ImuDiagnostics.h"
+#include "HoverMeasurement.h"
 #if DREHM_ESC_DSHOT_RATE
   #include "DShotTeensy4.h"
 #endif
@@ -373,6 +374,7 @@ bool imuFusionHealthy = true;
 tricopter::ImuDiagnostics imuDiagnostics;
 uint32_t lastControlFaultTimeUs=0, lastControlFaultImuReason=0;
 remote_mcu::Telemetry remoteTelemetry;
+tricopter::HoverMeasurement hoverMeasurement;
 bool servoCalibrationActive = false;
 tricopter::FlightParameters flightParameters;
 tricopter::NormalYawControl normalYaw;
@@ -713,6 +715,13 @@ void controlMixer() {
 }
 
 void serviceRemoteMcu() {
+  float meanDshot=0;
+#if DREHM_ESC_DSHOT_RATE
+  meanDshot=(dshotOutput.last[0]+dshotOutput.last[1]+dshotOutput.last[2])/3.0f;
+#endif
+  // Update at the IMU rate even when there is no budget for a USB poll.
+  hoverMeasurement.update(imuSampleHealthy && imuFusionHealthy, {q0,q1,q2,q3},
+                          {AccX,AccY,AccZ}, meanDshot, dt);
   // Leave headroom in the 500 us loop. Telemetry is expendable; control is not.
   if ((uint32_t)(micros()-current_time)>350) { ++skippedRemotePolls; return; }
   const uint32_t started=micros();
@@ -743,9 +752,9 @@ void serviceRemoteMcu() {
   sample.values[7]=flightOutput.mode==tricopter::FlightMode::Normal ?
       normalYawOutput.headingTarget : flightOutput.reference;
   sample.values[8]=flightOutput.yawTarget; sample.values[9]=flightOutput.yawRate;
-  sample.values[10]=normalYawOutput.rateFiltered; sample.values[11]=normalYawOutput.torqueRequested;
-  sample.values[12]=normalYawOutput.torqueEstimated; sample.values[13]=normalYawOutput.torqueFeedforward;
-  sample.values[14]=normalYawOutput.integral;
+  sample.values[10]=normalYawOutput.rateFiltered;
+  sample.values[11]=hoverMeasurement.upG(); sample.values[12]=hoverMeasurement.collectiveCode();
+  sample.values[13]=AccX; sample.values[14]=AccY;
   sample.values[15]=roll_IMU; sample.values[16]=pitch_IMU;
   sample.values[17]=flightGyroDps.z;
   // First-flight profile: independent inertial observations for identification.
