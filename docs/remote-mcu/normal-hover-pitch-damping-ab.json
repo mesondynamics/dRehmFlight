@@ -1,0 +1,7 @@
+{
+  "build": "drehm-cyclone-rotor-v10-arm-guard-20261119",
+  "baseline_recording": "18e95bc6eb887c40-e",
+  "scope": "normal mode only; RAM trial, not a full restore or persistent save",
+  "requires": {"spin_enable": false, "normal_pitch_trim_deg": -0.5},
+  "parameter": {"id": 93, "name": "pitch_rate_kd", "type": 1, "baseline": 0.05, "candidate": 0.055, "rollback": 0.05}
+}

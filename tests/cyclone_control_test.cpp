@@ -236,6 +236,17 @@ static void faultsAndFusion() {
   assert(!updateImu(q,{0,0,0},{0,0,1},dt,.04f));
 }
 int main() {
+  // Normal-mode A/B: a single change in measured pitch-rate feedback, not
+  // a static trim or added pilot demand. Use both signs and zero rate.
+  for (float rate : {-8.f, 0.f, 8.f}) {
+    CycloneControl a,b;
+    ControlGains candidate=gains;
+    candidate.pitch.kd=.01f*.055f;
+    auto before=tick(a,input(),level,{0,rate,0},gains);
+    auto after=tick(b,input(),level,{0,rate,0},candidate);
+    assert(near(after.pitch-before.pitch,-rate*(candidate.pitch.kd-gains.pitch.kd),1e-7f));
+    assert(near(after.roll,before.roll) && near(after.yaw,before.yaw));
+  }
   radioAndNormal();
   phaseAndDamping();
   normalPitchTrim();
