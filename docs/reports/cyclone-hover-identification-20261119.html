@@ -17,7 +17,7 @@ footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-si
 @media(max-width:900px){.layout{display:block;padding:0 12px;margin:12px auto}nav{position:static;max-height:none;display:flex;overflow-x:auto;gap:12px;margin:0 0 14px;white-space:nowrap}main{padding:22px 18px}h1{font-size:25px}}
 @media print{body{background:white;font-size:11pt}.bar,nav{display:none}.layout{display:block;margin:0;padding:0}main{border:0;padding:0}h2,h3{break-after:avoid}table,.equation{break-inside:avoid}.equation{overflow:visible;font-size:75%}a{color:inherit}}
 </style></head><body><div class="bar">dRehmFlight · Cyclone Rotor / 工程模型与实测记录</div>
-<div class="layout"><nav aria-label="目录"><a href="#section-1">一、悬停平衡给出的标定点</a><a href="#section-2">二、另两次飞行能验证多少</a><a href="#section-3">三、齿轮间隙能解释多少航向响应</a><a href="#section-4">四、横滚、俯仰及后续辨识</a><a href="#section-5">五、v13 普通悬停试验测量共同油门与竖直推力的局部关系</a><a href="#section-6">离线复算</a></nav><main><h1 id="section-0">用机重标定悬停推力，辨识共同倾转间隙</h1>
+<div class="layout"><nav aria-label="目录"><a href="#section-1">一、悬停平衡给出的标定点</a><a href="#section-2">二、另两次飞行能验证多少</a><a href="#section-3">三、齿轮间隙能解释多少航向响应</a><a href="#section-4">四、横滚、俯仰及后续辨识</a><a href="#section-5">五、v13 普通悬停试验测量共同油门与竖直推力的局部关系</a><a href="#section-6">六、v13 实测结果与完全松绳后的右后漂</a><a href="#section-10">离线复算</a></nav><main><h1 id="section-0">用机重标定悬停推力，辨识共同倾转间隙</h1>
 <p><strong>750 g 机体在本轮悬停点需要平均向上推力 7.3575 N。</strong> 计入机体姿态与共同桨轴倾角，沿三支桨轴的推力大小之和约 <strong>7.372 N</strong>。对应接收机油门 1327 µs、三台电机平均 DShot 码 700.09。这个点可以直接作为悬停附近的物理标定依据。两次独立飞行提供了数据，检验它对其他油门点的适用程度。<a href="../hover-thrust-calibration-20261119.json">可机读的标定结果</a></p>
 <p>飞手补充三支旋翼在相同设置下方向一致，固定舵机时，输出机构仍有约 2° 的活动空间。下文采用一个共同的桨轴倾角映射，把 <strong>2° 解释为从一侧齿面走到另一侧的总游隙</strong>，中心两侧各约 1°。三支旋翼在固件中的输出名为 M2、M4、M3。本次拟合全部离线完成。</p>
 <h2 id="section-1">一、悬停平衡给出的标定点</h2>
@@ -230,7 +230,57 @@ footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-si
 <p>该估计要求两窗之间旋翼以外的竖直外力变化足够小。绳索受力、地面接触、明显改变的气动阻力均会进入比力；显著侧倾还会改变竖直投影。后续若有带载电压或独立高度观测，可用来解释跨电池差异和垂向运动。</p>
 <p><strong>飞手操作和验收。</strong> 在普通模式空中稳住，S1 回中。围绕当次悬停油门，小幅加油约 1 s、回到悬停，再小幅收油约 1 s、回到悬停。空间允许时重复一次，共得到两次加油和两次收油。保留必要的人工纠偏，落地后说明哪段全程离地，是否有绳索受力或明显升降。分析时先核对地面静置的 +1 g、样本连续性、姿态和三路输出，再分别比较加油、收油的斜率。平台时间依据油门与实际命令选定，随后逐组留出检验重复性。若改换合理取窗即反号、各组方向不一致或加速度变化接近悬停噪声，则保留悬停点并报告局部斜率的不确定性。</p>
 <p><strong>本架次起飞前实测。</strong> v13 已经 RemoteMCU 下载并核对新启动编号 2607357466。记录 <code>18e96d8206be4068-34</code> 内已完整回读 112 项参数，与 v12 的固定油门悬停记录逐项相同。普通模式、航向外环 0.80 s⁻¹、电机 40 ms、舵机 80 ms、俯仰配平 −0.5°、方向激光使能和自旋关闭均已核对。静置 3 s 的 301 点连续，竖直比力均值 0.9982 g，标准差 0.00064 g，三路 DShot 均为零。该窗飞控周期为 500 µs，截至窗末累计无超期。</p>
-<h2 id="section-6">离线复算</h2>
+<h2 id="section-6">六、v13 实测结果与完全松绳后的右后漂</h2>
+<p>飞手更正了两种现场条件。首轮油门动作均在空中完成，顶部细绳有轻微拉力。另一次把绳完全放松后，飞机持续向机头右后方移动，没有来回摆动。机体坐标为 X 向前、Y 向左、Z 向上，因此右后方为 −X、−Y。连续波形覆盖第一段完整动力输出和第二次启动的前 3.50 s。飞手确认了漂移方向，持续漂移的起止位置和速度没有独立测量。</p>
+<p>记录 <code>18e96d8206be4068-34</code> 含 28,958 帧、28,086 个波形样本。所有帧通过 CRC，主机写盘丢帧为零。唯一缺失的 100 Hz 样本在 288.277–288.297 s，位于第一段电机命令归零之后。首轮两个油门操作区数据连续。244–285 s 主循环记录值均为 500 µs，记录内累计最大工作时间为 304 µs，超期计数为零。主机在收到首段停机反馈后封存了文件，末样为设备时间 346.397 s。同一启动后续只补回了电机事件和设备状态。</p>
+<h3 id="section-7">油门与竖直力</h3>
+<p>下表用 0.750 kg 乘以世界向上比力的变化。表内是整机所受竖直非重力合力的增量。绳的拉力若保持恒定，会在两窗相减时抵消。此次没有张力计，任何变化的竖直绳力都会进入结果。悬停锚点 7.36 N 对应由旋翼独自承担 750 g 重量的条件，不能把这轮有绳飞行也当成独立测力标定。</p>
+<table>
+<thead>
+<tr>
+<th>操作及设备时间（s）</th>
+<th align="right">三台平均 DShot 变化</th>
+<th align="right">竖直力变化</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>259.15–259.70 → 261.25–261.80</td>
+<td align="right">+20.14 码</td>
+<td align="right">−0.467 N</td>
+<td>两窗之间曾冲到约 794 码再回落，端点差混入过渡响应</td>
+</tr>
+<tr>
+<td>267.30–267.85 → 268.25–268.80</td>
+<td align="right">−38.43 码</td>
+<td align="right">−0.424 N</td>
+<td>收油方向一致，力差小于两个平台内部的波动尺度之和</td>
+</tr>
+<tr>
+<td>280.80–281.35 → 282.05–282.60</td>
+<td align="right">−72.77 码</td>
+<td align="right">−0.458 N</td>
+<td>这次减油对应约 0.00629 N/码</td>
+</tr>
+<tr>
+<td>282.05–282.60 → 283.30–283.85</td>
+<td align="right">+122.08 码</td>
+<td align="right">+0.837 N</td>
+<td>回加对应约 0.00686 N/码，与上一行共用低油门段</td>
+</tr>
+</tbody></table>
+<p>平台按操纵输入和实际电机命令选取。前三对各自独立，逐对留出预测的相对均方根误差为 <strong>171%</strong>。最后两行说明同一次收、加油动作中指令与力的变化方向一致。把最后一段高油门取窗向后移至 284.0–284.5 s，均值仍约为 723 码，竖直比力已回落，所得斜率进一步变小。现阶段可用这些数据验证瞬态模型，单一候选斜率还不能写入五点推力表。</p>
+<p><img src="../reports/cyclone-v13-collective-heading-20261119.svg" alt="第一次两组油门操作的实际指令与垂向比力，以及两次电机起动后的相对航向"></p>
+<p>在 244–259 s 与 269–281 s 两个相对平稳的窗口，用三轴加速度和姿态离线重建向上比力，与机载低通的平均值分别相差约 0.0027 g 和 0.0003 g。首段起飞前与停机后的静置均值相差约 0.00024 g。这些比较检验了投影符号、量级与低通输出的一致性，两种计算共用同一只 IMU。</p>
+<h3 id="section-8">右后漂的方向与起动航向</h3>
+<p>第二次电机开始输出后，记录覆盖 342.895–346.397 s。Roll、Pitch、Yaw 杆都在死区，S1 回中。末 1.39 s 内，机身平均右倾 0.79°、后仰 0.75°。按每个样本当时的机头方向投影，IMU 估算的水平加速度均值约向右 0.23 m/s²、向后 0.04 m/s²。右向分量比后向分量更清楚。1° 姿态误差就可在水平加速度估计中引入约 0.17 m/s²。该窗跨越起飞过渡，100 Hz 三轴记录还含振动，无高度或地速测量。</p>
+<p>起动本身存在可重复的航向变化。首次电机开始输出后约 5.76 s 内，航向估计顺时针变化约 55°，到起动后约 13.85 s 首次回到起始航向 ±5°。第二次在 3.50 s 内顺时针变化约 49°。第二段末航向环已要求反向 20°/s，达到当前限幅，舵机指令从约 1483 走到 1450 µs。舵机命令能验证控制器已纠偏，实际受载倾角和电机反扭矩仍需单独判断。转动中“当时机头的右方”和“起飞点固定方向”会随时间分开，不能从末段姿态均值还原持续漂移轨迹。</p>
+<p>绳有轻微拉力时，偏离中心可带来水平回拉。完全松绳后单向漂移的观察符合少了回拉的解释，但不能由两次观察唯一确定偏移来源。起飞时已有水平速度、机架姿态配平、三台实际合推力方向与机架的夹角均是可区分的候选。现有普通模式控制姿态，给定参数中含 −0.5° 后仰配平；若推力轴垂直于机架、姿态准确跟随，该项单独对应约 0.086 m/s² 向后加速度，仍解释不了右向分量。在动力关闭、机架找平后，可直接测三台桨轴相对机架的前后和左右倾角，尤其检查悬停舵位下从两侧接近时的重复性。三个齿轮端角度一致并不能排除相同方向的安装偏差。<a href="https://docs.px4.io/main/en/flight_modes/manual_stabilized_mc">姿态模式与地面漂移的说明</a></p>
+<h3 id="section-9">封存后的两次切停</h3>
+<p>同一启动编号下的电机事件保留了最后两段动力输出的时间。第二段从 342.895 s 持续到 368.736 s。后一事件的最近通道缓存为 SA 1000 µs、油门 1311 µs，解锁与复合就绪标志同时归零，发给三路电调的命令也同时归零。第三段从 387.204 s 到 405.509 s，末端油门为 1033 µs，三路先随低油门归零。406.849 s 的撤销解锁比三路归零晚约 1.34 s。414.242 s 再次观察到 SA 2000 µs、油门 1000 µs、停机。</p>
+<p>设备时间 499.949 s 的同一启动状态保留两次控制故障、16 个加速度计碰量程样本和零次循环超期。最后一次控制故障时间为 406.848596 s，原因为传感器，锁存的 IMU 原因为加速度计碰量程。它与第三段撤销解锁在同一 500 µs 周期内。第二段切停没有同刻的故障详情，无法从后一次的原因反推前一次。事件中的 <code>rc_ok</code> 同时受遥控链路、准备条件和飞控故障影响，<code>fault</code> 仅指 DShot 驱动层。下一步优先区分 368.736 s 切停的现场背景与首个故障来源，再安排有动力试验。上述数据没有要求放宽保护或修改配平。</p>
+<p>补录依据包括同一启动的电机边沿原文和最后一次设备状态的原始计数。事件文字中的 <code>us32</code> 是量测时间，单位为微秒。<a href="../hover-v13-postflight-events-20261119.json">事件与诊断数据摘录</a></p>
+<h2 id="section-10">离线复算</h2>
 <p>以下命令使用 Python 3 和 NumPy 2。将环境变量 LOGS 设为含三份封存记录和同名 JSON 元数据的目录。工具验证构建版本、CRC、波形连续性和对应参数读回。</p>
 <pre><code class="language-sh">python3 tools/cyclone/calibrate_hover_thrust.py &quot;$LOGS&quot;
 python3 tools/cyclone/fit_hover_yaw.py &quot;$LOGS&quot;
@@ -240,7 +290,15 @@ python3 tools/cyclone/fit_hover_transverse.py \
   --validate &quot;$LOGS/18e96796850df0e0-15.rmplog&quot; 240 260 \
   --validate &quot;$LOGS/18e9684085984998-18.rmplog&quot; 160 209.75
 </code></pre>
-<p>v13 记录封存后，用 <code>tools/cyclone/fit_collective_slope.py</code> 的 <code>--pair</code> 指定每对参考段与加油或收油段的起止设备时间。工具报告各对的力差、斜率和留出误差。本架次飞控沿用 v12 的执行器曲线。<a href="../reports/cyclone-v12-hover-audit-20261119.html">v12 原始反馈与控制审计</a></p>
+<p>v13 主分析命令如下。第二对以较低码的平台为参考，表中则按实际时间先后写作收油。第四行的回加与第三行共用窗口，应单独运行。主记录 SHA-256 为 <code>9367282c09c9b6b8140d89ad49ba438d803f41a16323a623c9acbccb71368f31</code>。</p>
+<pre><code class="language-sh">python3 tools/cyclone/fit_collective_slope.py &quot;$LOGS/18e96d8206be4068-34.rmplog&quot; \
+  --pair up 259.15 259.70 261.25 261.80 \
+  --pair up 268.25 268.80 267.30 267.85 \
+  --pair down 280.80 281.35 282.05 282.60
+python3 tools/cyclone/fit_collective_slope.py &quot;$LOGS/18e96d8206be4068-34.rmplog&quot; \
+  --pair up 282.05 282.60 283.30 283.85
+</code></pre>
+<p>本架次飞控沿用 v12 的执行器曲线。<a href="../reports/cyclone-v12-hover-audit-20261119.html">v12 原始反馈与控制审计</a></p>
 
 <footer>由 <a href="../CYCLONE_HOVER_IDENTIFICATION_20261119.md">Markdown 源文档</a>构建，断网可读。公式在构建时转换为SVG；实测、仿真及待验收项目按正文各自标注。</footer>
 </main></div></body></html>
