@@ -112,6 +112,7 @@ footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-si
 <td align="right">5.75°</td>
 </tr>
 </tbody></table>
+<p>复核相同两窗的输出，三路 DShot 命令合计分别落在 575–655 和 623–703，舵机指令分别为 1445–1469 µs 和 1443–1461 µs。每窗 10 个状态快照中的升力和姿态分配系数均为 1.0，各有 5 次报告分配受限。固件也会因分配后存在航向力矩残差而标记受限。这些样本未显示电机命令顶到上限或升力／倾角力矩被整体削减。缺少独立的推力与舵机实际角度观测，无法据此判定机构在负载下是否滞后。</p>
 <p><img src="../reports/cyclone-v9-hover-evidence-20261119.svg" alt="两个固定油门区间内机架横滚与俯仰角的实测对比"></p>
 <p>峰峰值取窗口内原始角度最大值减最小值。横滚频谱先去线性趋势，再加 Hann 窗，10 s 窗对应约 0.1 Hz 的频率间隔。另一个 615–630 s 窗口的横滚峰峰值增至 10.86°，期间油门在 1240–1362 µs 变化，不能与前两段作为等条件对照。</p>
 <h2 id="section-4">约 50 克力的挂绳能解释多少</h2>
@@ -126,7 +127,9 @@ footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-si
 <li><strong>普通模式先复测。</strong> 动力停机验收通过后，从已记录的参数基准对照，每次只改一项。固定相机和地面标线测机头方向位移，标记离地、收油和绳子张紧的时刻。普通悬停的往返摆动与航向经独立核对后再评价自旋。</li>
 </ol>
 <h2 id="section-6">数据索引</h2>
-<p>维修候选固件为 <code>drehm-cyclone-rotor-v10-arm-guard-20261119</code>。Teensy 4.0 USB Serial 构建完成，HEX 文件 SHA-256 为 <code>1b049e0676bf709e34635d3ced15955ab68385c9fea90773375f9ad526a355d9</code>。离线工件位于 <code>build/cyclone-v10-arm-guard-20261119/dRehmFlight_Teensy_BETA_1.3.ino.hex</code>。飞控在维修期间保持离线，尚待拆桨下载、实测接收链路及电调信号。</p>
+<p>操作者确认已拆桨后，通过 RemoteMCU 将 <code>drehm-cyclone-rotor-v10-arm-guard-20261119</code> 下载至 Teensy 4.0。HEX 文件 SHA-256 为 <code>1b049e0676bf709e34635d3ced15955ab68385c9fea90773375f9ad526a355d9</code>。网关校验的对齐镜像为 115,712 字节，SHA-256 为 <code>e9cb35a2e2da0ce77f15a4300bef2c2aa6a78ab8a802bd20f27a105b5f2f6c78</code>。离线工件位于 <code>build/cyclone-v10-arm-guard-20261119/dRehmFlight_Teensy_BETA_1.3.ino.hex</code>。</p>
+<p>网关任务 1 返回 <code>complete</code>、进度 100%，飞控启动编号从 <code>1491560419</code> 变为 <code>2155687746</code>，新会话回报 v10。重启初期曾显示遥控失联，随后连续两次读取到遥控已连接。两次均显示普通模式、停机、飞行使能关闭、自旋关闭、IMU 正常、无控制故障、累计超周期为 0。本段是固件下载后的停机读数。</p>
+<p>随后保存了停机基线 <code>18e95b957184e5b8-b</code>。源时间 172.018319–176.168320 s，共 416 个连续样本，431 帧均通过 CRC，记录器丢帧数为 0。每个样本均为普通模式、油门 1000 µs、三路电机命令 0 和主循环周期 500 µs。本次没有产生 v10 空中悬停数据。</p>
 <p>软件回归覆盖坏 CRC、错地址、过短或带扩展字段的帧、通道超时、SA 中间档、解锁等待期间油门或 S1 被移动，以及时间计数回卷。事件记录测试覆盖两个波形样本间的单路短促输出、驱动故障、USB 阻塞和缓存覆盖。RemoteMCU 应用配置通过离线校验，沿用原有 32 路波形和 59 项状态。</p>
 <p>原始数据目录为 <code>build/cyclone-v8-normal-hover-20261119/</code> 和 <code>build/cyclone-v9-pitch-trim-20261119/</code>。v8 记录 ID 为 <code>18e957d85cef5310-16</code>，boot 为 <code>1927356495</code>。v9 记录 ID 为 <code>18e958db3edf0e48-0</code>，boot 为 <code>2271540567</code>，SHA-256 为 <code>0b61996577d41dcb97a18d3d88ba5d7aaec22d652ee8a5e0f67f89b740107231</code>。历史记录和其构建版本配套读取。取 v9 首个定油门窗口的命令如下。</p>
 <pre><code class="language-sh">python3 tools/cyclone/inspect_recording.py build/cyclone-v9-pitch-trim-20261119/flight.rmplog \
