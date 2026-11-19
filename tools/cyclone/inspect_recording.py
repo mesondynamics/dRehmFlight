@@ -17,6 +17,8 @@ import zlib
 BUILD = "drehm-cyclone-rotor-v2-level-20261105"
 HOVER_SLOPE_BUILD = "drehm-cyclone-rotor-v13-hover-slope-20261119"
 XY_TRIM_BUILD = "drehm-cyclone-rotor-v14-xy-trim-20261119"
+XY_TRIM_5DEG_BUILD = "drehm-cyclone-rotor-v15-xy-trim-5deg-20261119"
+XY_TRIM_BUILDS = (XY_TRIM_BUILD, XY_TRIM_5DEG_BUILD)
 SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v4-entry-hys-20261105",
                     "drehm-cyclone-rotor-v5-laser-20261105",
@@ -26,7 +28,7 @@ SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v9-pitch-trim-20261119",
                     "drehm-cyclone-rotor-v10-arm-guard-20261119",
                     "drehm-cyclone-rotor-v11-entry-888-20261119",
-                    "drehm-cyclone-rotor-v12-dshot-resolution-20261119", HOVER_SLOPE_BUILD, XY_TRIM_BUILD)
+                    "drehm-cyclone-rotor-v12-dshot-resolution-20261119", HOVER_SLOPE_BUILD, *XY_TRIM_BUILDS)
 CHANNELS = (
     "S1_us", "servo_us", "mode", "phase_deg", "roll_input_us",
     "pitch_input_us", "heading_deg", "reference_deg", "target_rate_dps",
@@ -142,8 +144,11 @@ def summarize(session, start, end, build=None):
     layout_build = recorded_build or build
     if layout_build not in SUPPORTED_BUILDS:
         raise ValueError("Unknown firmware identity for waveform decoding")
-    channels = {HOVER_SLOPE_BUILD: HOVER_SLOPE_CHANNELS, XY_TRIM_BUILD: XY_TRIM_CHANNELS}.get(
-        layout_build, CHANNELS)
+    channels = CHANNELS
+    if layout_build in XY_TRIM_BUILDS:
+        channels = XY_TRIM_CHANNELS
+    elif layout_build == HOVER_SLOPE_BUILD:
+        channels = HOVER_SLOPE_CHANNELS
     ordered = sorted(session["rows"].items())
     if any(b[1][0] <= a[1][0] for a, b in zip(ordered, ordered[1:])):
         raise ValueError("Source time is not monotonic within this boot")

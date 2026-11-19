@@ -13,6 +13,7 @@ PROFILE_FILES = {
     'v12': ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json'),
     'v13': ('cyclone-v13-hover-slope-flight.json', 'cyclone-v13-hover-slope-device.json'),
     'v14': ('cyclone-v14-xy-trim-flight.json', 'cyclone-v14-xy-trim-device.json'),
+    'v15': ('cyclone-v15-xy-trim-5deg-flight.json', 'cyclone-v15-xy-trim-5deg-device.json'),
 }
 PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 118))
 
@@ -70,10 +71,10 @@ def validate(profiles, version='v12'):
           device['id'] == f'drehmflight-cyclone-rotor-device-{app_id_suffix}', 'Profile version mismatch')
     check(d == {'kind': 'device', 'target_profile': a['target_profile'],
                 'application_profile': app['id'], 'gateway_ip': gateway}, 'Device references')
-    if version in ('v13', 'v14'):
+    if version in ('v13', 'v14', 'v15'):
         channels = {c['id']: c for c in a['channels']}
         units = {3: '°', 11: 'g', 12: '码', 13: 'g', 14: 'g', 22: 'g'}
-        if version == 'v14':
+        if version in ('v14', 'v15'):
             units.update({26: 'µs', 27: 'µs'})
             for card in a['cards']:
                 if card['id'] in (43, 44):

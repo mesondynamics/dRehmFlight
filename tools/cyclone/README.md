@@ -18,24 +18,24 @@ v10 为 2026-11-19 撞击后的台架核验版本。解锁与电机输出发生�
 
 ## RemoteMCU 应用配置
 
-根据飞控报告的版本选用配置。v14 的首个波形窗显示 CH7 LS、CH8 RS 的 100 Hz 输入（µs），状态 43、44 约每秒显示一次普通模式的滑块附加角（°，X 向前、Y 向左为正）。附加角已计入对应摇杆的衰减，在指令方向限速之前取值，单列于固定俯仰配平之外。停机及自旋期间读数为零。v13 和 v14 的加速度、世界向上比力与三路实际电机命令使用相同通道。v14 局部竖直推力拟合仅使用全程两滑块均回中（1480–1520 µs）且附加角为零的记录窗。
+根据飞控报告的版本选用配置。v14（每轴 ±2°）与 v15（每轴 ±5°）的首个波形窗显示 CH7 LS、CH8 RS 的 100 Hz 输入（µs），状态 43、44 约每秒显示一次普通模式的滑杆附加角（°，X 向前、Y 向左为正）。v15 的 CH7 在 1787 µs 达到 +5°。附加角已计入右杆两轴操纵幅度的衰减，在指令方向限速之前取值，单列于固定俯仰配平之外。停机及自旋期间读数为零。v13 至 v15 的加速度、世界向上比力与三路实际电机命令使用相同通道。带配平滑杆的版本仅使用全程两滑杆均回中（1480–1520 µs）且附加角为零的记录窗拟合局部竖直推力。
 
 单独运行可离线验证所选版本的布局、参数和引用关系。v13 使用 `--version v13`，省略版本时沿用 v12 配置。
 
 ```sh
-python3 tools/cyclone/profile.py --version v14
+python3 tools/cyclone/profile.py --version v15
 ```
 
 Agent启动后导入应用和设备配置，并从目录回读核验；保持原选择，适用于飞控仍为旧固件时提前准备：
 
 ```sh
-python3 tools/cyclone/profile.py --version v14 --install
+python3 tools/cyclone/profile.py --version v15 --install
 ```
 
 新固件下载、build确认后，再在Web选用新应用，或显式选择：
 
 ```sh
-python3 tools/cyclone/profile.py --version v14 --install --select
+python3 tools/cyclone/profile.py --version v15 --install --select
 ```
 
 默认Agent为 `http://127.0.0.1:47301`，可通过 `--agent` 指定其他本机端口。工具只允许回环HTTP地址，只调用 `/api/profiles` 和 `/api/profiles/select`；不访问ESP32或MCU。重复执行不会为相同内容增加revision；修改使用Agent当前revision，冲突即停止。Agent生成的revision不一定等于仓库初始revision。

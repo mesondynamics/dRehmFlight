@@ -112,18 +112,22 @@ constexpr float stickCenterUs = 1500.0f;
 constexpr float stickDeadbandUs = 20.0f;
 // TX slider weights are +/-60% of the nominal 500 us half travel.
 constexpr float trimSliderTravelUs = 300.0f;
-constexpr float trimSliderMaxDeg = 2.0f;
+// Ground measurement: LS forward stops at 1787 us. Both low endpoints
+// and RS high can reach the nominal 1200 / 1800 us limits.
+constexpr float trimForwardTravelUs = 1787.0f-stickCenterUs;
+constexpr float trimSliderMaxDeg = 5.0f;
 struct NormalSliderTrim { float forwardDeg, leftDeg; };  // Body +X, +Y.
-inline float trimSliderDegrees(unsigned us) {
+inline float trimSliderDegrees(unsigned us, float positiveTravelUs=trimSliderTravelUs) {
   if (us < 1000 || us > 2000) return 0;
-  const float delta = clamp(static_cast<float>(us)-stickCenterUs, -trimSliderTravelUs, trimSliderTravelUs);
+  const float delta = clamp(static_cast<float>(us)-stickCenterUs, -trimSliderTravelUs, positiveTravelUs);
   const float magnitude = delta < 0 ? -delta : delta;
   if (magnitude <= stickDeadbandUs) return 0;
-  const float angle = (magnitude-stickDeadbandUs) * (trimSliderMaxDeg/(trimSliderTravelUs-stickDeadbandUs));
+  const float travel = delta < 0 ? trimSliderTravelUs : positiveTravelUs;
+  const float angle = trimSliderMaxDeg*((magnitude-stickDeadbandUs)/(travel-stickDeadbandUs));
   return delta < 0 ? -angle : angle;
 }
 inline NormalSliderTrim normalSliderTrim(unsigned ch7Us, unsigned ch8Us) {
-  return {trimSliderDegrees(ch7Us), trimSliderDegrees(ch8Us)};
+  return {trimSliderDegrees(ch7Us,trimForwardTravelUs), trimSliderDegrees(ch8Us)};
 }
 constexpr float rollDirection = 1.0f;
 constexpr float pitchDirection = 1.0f;

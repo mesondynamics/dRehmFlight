@@ -1,4 +1,4 @@
-"""Guard build-specific waveform and Web profile assignments across v12–v14."""
+"""Guard build-specific waveform and Web profile assignments across v12–v15."""
 import json
 from pathlib import Path
 import struct
@@ -8,7 +8,7 @@ import unittest
 import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "cyclone"))
-from inspect_recording import HOVER_SLOPE_BUILD, XY_TRIM_BUILD, read_recording, summarize
+from inspect_recording import HOVER_SLOPE_BUILD, XY_TRIM_BUILDS, read_recording, summarize
 
 
 V12 = "drehm-cyclone-rotor-v12-dshot-resolution-20261119"
@@ -42,7 +42,7 @@ class CycloneRecordingLayoutTest(unittest.TestCase):
         for build, expected in (
             (V12, ["requested_torque_Nm", "predicted_torque_Nm",
                    "feedforward_torque_Nm", "integral_rad_s2"]),
-            (HOVER_SLOPE_BUILD, force_layout), (XY_TRIM_BUILD, force_layout),
+            (HOVER_SLOPE_BUILD, force_layout), *((build, force_layout) for build in XY_TRIM_BUILDS),
         ):
             with self.subTest(build=build):
                 channels = summarize(sample_boot(build), 0, 1, build)["channels"]
@@ -50,7 +50,7 @@ class CycloneRecordingLayoutTest(unittest.TestCase):
                 self.assertEqual([channels[name]["mean"] for name in expected], [1.125, 700.5, .25, -.25])
                 self.assertEqual(channels["phase_deg"]["first"], 123.)
                 self.assertEqual(channels["sensor_acc_z_g"]["mean"], .875)
-                slots = (["ch7_x_trim_input_us", "ch8_y_trim_input_us"] if build == XY_TRIM_BUILD
+                slots = (["ch7_x_trim_input_us", "ch8_y_trim_input_us"] if build in XY_TRIM_BUILDS
                          else ["roll_torque_Nm", "pitch_torque_Nm"])
                 self.assertEqual(list(channels)[26:28], slots)
                 self.assertEqual([channels[name]["mean"] for name in slots], [1200., 1800.])
@@ -58,11 +58,12 @@ class CycloneRecordingLayoutTest(unittest.TestCase):
     def test_trim_states_match_the_selected_web_profile(self):
         profile_dir = Path(__file__).resolve().parents[1] / "docs/remote-mcu"
         for filename, units in (("cyclone-v13-hover-slope-flight.json", ["°", "N·m"]),
-                                ("cyclone-v14-xy-trim-flight.json", ["°", "°"])):
+                                ("cyclone-v14-xy-trim-flight.json", ["°", "°"]),
+                                ("cyclone-v15-xy-trim-5deg-flight.json", ["°", "°"])):
             app = json.loads((profile_dir / filename).read_text())
             cards = {c["id"]: c for c in app["data"]["cards"]}
             self.assertEqual([cards[k]["unit"] for k in (43, 44)], units)
-            if app["id"].endswith("v14"):
+            if app["id"].endswith(("v14", "v15")):
                 self.assertIn("CH7", cards[43]["name"])
                 self.assertIn("CH8", cards[44]["name"])
 

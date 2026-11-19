@@ -153,21 +153,30 @@ static void normalSliderControl() {
   for (unsigned center : {1480u,1500u,1520u})
     assert(trimSliderDegrees(center) == 0);
   assert(trimSliderDegrees(0)==0 && trimSliderDegrees(2500)==0);
-  assert(near(trimSliderDegrees(1660),1) && near(trimSliderDegrees(1340),-1));
-  assert(near(trimSliderDegrees(1200),-2) && near(trimSliderDegrees(1800),2));
-  assert(near(trimSliderDegrees(1000),-2) && near(trimSliderDegrees(2000),2));
+  assert(near(trimSliderDegrees(1660),2.5f) && near(trimSliderDegrees(1340),-2.5f));
+  assert(near(trimSliderDegrees(1200),-5) && near(trimSliderDegrees(1800),5));
+  assert(near(trimSliderDegrees(1000),-5) && near(trimSliderDegrees(2000),5));
+  const auto measuredMin=normalSliderTrim(1125,1141);
+  const auto measuredMax=normalSliderTrim(1787,1811);
+  const auto measuredCenter=normalSliderTrim(1503,1496);
+  assert(measuredMin.forwardDeg==-5 && measuredMin.leftDeg==-5);
+  assert(measuredMax.forwardDeg==5 && measuredMax.leftDeg==5);
+  assert(measuredCenter.forwardDeg==0 && measuredCenter.leftDeg==0);
+  // LS positive uses the measured endpoint; the RS curve stays nominal.
+  const auto belowMax=normalSliderTrim(1786,1786);
+  assert(near(belowMax.forwardDeg,5*266.f/267.f) && near(belowMax.leftDeg,5*266.f/280.f));
   const auto asymmetric=normalSliderTrim(1200,1660);
-  assert(near(asymmetric.forwardDeg,-2) && near(asymmetric.leftDeg,1));
+  assert(near(asymmetric.forwardDeg,-5) && near(asymmetric.leftDeg,2.5f));
 
   AttitudeReferenceConfig config;
   config.normalPitchTrimDeg=-.5f;
-  const Quaternion q=attitude(0,0,90);
+  Quaternion q=attitude(0,0,90);
   const Vec3 forward=Rotation(q).bx, right=Rotation(q).by;
   SpinDynamicsModel spin;
   spin.maxRateDps=10; spin.maxAccelDps2=10;
   SpinSafetyConfig safety;
   CycloneControl c;
-  const NormalSliderTrim sliders=normalSliderTrim(1800,1800);
+  const NormalSliderTrim sliders=measuredMax;
   auto active=[&](PilotInput pilot) {
     const auto out=c.step(pilot,q,{0,0,0},dt,true,false,true,noI,&spin,&config,&safety,sliders);
     c.applyAllocationFeedback(1,1,false,out.yawTarget);
@@ -176,9 +185,9 @@ static void normalSliderControl() {
   };
   auto checkNormalTarget=[&](ControlOutput out) {
     assert(out.mode==FlightMode::Normal);
-    assert(near(out.sliderContribution.forwardDeg,2) && near(out.sliderContribution.leftDeg,2));
-    assert(near(out.desiredUp.dot(forward),std::sin(1.5f*radians)*std::cos(2*radians)));
-    assert(near(out.desiredUp.dot(right),std::sin(-2*radians)));
+    assert(near(out.sliderContribution.forwardDeg,5) && near(out.sliderContribution.leftDeg,5));
+    assert(near(out.desiredUp.dot(forward),std::sin(4.5f*radians)*std::cos(5*radians)));
+    assert(near(out.desiredUp.dot(right),std::sin(-5*radians)));
   };
   auto off=c.step(input(),q,{0,0,0},dt,false,true,true,noI,&spin,&config,&safety,sliders);
   assert(off.sliderContribution.forwardDeg==0 && off.sliderContribution.leftDeg==0);
@@ -189,10 +198,14 @@ static void normalSliderControl() {
   ControlOutput out{};
   for(int i=0;i<2200;++i) out=active(input());
   checkNormalTarget(out);
+  assert(c.spinEntryState()!=SpinEntryState::Ready); // Level airframe still misses the requested tilt by >5 deg.
+  q=attitude(-5,4.5f,90);
+  for(int i=0;i<2200;++i) out=active(input());
   assert(c.spinEntryState()==SpinEntryState::Ready);
   for(int i=0;i<850;++i) out=active(input(1500,1500,1500,2000));
   assert(out.mode==FlightMode::Spin && near(out.desiredUp.z,-1));
   assert(out.sliderContribution.forwardDeg==0 && out.sliderContribution.leftDeg==0);
+  q=attitude(0,0,90);
   bool braking=false, aligning=false;
   for(int i=0;i<5000;++i) {
     out=active(input());
@@ -203,12 +216,12 @@ static void normalSliderControl() {
     assert(near(out.desiredUp.z,-1));
   }
   assert(braking && aligning && out.mode==FlightMode::Normal);
-  for(int i=0;i<200;++i) out=active(input());
+  for(int i=0;i<300;++i) out=active(input());
   checkNormalTarget(out);
 
   auto half=input(); half.roll=.3f; half.pitch=.4f;
   out=active(half);
-  assert(near(out.sliderContribution.forwardDeg,1) && near(out.sliderContribution.leftDeg,1));
+  assert(near(out.sliderContribution.forwardDeg,2.5f) && near(out.sliderContribution.leftDeg,2.5f));
   // The pre-existing reference, including its stored pitch trim, is recovered at the stick circle.
   for(auto sticks : {input(2000,1500), input(1500,1000), input(2000,2000)}) {
     CycloneControl baseline;
@@ -217,6 +230,11 @@ static void normalSliderControl() {
     assert(out.sliderContribution.forwardDeg==0 && out.sliderContribution.leftDeg==0);
     assert(vectorAngle(out.desiredUp,reference.desiredUp)<1e-5f);
   }
+  // A smaller runtime Normal tilt limit still dominates the combined slider demand.
+  config.normalTilt=3;
+  for(int i=0;i<4000;++i) out=active(input());
+  assert(near(out.tiltLimit,3));
+  assert(near(vectorAngle({0,0,-1},out.desiredUp)*degrees,3,.002f));
 }
 
 static void modesAndSaturation() {
