@@ -404,7 +404,13 @@ void setup() {
   const uint32_t nonceStart=micros();
   while (static_cast<uint32_t>(micros()-nonceStart)<50000u) {
     if (TRNG_MCTL & TRNG_MCTL_ERR) break;
-    if (Entropy.available() && remoteTelemetry.setBootNonce(Entropy.random())) break;
+    if (Entropy.available() && remoteTelemetry.setBootNonce(Entropy.random())) {
+#if defined(ARDUINO_TEENSY40) && defined(USE_CRSF_RX) && defined(USE_MPU6050_I2C) && \
+    defined(GYRO_2000DPS) && defined(ACCEL_8G) && DREHM_ESC_DSHOT_RATE == 300000
+      flightParameters.applyNormalHoverAtStartup(HW_OCOTP_MAC0);
+#endif
+      break;
+    }
   }
 #endif
   

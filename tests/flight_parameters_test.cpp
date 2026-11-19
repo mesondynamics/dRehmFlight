@@ -1,4 +1,5 @@
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/FlightParameters.h"
+#include "../Versions/dRehmFlight_Teensy_BETA_1.3/CrsfFlightReceiver.h"
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/src/RemoteMcu/rmp.c"
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/src/RemoteMcu/parameters.c"
 #include <cassert>
@@ -24,7 +25,57 @@ static std::vector<uint8_t> batch(tricopter::FlightParameters &p,
   const size_t n=p.handle(RMP_PARAM_SET,q.data(),q.size(),safe,response.data());
   response.resize(n); return response;
 }
+static std::vector<uint8_t> readAllParameters(tricopter::FlightParameters &p) {
+  std::vector<uint8_t> entries;
+  for (unsigned first=0;first<p.count;first+=RMP_PARAM_BATCH) {
+    uint8_t q[16]={},response[RMP_PARAM_BYTES];
+    rmp_put_u64(q,nextId++); rmp_put_u32(q+8,p.revision());
+    rmp_put_u16(q+12,first); q[14]=RMP_PARAM_BATCH;
+    const auto length=p.handle(RMP_PARAM_READ_PAGE,q,sizeof(q),true,response);
+    assert(response[8]==RMP_APPLIED && rmp_get_u16(response+20)==p.count);
+    assert(rmp_get_u32(response+16)==0 && rmp_get_u16(response+22)==first);
+    assert(length==24+8u*response[10]);
+    entries.insert(entries.end(),response+24,response+length);
+  }
+  assert(entries.size()==p.count*8);
+  return entries;
+}
+static void normalHoverStartup() {
+  tricopter::FlightParameters p; p.begin();
+  assert(!p.applyNormalHoverAtStartup(0x1881be) && p.revision()==1);
+  assert(!p.config().flightEnabled && !p.config().laserEnabled && !p.config().ready);
+  assert(p.applyNormalHoverAtStartup(0x001881bf) && p.revision()==2);
+  assert(p.config().ready && p.config().flightEnabled && p.config().initialModelEnabled);
+  assert(!p.config().model.calibrated && !p.config().spinEnabled && p.config().laserEnabled);
+  assert(p.config().motorLag==.04f && p.config().headingKp==.8f &&
+         p.config().reference.normalPitchTrimDeg==-.5f && p.config().cyclicLeadScale==1);
+  const auto startup=readAllParameters(p);
+  // CRC32 of the 112 wire entries (ID, type, reserved, little-endian value)
+  // in the 2026-11-19 v15 preflight readback. Includes unchanged defaults.
+  assert(rmp_crc32(startup.data(),startup.size())==0x0da7c008u);
+  tricopter::FlightParameters remote; remote.begin();
+  assert(batch(remote,{{1,1,RMP_PARAM_BOOL},{75,1,RMP_PARAM_BOOL},{82,90},{83,30},{84,1},
+                       {87,1,RMP_PARAM_BOOL},{97,5},{115,1},{116,4.5f},{117,-.5f}})[8]==RMP_APPLIED);
+  assert(readAllParameters(remote)==startup);
+  // RAM edits survive a telemetry reconnect. A new cold boot uses the fixed
+  // ordinary preset again, regardless of the last session's spin command.
+  assert(batch(p,{{2,1,RMP_PARAM_BOOL},{117,.5f}})[8]==RMP_APPLIED);
+  p.newSession();
+  assert(!p.applyNormalHoverAtStartup(0x1881bf) && p.config().spinEnabled);
+  p.begin(); assert(!p.config().flightEnabled);
+  assert(p.applyNormalHoverAtStartup(0x1881bf));
+  assert(readAllParameters(p)==startup && !p.config().spinEnabled);
+  // An already-active SA cannot start the aircraft on power-up. Only fresh
+  // physical cut, low throttle, centered S1 and a confirmed arm edge can.
+  tricopter::CrsfArmSwitch arm;
+  for (unsigned i=0;i<5;++i) arm.onChannels(1000,1000,1500,i*50000,true);
+  assert(!arm.armed());
+  arm.onChannels(1000,2000,1500,250000,true);
+  for (unsigned i=0;i<4;++i) arm.onChannels(1000,1000,1500,300000+i*50000,true);
+  assert(arm.armed());
+}
 int main() {
+  normalHoverStartup();
   tricopter::FlightParameters p; p.begin();
   assert(!p.config().ready && !p.config().flightEnabled);
   assert(!p.config().spinEnabled && !p.config().model.calibrated);

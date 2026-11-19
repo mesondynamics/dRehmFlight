@@ -1,4 +1,4 @@
-"""Guard build-specific waveform and Web profile assignments across v12–v15."""
+"""Guard build-specific waveform and Web profile assignments across v12–v16."""
 import json
 from pathlib import Path
 import struct
@@ -9,6 +9,7 @@ import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "cyclone"))
 from inspect_recording import HOVER_SLOPE_BUILD, XY_TRIM_BUILDS, read_recording, summarize
+from profile import PROFILE_DIR, PROFILE_FILES, validate
 
 
 V12 = "drehm-cyclone-rotor-v12-dshot-resolution-20261119"
@@ -70,6 +71,10 @@ class CycloneRecordingLayoutTest(unittest.TestCase):
     def test_mismatched_recording_metadata_rejected(self):
         with self.assertRaisesRegex(ValueError, "firmware differs"):
             summarize(sample_boot(V12), 0, 1, HOVER_SLOPE_BUILD)
+
+    def test_hover_startup_build_reuses_the_five_degree_profile(self):
+        self.assertEqual(PROFILE_FILES['v16'], PROFILE_FILES['v15'])
+        validate([json.loads((PROFILE_DIR / name).read_text()) for name in PROFILE_FILES['v16']], 'v16')
 
 
 if __name__ == "__main__":
