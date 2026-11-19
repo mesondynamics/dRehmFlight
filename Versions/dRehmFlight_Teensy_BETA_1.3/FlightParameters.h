@@ -9,7 +9,7 @@
 namespace tricopter {
 class FlightParameters {
  public:
-  static constexpr unsigned count=111;
+  static constexpr unsigned count=112;
   void begin() {
     added_=0;
     add(1,"flight_enable",RMP_PARAM_BOOL,0,1,0);
@@ -89,6 +89,7 @@ class FlightParameters {
     add(114,"imu_level_pitch_deg",RMP_PARAM_F32,-5,5,measuredLevelPitchDeg);
     add(115,"spin_cyclic_lead_scale",RMP_PARAM_F32,0,1,0);
     add(116,"laser_phase_lead_ms",RMP_PARAM_F32,0,30,0);
+    add(117,"normal_pitch_trim_deg",RMP_PARAM_F32,-2,2,0);
     rmp_params_init(&parameters_,definitions_,count,nullptr,nullptr);
     rebuild();
   }
@@ -169,6 +170,7 @@ class FlightParameters {
     c.level.set(number(v,107),number(v,108));
     c.cyclicLeadScale=number(v,109);
     c.laser.phaseLeadSeconds=number(v,110)/1000;
+    c.reference.normalPitchTrimDeg=number(v,111);
     c.ready=a>0 && b>0 && d>0 && c.model.valid(false) && c.level.valid() &&
         (c.model.calibrated || c.initialModelEnabled);
     c.spinReady=c.ready && c.spin.valid() && c.safety.valid() && c.model.ixx>0 && c.model.iyy>0;

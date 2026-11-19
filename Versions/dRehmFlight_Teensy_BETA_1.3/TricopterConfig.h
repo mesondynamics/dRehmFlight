@@ -125,6 +125,7 @@ constexpr float spinMaxDps = 360.0f;
 // constants above. Transverse feedback is retained during low-speed self-spin.
 struct AttitudeReferenceConfig {
   float normalTilt=normalTiltDeg, spinTilt=10, generalizedYawMaxDps=20;
+  float normalPitchTrimDeg=0; // Positive commands forward tilt at centered pitch.
 };
 constexpr float yawSlewDps2 = 180.0f;
 constexpr float spinStoppedDps = 2.0f;

@@ -1486,6 +1486,11 @@
         "id": 116,
         "name": "激光姿态估计延迟补偿 (ms)",
         "enabled": true
+      },
+      {
+        "id": 117,
+        "name": "普通模式 Pitch 回中配平 (°，负值后仰)",
+        "enabled": true
       }
     ],
     "parameter_mode": "configured"

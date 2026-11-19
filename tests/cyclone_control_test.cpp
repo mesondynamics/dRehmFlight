@@ -116,6 +116,39 @@ static void phaseAndDamping() {
   assert(near(o.yawTarget,360,.001f));
 }
 
+static void normalPitchTrim() {
+  AttitudeReferenceConfig config;
+  config.normalPitchTrimDeg=-.5f;
+  SpinDynamicsModel spin;
+  for (float heading : {0.f,90.f,-90.f,180.f}) {
+    CycloneControl control;
+    const Quaternion q=attitude(0,0,heading);
+    const auto step=[&](PilotInput in) {
+      auto out=control.step(in,q,{0,0,0},dt,true,false,true,noI,&spin,&config);
+      control.applyAllocationFeedback(1,1,false,out.yawTarget);
+      return out;
+    };
+    ControlOutput out{};
+    for (int i=0;i<2200;++i) out=step(input());
+    const Vec3 forward=Rotation(q).bx, right=Rotation(q).by;
+    assert(out.mode==FlightMode::Normal);
+    assert(near(out.desiredUp.dot(forward),std::sin(-.5f*radians)));
+    assert(near(out.desiredUp.dot(right),0) && out.pitch<0);
+    // A fully qualified request can enter spin. The reference slews
+    // away from the body trim rather than carrying it into the spin frame.
+    for (int i=0;i<800;++i) out=step(input(1500,1500,1500,1000));
+    assert(out.mode==FlightMode::Spin && near(out.desiredUp.dot(forward),0));
+    assert(near(out.desiredUp.dot(right),0));
+  }
+  for (unsigned pitch : {1000u,2000u}) {
+    CycloneControl control;
+    ControlOutput out{};
+    for (int i=0;i<1200;++i)
+      out=control.step(input(1500,pitch),level,{0,0,0},dt,true,false,true,noI,&spin,&config);
+    assert(near(out.desiredUp.x,pitch==1000 ? -.5f : .5f));
+  }
+}
+
 static void modesAndSaturation() {
   CycloneControl c;
   ControlOutput o{};
@@ -205,6 +238,7 @@ static void faultsAndFusion() {
 int main() {
   radioAndNormal();
   phaseAndDamping();
+  normalPitchTrim();
   modesAndSaturation();
   faultsAndFusion();
   std::puts("Cyclone radio, reference frames, modes, saturation, faults and fusion passed");

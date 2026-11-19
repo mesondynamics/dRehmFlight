@@ -259,10 +259,17 @@ class CycloneControl {
     const float h = reference_*radians;
     const Vec3 forward{std::cos(h), -std::sin(h), 0};
     const Vec3 right{std::sin(h), std::cos(h), 0};
+    float pitchInput = in.pitch;
+    if (mode_ == FlightMode::Normal && referenceConfig && referenceConfig->normalPitchTrimDeg != 0) {
+      // Trim the centered pitch demand in body-heading coordinates. Fade it
+      // toward either stick endpoint to retain full pilot authority.
+      pitchInput += (referenceConfig->normalPitchTrimDeg / tiltLimit_) *
+                    (1 - std::fmin(1.f, std::fabs(in.pitch)));
+    }
     // Limit the stick vector radially, so diagonals cannot exceed the tilt limit.
-    const float stickNorm = std::sqrt(in.roll*in.roll+in.pitch*in.pitch);
+    const float stickNorm = std::sqrt(in.roll*in.roll+pitchInput*pitchInput);
     const float k = tiltLimit_*radians / std::fmax(1.0f, stickNorm);
-    const float roll = in.roll*k, pitch = in.pitch*k;
+    const float roll = in.roll*k, pitch = pitchInput*k;
     const Vec3 wantedUp = forward*(std::sin(pitch)*std::cos(roll)) +
                          right*std::sin(roll) + Vec3{0,0,-std::cos(pitch)*std::cos(roll)};
     const Vec3 desiredUp=haveSpinModel ?
