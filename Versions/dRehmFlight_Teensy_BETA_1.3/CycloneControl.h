@@ -143,8 +143,6 @@ class CycloneControl {
     // Require ordinary Yaw to have settled before changing its job to self-spin.
     // Use the actual physical controller's preceding target, not this manager's
     // legacy stick target. Keep its PI, servo state and limited ramp continuous.
-    const float entryRate=std::fmin(5.f,.5f*spinRateLimit);
-    const float entryError=std::fmin(5.f,.5f*safety.rateErrorDps);
     if(haveSpinModel && haveFeedback) {
       if(!entryRatesInitialized_) {
         qualificationRate_=stopRateTrend_=measuredYawRate; entryTargetRate_=allocatedRateTarget_;
@@ -158,20 +156,17 @@ class CycloneControl {
         entryTargetRate_+=alpha*(allocatedRateTarget_-entryTargetRate_);
       }
     }
-    // Match the existing overspeed envelope rather than treating a one-frame
-    // excursion above the requested 10 deg/s as an entry fault. Qualification
-    // and retention remain separate from the unchanged airborne supervisor.
+    // Use the same rate bounds to acquire and retain readiness, with a tighter
+    // tilt bound for acquisition. The airborne supervisor is independent.
     const float entryInstantLimit=spinRateLimit+safety.overspeedMarginDps;
+    const float entryRate=std::fmin(8.f,spinRateLimit);
+    const float entryError=std::fmin(8.f,safety.rateErrorDps);
     const bool entryEnvelope=haveFeedback &&
-        std::fabs(measuredYawRate)<=entryInstantLimit &&
-        std::fabs(qualificationRate_)<=std::fmin(8.f,spinRateLimit) &&
-        std::fabs(entryTargetRate_)<=std::fmin(8.f,spinRateLimit) &&
-        std::fabs(entryTargetRate_-qualificationRate_)<=std::fmin(8.f,safety.rateErrorDps) &&
-        currentTiltError<=std::fmin(7.f,safety.tiltErrorDeg);
-    const bool entrySettled=haveFeedback &&
         std::fabs(measuredYawRate)<=entryInstantLimit &&
         std::fabs(qualificationRate_)<=entryRate && std::fabs(entryTargetRate_)<=entryRate &&
         std::fabs(entryTargetRate_-qualificationRate_)<=entryError &&
+        currentTiltError<=std::fmin(7.f,safety.tiltErrorDeg);
+    const bool entrySettled=entryEnvelope &&
         currentTiltError<=std::fmin(5.f,safety.tiltErrorDeg);
     spinSelected_ = haveSpinModel ?
         entry_.step(in.spinRequested,in.spin==0,std::fabs(in.yaw)<.001f,entrySettled,entryEnvelope,

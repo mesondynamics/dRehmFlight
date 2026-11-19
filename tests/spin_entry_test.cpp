@@ -101,6 +101,31 @@ static void vibrationMustNotPermanentlyBlockEntry() {
          moving.control.spinEntryState()==SpinEntryState::CenterRequired);
   assert(!moving.control.supervisor().inhibited());
 }
+static void qualificationRateLimitsAt15Rpm() {
+  struct Rates { float actual, target; };
+  // At 90 deg/s max rate and the default 8 deg/s supervisor error limit,
+  // each of the three entry criteria can independently approach 8 deg/s.
+  for(const auto rates : {Rates{7.9f,4}, Rates{4,7.9f}, Rates{3.95f,-3.95f}}) {
+    Rig r;
+    r.spin.maxRateDps=90;
+    r.run(1500,1500,rates.actual,rates.target);
+    assert(r.control.spinEntryState()==SpinEntryState::Settling);
+    r.run(200,1500,rates.actual,rates.target);
+    assert(r.control.spinEntryState()==SpinEntryState::Ready);
+    r.run(580,2000,rates.actual,rates.target);
+    assert(r.out.mode==FlightMode::Normal && r.control.spinEntryState()==SpinEntryState::Confirming);
+    r.run(50,2000,rates.actual,rates.target);
+    assert(r.out.mode==FlightMode::Spin);
+  }
+  for(const auto rates : {Rates{8.2f,4}, Rates{4,8.2f}, Rates{4.1f,-4.1f}}) {
+    Rig r;
+    r.spin.maxRateDps=90;
+    r.run(2000,1500,rates.actual,rates.target);
+    assert(r.control.spinEntryState()==SpinEntryState::Settling);
+    r.run(700,2000,rates.actual,rates.target);
+    assert(r.out.mode==FlightMode::Normal && r.control.spinEntryState()==SpinEntryState::CenterRequired);
+  }
+}
 static void readinessHysteresisAndConfirmation() {
   SpinEntryGuard guard;
   auto tick=[&](bool request,bool settled,bool envelope,bool yawCentered=true) {
@@ -136,6 +161,7 @@ static void readinessHysteresisAndConfirmation() {
 int main() {
   earlyRequestMustNotConsumeFlight(); deliberateRequestAndSlew(); targetReadinessAndAbortStillApply();
   vibrationMustNotPermanentlyBlockEntry();
+  qualificationRateLimitsAt15Rpm();
   readinessHysteresisAndConfirmation();
   std::puts("Captured early request, later deliberate entry, debounce, target readiness and unchanged abort/reset passed");
 }

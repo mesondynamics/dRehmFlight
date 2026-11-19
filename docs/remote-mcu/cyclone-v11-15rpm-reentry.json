@@ -1,0 +1,17 @@
+{
+  "name": "v11 15 RPM entry at 8/8/8 deg/s, 40 ms motor lag",
+  "expected_build": "drehm-cyclone-rotor-v11-entry-888-20261119",
+  "baseline": "build/cyclone-v9-pitch-trim-20261119/flight-preflight.json#parameters (112; validated against the v10 ordinary hover configuration)",
+  "storage": "RAM only. Merge with the ordinary hover baseline while stopped, verify all 112 values, and start an independent recording before flight.",
+  "guard_policy": "Keep the ordinary hover baseline protection thresholds, level alignment, and normal trim. The firmware changes only the yaw-rate bounds for acquiring readiness.",
+  "values": [
+    {"id":2,"type":3,"value":1},
+    {"id":76,"type":1,"value":0.04},
+    {"id":82,"type":1,"value":90},
+    {"id":83,"type":1,"value":30},
+    {"id":84,"type":1,"value":1},
+    {"id":97,"type":1,"value":5},
+    {"id":115,"type":1,"value":1},
+    {"id":116,"type":1,"value":4.5}
+  ]
+}

@@ -22,7 +22,8 @@ SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v7-stop-20261105",
                     "drehm-cyclone-rotor-v8-imu-20261119",
                     "drehm-cyclone-rotor-v9-pitch-trim-20261119",
-                    "drehm-cyclone-rotor-v10-arm-guard-20261119")
+                    "drehm-cyclone-rotor-v10-arm-guard-20261119",
+                    "drehm-cyclone-rotor-v11-entry-888-20261119")
 CHANNELS = (
     "S1_us", "servo_us", "mode", "phase_deg", "roll_input_us",
     "pitch_input_us", "heading_deg", "reference_deg", "target_rate_dps",
