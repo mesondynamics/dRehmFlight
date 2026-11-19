@@ -1612,9 +1612,15 @@ void commandMotors() {
   enabled = enabled && crsfArmSwitch.armed() && crsfChannelsUs[4] <= tricopter::CrsfArmSwitch::armMaxUs &&
             crsfChannelsUs[0] > tricopter::CrsfArmSwitch::idleMaxUs && crsfLinkUp && !crsfFailsafe && crsfChannelsReady;
 #endif
+#if DREHM_REMOTE_MCU
+  dshotOutput.send(dshot::fromNormalized(m2_command_scaled, enabled),
+                   dshot::fromNormalized(m3_command_scaled, enabled),
+                   dshot::fromNormalized(m4_command_scaled, enabled));
+#else
   dshotOutput.send(dshot::fromPulseScale(m2_command_PWM, enabled),
                    dshot::fromPulseScale(m3_command_PWM, enabled),
                    dshot::fromPulseScale(m4_command_PWM, enabled));
+#endif
 #if DREHM_REMOTE_MCU && defined(USE_CRSF_RX)
   remoteTelemetry.observeMotorOutput(micros(), crsfInputChannelsUs[4], crsfInputChannelsUs[2],
       crsfChannelsReady && crsfLinkUp && !crsfFailsafe, armedFly, dshotOutput.fault(),

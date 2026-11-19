@@ -48,7 +48,8 @@ int main() {
       const float commands[]={out.motors.m2,out.motors.m4,out.motors.m3};
       for (unsigned i=0;i<3;++i) {
         assert(commands[i]>=0 && commands[i]<=1);
-        const float target=motorThrust(plant.rotor[i],std::floor(commands[i]*125)/125);
+        const float target=motorThrust(plant.rotor[i],dshot::normalizedFromThrottle(
+            dshot::fromNormalized(commands[i],true)));
         thrust[i]+=dt/(.04f+dt)*(target-thrust[i]);
       }
       const auto w=wrench(plant,thrust,servo);

@@ -117,7 +117,8 @@ static void run(float inertiaScale,float motorLag,float rotorMomentum,float maxR
     const float command[]={out.motors.m2,out.motors.m4,out.motors.m3};
     for(unsigned k=0;k<3;++k) {
       assert(command[k]>=0 && command[k]<=1);
-      const float target=motorThrust(plant.rotor[k],std::floor(command[k]*125)/125);
+      const float target=motorThrust(plant.rotor[k],dshot::normalizedFromThrottle(
+          dshot::fromNormalized(command[k],true)));
       thrust[k]+=dt/(motorLag+dt)*(target-thrust[k]);
     }
     Wrench w=wrench(plant,thrust,servo);

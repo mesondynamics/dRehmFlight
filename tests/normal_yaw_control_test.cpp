@@ -27,7 +27,7 @@ int main() {
       const float commands[]={out.motors.m2,out.motors.m4,out.motors.m3};
       for (unsigned i=0;i<3;++i) {
         assert(commands[i]>=0 && commands[i]<=1);
-        const float quantized=std::floor(commands[i]*125)/125;
+        const float quantized=dshot::normalizedFromThrottle(dshot::fromNormalized(commands[i],true));
         thrust[i]+=dt/(.04f+dt)*(motorThrust(c.model.rotor[i],quantized)-thrust[i]);
       }
       const float disturbance=t>=8 && t<9 ? .025f : 0;

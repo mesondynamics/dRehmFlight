@@ -18,6 +18,21 @@ inline uint16_t fromPulseScale(int pulseUs, bool enabled) {
   return 48 + uint32_t(pulseUs - 125) * 1999 / 125;
 }
 
+// Flight control supplies full-resolution normalized commands. Preserve the
+// legacy no-output band and its first running code, without rounding through
+// OneShot's integer pulse width. The comparison also rejects NaN.
+inline uint16_t fromNormalized(float command, bool enabled) {
+  if (!enabled || !(command >= 1.0f / 125.0f)) return 0;
+  if (command >= 1.0f) return 2047;
+  if (command < 16.0f / 1999.0f) return 63;
+  const auto value = static_cast<uint16_t>(48.0f + command * 1999.0f + 0.5f);
+  return value;
+}
+
+inline float normalizedFromThrottle(uint16_t throttle) {
+  return throttle < 48 ? 0.0f : (throttle - 48) / 1999.0f;
+}
+
 struct ZeroChannels { uint8_t bits[16]; };
 inline ZeroChannels zeroChannels(uint16_t m2, uint16_t m3, uint16_t m4,
                                  uint8_t telemetryMask = 0) {

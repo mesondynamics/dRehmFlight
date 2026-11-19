@@ -1,6 +1,7 @@
 #include "../Versions/dRehmFlight_Teensy_BETA_1.3/DShotProtocol.h"
 #include <cassert>
 #include <cstdio>
+#include <limits>
 
 int main() {
   assert(dshot::packet(0) == 0x0000);
@@ -12,6 +13,20 @@ int main() {
   assert(dshot::fromPulseScale(125, true) == 0);
   assert(dshot::fromPulseScale(137, true) == 239);
   assert(dshot::fromPulseScale(250, true) == 2047);
+  assert(dshot::fromNormalized(.33f, false) == 0);
+  assert(dshot::fromNormalized(0, true) == 0);
+  assert(dshot::fromNormalized(.00799f, true) == 0);
+  assert(dshot::fromNormalized(1.0f/125, true) ==
+         dshot::fromPulseScale(126, true));
+  assert(dshot::fromNormalized(std::numeric_limits<float>::quiet_NaN(), true) == 0);
+  assert(dshot::fromNormalized(2, true) == 2047);
+  assert(dshot::normalizedFromThrottle(0) == 0);
+  assert(dshot::normalizedFromThrottle(2047) == 1);
+  // A change smaller than one old pulse-scale step now changes the wire code.
+  assert(dshot::fromNormalized(.318f,true) > dshot::fromNormalized(.317f,true));
+  for (unsigned code=64;code<=2047;++code) {
+    assert(dshot::fromNormalized(dshot::normalizedFromThrottle(code),true)==code);
+  }
   for (int pulse = 0; pulse <= 300; ++pulse) {
     const auto value = dshot::fromPulseScale(pulse, true);
     assert(value == 0 || (value >= 48 && value <= 2047));

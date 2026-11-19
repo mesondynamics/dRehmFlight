@@ -4,6 +4,7 @@
 #include "YawServoControl.h"
 #include "SpinSupervisor.h"
 #include "LevelAlignment.h"
+#include "DShotProtocol.h"
 
 namespace tricopter {
 struct NormalYawConfig {
@@ -161,12 +162,16 @@ class NormalYawControl {
     const float lagAlpha=dt/(c.servoLag+dt);
     const float pwmTarget=quantizedServoLogical(servo_);
     estimatedServo_+=lagAlpha*(pwmTarget-estimatedServo_);
-    // Reproduce the flight sketch's 125-step motor command quantization and
-    // estimate motor response. These are predictions, never measured thrust.
+    // Use the same wire quantization as the normalized DShot flight output.
+    // These are predictions, never measured thrust.
     float commands[3];
     for (unsigned i=0;i<3;++i) {
       commands[i]=motorCommand(c.model.rotor[i],allocation_.thrust[i]);
+#if DREHM_REMOTE_MCU && DREHM_ESC_DSHOT_RATE
+      const float quantized=dshot::normalizedFromThrottle(dshot::fromNormalized(commands[i],true));
+#else
       const float quantized=std::floor(commands[i]*125)/125;
+#endif
       const float targetThrust=motorThrust(c.model.rotor[i],quantized);
       estimatedThrust_[i]+=dt/(c.motorLag+dt)*(targetThrust-estimatedThrust_[i]);
     }

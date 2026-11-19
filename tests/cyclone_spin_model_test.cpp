@@ -115,7 +115,7 @@ static void kinematicChecks() {
 static void unifiedPlant(float spinSpeed,float servoLag,float inertiaScale=1,float thrustScale=1,
                          bool combined=false,uint32_t expectedAbort=0) {
   // Independent Newton-Euler plant with actual calibrated linkage, motor lag,
-  // 50 Hz servo sample/hold, 125-step motor quantization and unknown body drag.
+  // 50 Hz servo sample/hold, DShot wire quantization and unknown body drag.
   // No tether, rotating wings, fabricated IMU data capture or altitude control.
   FlightParameters parameters; parameters.begin();
   auto c=parameters.config(); c.ready=true; c.spinReady=true;
@@ -182,7 +182,8 @@ static void unifiedPlant(float spinSpeed,float servoLag,float inertiaScale=1,flo
     const float command[]={out.motors.m2,out.motors.m4,out.motors.m3};
     for (unsigned r=0;r<3;++r) {
       assert(command[r]>=0 && command[r]<=1);
-      const float target=motorThrust(physical.rotor[r],std::floor(command[r]*125)/125);
+      const float target=motorThrust(physical.rotor[r],dshot::normalizedFromThrottle(
+          dshot::fromNormalized(command[r],true)));
       thrust[r]+=dt/(.04f+dt)*(target-thrust[r]);
     }
     Wrench w=wrench(physical,thrust,servo);
