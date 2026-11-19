@@ -1,4 +1,4 @@
-"""Read a continuous, fixed-throttle v12 ordinary-hover interval and its on-board parameters."""
+"""Read a continuous, fixed-throttle ordinary-hover interval and its on-board parameters."""
 import json
 from pathlib import Path
 
@@ -7,14 +7,39 @@ import numpy as np
 from inspect_recording import read_recording
 
 
-def load_hover(log: Path, start: float, end: float):
+V11 = "drehm-cyclone-rotor-v11-entry-888-20261119"
+V12 = "drehm-cyclone-rotor-v12-dshot-resolution-20261119"
+
+# Flight-disjoint windows for the 2026-11-19 ordinary-hover identification.
+HOVER_TRAIN = ("18e969bdb4687f80-24", 64, 124)
+HOVER_HOLDOUT = (("18e96796850df0e0-15", 240, 260), ("18e9684085984998-18", 160, 209.75))
+
+
+def motor_commands_from_wire(codes, build_id):
+    """Recover the flight version's thrust-table input from emitted throttle codes."""
+    codes = np.asarray(codes)
+    if not np.all((codes == 0) | ((codes >= 63) & (codes <= 2047) & (codes == np.floor(codes)))):
+        raise ValueError("Unexpected DShot throttle code")
+    u = np.maximum(0., (codes.astype(float) - 48) / 1999.)
+    if build_id == V12:
+        return u
+    if build_id != V11:
+        raise ValueError("Unknown motor command mapping")
+    steps = np.rint(u * 125).astype(int)
+    if np.any(np.where(steps == 0, 0, 48 + steps * 1999 // 125) != codes):
+        raise ValueError("Throttle code is outside the v11 output lattice")
+    return steps / 125.
+
+
+def load_hover(log: Path, start: float, end: float, *, allow_v11=False):
     metadata = json.loads(log.with_suffix(".json").read_text())
     metadata = metadata.get("recording", metadata)
     target = metadata["target"]
+    builds = (V11, V12) if allow_v11 else (V12,)
     if (metadata["state"] != "complete" or metadata["error"] or metadata["dropped_frames"] or
-            target["build_id"] != "drehm-cyclone-rotor-v12-dshot-resolution-20261119" or
+            target["build_id"] not in builds or
             target["sample_rate_hz"] != 100):
-        raise ValueError("Expected a finalized v12 100 Hz recording without recorder drops")
+        raise ValueError("Expected a finalized 100 Hz recording of an accepted build without drops")
     sessions, frames, digest = read_recording(log, include_parameter_pages=True)
     if len(sessions) != 1 or frames != metadata["frames"]:
         raise ValueError("Expected a single boot and the complete frame count")

@@ -1,0 +1,224 @@
+{
+  "scope": "Local aggregate hover calibration conditional on negligible mean external vertical force and near-equal initial and final vertical speed. Output only; no new flight parameters.",
+  "mass_kg": 0.75,
+  "g_m_s2": 9.81,
+  "total_tilt_output_free_play_deg": 2,
+  "train": {
+    "record": "18e969bdb4687f80-24",
+    "sha256": "4828cfe4edb7f4ea2ac5fd5e094d301f0a2d2cc690b11606f22e39048b7d44af",
+    "boot": 3849515501,
+    "revision": 2,
+    "build": "drehm-cyclone-rotor-v12-dshot-resolution-20261119",
+    "window_s": [
+      64,
+      124
+    ],
+    "samples": 6000,
+    "duration_between_samples_s": 59.99000000000001,
+    "throttle_us": 1327,
+    "averaged_DShot_by_rotor_M2_M4_M3": [
+      710.7698493998989,
+      697.9832767794605,
+      691.505333713952
+    ],
+    "DShot_by_rotor_min_max_sd": [
+      [
+        669.0,
+        754.0,
+        9.84181893192934
+      ],
+      [
+        662.0,
+        735.0,
+        9.40446571079689
+      ],
+      [
+        653.0,
+        718.0,
+        8.117797277518616
+      ]
+    ],
+    "combined_mean_DShot": 700.086153297772,
+    "instantaneous_three_rotor_mean_DShot_min_max_sd": [
+      699.3333333333334,
+      701.3333333333334,
+      0.3247102221905988
+    ],
+    "combined_mean_wire_command": 0.3262061797387548,
+    "combined_mean_firmware_quantized_command": 0.3262061797387548,
+    "assumed_weight_N": 7.3575,
+    "nominal_mean_upward_N": 2.6358918393527055,
+    "nominal_sum_of_axial_thrusts_N": 2.641075698324731,
+    "mean_upward_per_axial": 0.9980372168146056,
+    "local_scale_to_weight": 2.791275381696533,
+    "equivalent_total_axial_N": 7.371969577930802,
+    "equivalent_axial_per_rotor_N": 2.4573231926436008,
+    "axial_N_using_equal_instantaneous_rotor_thrust": 7.371920684622746,
+    "axial_N_bounds_only_positivity_and_projection_with_independent_play": [
+      7.357500000003873,
+      7.480094251179473
+    ],
+    "axial_N_range_common_play_given_nominal_load_shares": [
+      7.366975160530176,
+      7.379206571840573
+    ],
+    "axial_N_range_independent_play_given_nominal_load_shares": [
+      7.366639296089658,
+      7.379511846174481
+    ],
+    "vertical_force_sensitivity": {
+      "N_per_extra_gram": 0.009810000000000001,
+      "N_per_m_s_end_minus_start_vertical_velocity": 0.012502083680613434,
+      "N_per_N_additional_upward_external_support": -1.0
+    }
+  },
+  "same_mass_other_flights": [
+    {
+      "record": "18e96796850df0e0-15",
+      "sha256": "20225832878689574f6b91802bdee7cc847dc57cca2def1d0e9fb59dadd74274",
+      "boot": 1743549165,
+      "revision": 2,
+      "build": "drehm-cyclone-rotor-v11-entry-888-20261119",
+      "window_s": [
+        240,
+        260
+      ],
+      "samples": 2000,
+      "duration_between_samples_s": 19.98999999999998,
+      "throttle_us": 1322,
+      "averaged_DShot_by_rotor_M2_M4_M3": [
+        706.0859517758742,
+        667.6703283641723,
+        670.0471115557673
+      ],
+      "DShot_by_rotor_min_max_sd": [
+        [
+          671.0,
+          735.0,
+          9.605914844510991
+        ],
+        [
+          639.0,
+          703.0,
+          11.139677553681755
+        ],
+        [
+          655.0,
+          703.0,
+          10.46698122669573
+        ]
+      ],
+      "combined_mean_DShot": 681.2677972319493,
+      "instantaneous_three_rotor_mean_DShot_min_max_sd": [
+        676.3333333333334,
+        687.0,
+        2.9568752275182355
+      ],
+      "combined_mean_wire_command": 0.31679229476335835,
+      "combined_mean_firmware_quantized_command": 0.31713389861597535,
+      "assumed_weight_N": 7.3575,
+      "nominal_mean_upward_N": 2.480136140039453,
+      "nominal_sum_of_axial_thrusts_N": 2.485245060878073,
+      "mean_upward_per_axial": 0.9979442989671146,
+      "local_scale_to_weight": 2.9665710205258975,
+      "equivalent_total_axial_N": 7.372655976506012,
+      "equivalent_axial_per_rotor_N": 2.457551992168671,
+      "axial_N_using_equal_instantaneous_rotor_thrust": 7.3725179721481595,
+      "axial_N_bounds_only_positivity_and_projection_with_independent_play": [
+        7.357500005487258,
+        7.448855220263594
+      ],
+      "axial_N_range_common_play_given_nominal_load_shares": [
+        7.367515244228782,
+        7.380052842092971
+      ],
+      "axial_N_range_independent_play_given_nominal_load_shares": [
+        7.367275462401646,
+        7.380242183142081
+      ],
+      "vertical_force_sensitivity": {
+        "N_per_extra_gram": 0.009810000000000001,
+        "N_per_m_s_end_minus_start_vertical_velocity": 0.03751875937968988,
+        "N_per_N_additional_upward_external_support": -1.0
+      },
+      "frozen_scaled_prior_upward_N": 6.92274295094799,
+      "frozen_scaled_prior_minus_weight_N": -0.43475704905200985,
+      "frozen_scaled_prior_relative_error_pct": -5.909032267101731,
+      "flat_local_baseline_upward_N": 7.3568150124550495
+    },
+    {
+      "record": "18e9684085984998-18",
+      "sha256": "03055fd1bce0b53e00c42886c8798eb370770c354f92f2417a542fe883b7f066",
+      "boot": 3585516668,
+      "revision": 2,
+      "build": "drehm-cyclone-rotor-v11-entry-888-20261119",
+      "window_s": [
+        160,
+        209.75
+      ],
+      "samples": 4975,
+      "duration_between_samples_s": 49.74000400000003,
+      "throttle_us": 1317,
+      "averaged_DShot_by_rotor_M2_M4_M3": [
+        686.5496550422755,
+        666.6608806063147,
+        660.122396049694
+      ],
+      "DShot_by_rotor_min_max_sd": [
+        [
+          655.0,
+          719.0,
+          11.09454515055356
+        ],
+        [
+          639.0,
+          703.0,
+          11.317598504907538
+        ],
+        [
+          639.0,
+          687.0,
+          10.357814213673239
+        ]
+      ],
+      "combined_mean_DShot": 671.1109772327319,
+      "instantaneous_three_rotor_mean_DShot_min_max_sd": [
+        665.6666666666666,
+        676.3333333333334,
+        3.0712929855015054
+      ],
+      "combined_mean_wire_command": 0.3117113442885095,
+      "combined_mean_firmware_quantized_command": 0.3120554886163683,
+      "assumed_weight_N": 7.3575,
+      "nominal_mean_upward_N": 2.3966497067386467,
+      "nominal_sum_of_axial_thrusts_N": 2.401125356965853,
+      "mean_upward_per_axial": 0.9981360197566438,
+      "local_scale_to_weight": 3.069910458467484,
+      "equivalent_total_axial_N": 7.371239845440943,
+      "equivalent_axial_per_rotor_N": 2.4570799484803145,
+      "axial_N_using_equal_instantaneous_rotor_thrust": 7.371184651669445,
+      "axial_N_bounds_only_positivity_and_projection_with_independent_play": [
+        7.3575000000073905,
+        7.487448637877847
+      ],
+      "axial_N_range_common_play_given_nominal_load_shares": [
+        7.36649824667542,
+        7.37820835997738
+      ],
+      "axial_N_range_independent_play_given_nominal_load_shares": [
+        7.366157450523903,
+        7.378536847789599
+      ],
+      "vertical_force_sensitivity": {
+        "N_per_extra_gram": 0.009810000000000001,
+        "N_per_m_s_end_minus_start_vertical_velocity": 0.01507840650756682,
+        "N_per_N_additional_upward_external_support": -1.0
+      },
+      "frozen_scaled_prior_upward_N": 6.689709324969801,
+      "frozen_scaled_prior_minus_weight_N": -0.667790675030199,
+      "frozen_scaled_prior_relative_error_pct": -9.07632585837851,
+      "flat_local_baseline_upward_N": 7.358228372282916
+    }
+  ],
+  "note": "Each equivalent per-rotor value is one third of total. The flight gives one aggregate constraint, not three independent measured thrusts. Held-out weight balances check transfer near hover, without independent force, height or voltage measurements."
+}
