@@ -149,6 +149,76 @@ static void normalPitchTrim() {
   }
 }
 
+static void normalSliderControl() {
+  for (unsigned center : {1480u,1500u,1520u})
+    assert(trimSliderDegrees(center) == 0);
+  assert(trimSliderDegrees(0)==0 && trimSliderDegrees(2500)==0);
+  assert(near(trimSliderDegrees(1660),1) && near(trimSliderDegrees(1340),-1));
+  assert(near(trimSliderDegrees(1200),-2) && near(trimSliderDegrees(1800),2));
+  assert(near(trimSliderDegrees(1000),-2) && near(trimSliderDegrees(2000),2));
+  const auto asymmetric=normalSliderTrim(1200,1660);
+  assert(near(asymmetric.forwardDeg,-2) && near(asymmetric.leftDeg,1));
+
+  AttitudeReferenceConfig config;
+  config.normalPitchTrimDeg=-.5f;
+  const Quaternion q=attitude(0,0,90);
+  const Vec3 forward=Rotation(q).bx, right=Rotation(q).by;
+  SpinDynamicsModel spin;
+  spin.maxRateDps=10; spin.maxAccelDps2=10;
+  SpinSafetyConfig safety;
+  CycloneControl c;
+  const NormalSliderTrim sliders=normalSliderTrim(1800,1800);
+  auto active=[&](PilotInput pilot) {
+    const auto out=c.step(pilot,q,{0,0,0},dt,true,false,true,noI,&spin,&config,&safety,sliders);
+    c.applyAllocationFeedback(1,1,false,out.yawTarget);
+    assert(!out.fault && out.desiredTiltRate<=safety.tiltCommandDps+.03f);
+    return out;
+  };
+  auto checkNormalTarget=[&](ControlOutput out) {
+    assert(out.mode==FlightMode::Normal);
+    assert(near(out.sliderContribution.forwardDeg,2) && near(out.sliderContribution.leftDeg,2));
+    assert(near(out.desiredUp.dot(forward),std::sin(1.5f*radians)*std::cos(2*radians)));
+    assert(near(out.desiredUp.dot(right),std::sin(-2*radians)));
+  };
+  auto off=c.step(input(),q,{0,0,0},dt,false,true,true,noI,&spin,&config,&safety,sliders);
+  assert(off.sliderContribution.forwardDeg==0 && off.sliderContribution.leftDeg==0);
+  assert(off.motors.m2==0 && off.motors.m3==0 && off.motors.m4==0);
+  auto idle=input(); idle.throttle=.04f;
+  assert(active(idle).sliderContribution.leftDeg==0);
+
+  ControlOutput out{};
+  for(int i=0;i<2200;++i) out=active(input());
+  checkNormalTarget(out);
+  assert(c.spinEntryState()==SpinEntryState::Ready);
+  for(int i=0;i<850;++i) out=active(input(1500,1500,1500,2000));
+  assert(out.mode==FlightMode::Spin && near(out.desiredUp.z,-1));
+  assert(out.sliderContribution.forwardDeg==0 && out.sliderContribution.leftDeg==0);
+  bool braking=false, aligning=false;
+  for(int i=0;i<5000;++i) {
+    out=active(input());
+    if(out.mode==FlightMode::Normal) break;
+    braking |= out.mode==FlightMode::Braking;
+    aligning |= out.mode==FlightMode::Aligning;
+    assert(out.sliderContribution.forwardDeg==0 && out.sliderContribution.leftDeg==0);
+    assert(near(out.desiredUp.z,-1));
+  }
+  assert(braking && aligning && out.mode==FlightMode::Normal);
+  for(int i=0;i<200;++i) out=active(input());
+  checkNormalTarget(out);
+
+  auto half=input(); half.roll=.3f; half.pitch=.4f;
+  out=active(half);
+  assert(near(out.sliderContribution.forwardDeg,1) && near(out.sliderContribution.leftDeg,1));
+  // The pre-existing reference, including its stored pitch trim, is recovered at the stick circle.
+  for(auto sticks : {input(2000,1500), input(1500,1000), input(2000,2000)}) {
+    CycloneControl baseline;
+    auto reference=baseline.step(sticks,q,{0,0,0},dt,true,false,true,noI,nullptr,&config);
+    for(int i=0;i<4000;++i) out=active(sticks);
+    assert(out.sliderContribution.forwardDeg==0 && out.sliderContribution.leftDeg==0);
+    assert(vectorAngle(out.desiredUp,reference.desiredUp)<1e-5f);
+  }
+}
+
 static void modesAndSaturation() {
   CycloneControl c;
   ControlOutput o{};
@@ -250,6 +320,7 @@ int main() {
   radioAndNormal();
   phaseAndDamping();
   normalPitchTrim();
+  normalSliderControl();
   modesAndSaturation();
   faultsAndFusion();
   std::puts("Cyclone radio, reference frames, modes, saturation, faults and fusion passed");

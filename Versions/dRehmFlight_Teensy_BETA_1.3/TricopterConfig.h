@@ -34,7 +34,8 @@ inline MotorMix mix(float throttle, float roll, float pitch) {
 inline unsigned yawFromAetrUs(unsigned rawUs) { return 3000 - rawUs; }
 
 // This aircraft's TX16S assignment, corrected after the 2026-10-29 test:
-// raw CH1 yaw, CH2 pitch, CH3 throttle, CH4 roll, CH5 SA, CH6 S1.
+// raw CH1 yaw, CH2 pitch, CH3 throttle, CH4 roll, CH5 SA, CH6 S1,
+// CH7 LS (forward trim), CH8 RS (left trim).
 // Keep receiver channel numbers separate from the sketch's T/R/P/Y slots.
 constexpr unsigned crsfYawChannelIndex = 0;
 constexpr unsigned crsfRollChannelIndex = 3;
@@ -109,6 +110,21 @@ inline float yawServoDeg(float yawPid) {
 // CH6 right/CW=2000. Internal yaw is left/CCW=2000.
 constexpr float stickCenterUs = 1500.0f;
 constexpr float stickDeadbandUs = 20.0f;
+// TX slider weights are +/-60% of the nominal 500 us half travel.
+constexpr float trimSliderTravelUs = 300.0f;
+constexpr float trimSliderMaxDeg = 2.0f;
+struct NormalSliderTrim { float forwardDeg, leftDeg; };  // Body +X, +Y.
+inline float trimSliderDegrees(unsigned us) {
+  if (us < 1000 || us > 2000) return 0;
+  const float delta = clamp(static_cast<float>(us)-stickCenterUs, -trimSliderTravelUs, trimSliderTravelUs);
+  const float magnitude = delta < 0 ? -delta : delta;
+  if (magnitude <= stickDeadbandUs) return 0;
+  const float angle = (magnitude-stickDeadbandUs) * (trimSliderMaxDeg/(trimSliderTravelUs-stickDeadbandUs));
+  return delta < 0 ? -angle : angle;
+}
+inline NormalSliderTrim normalSliderTrim(unsigned ch7Us, unsigned ch8Us) {
+  return {trimSliderDegrees(ch7Us), trimSliderDegrees(ch8Us)};
+}
 constexpr float rollDirection = 1.0f;
 constexpr float pitchDirection = 1.0f;
 constexpr float spinDirection = -1.0f; // raw CH6 left -> positive/CCW

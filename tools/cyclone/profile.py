@@ -12,6 +12,7 @@ PROFILE_DIR = Path(__file__).resolve().parents[2] / 'docs/remote-mcu'
 PROFILE_FILES = {
     'v12': ('cyclone-rotor-flight.json', 'cyclone-rotor-device.json'),
     'v13': ('cyclone-v13-hover-slope-flight.json', 'cyclone-v13-hover-slope-device.json'),
+    'v14': ('cyclone-v14-xy-trim-flight.json', 'cyclone-v14-xy-trim-device.json'),
 }
 PARAMETER_IDS = set(range(1, 19)) | set(range(20, 29)) | set(range(30, 57)) | set(range(60, 118))
 
@@ -27,6 +28,7 @@ def label(value, maximum=128):
 
 
 def validate(profiles, version='v12'):
+    check(version in PROFILE_FILES, 'Unknown profile version')
     app, device = profiles
     for p in profiles:
         check(set(p) == {'format_version', 'id', 'revision', 'name', 'data'}, 'Unknown profile fields')
@@ -63,17 +65,23 @@ def validate(profiles, version='v12'):
         check(len(w['channels']) <= 32 and len(set(w['channels'])) == len(w['channels']) and
               set(w['channels']) <= set(range(32)), 'Unknown/duplicate waveform channel')
     check(set(d) == {'kind', 'target_profile', 'application_profile', 'gateway_ip'}, 'Device fields')
-    app_id_suffix, gateway = ('v13', '192.168.0.134') if version == 'v13' else ('v7', '192.168.0.62')
+    app_id_suffix, gateway = ('v7', '192.168.0.62') if version == 'v12' else (version, '192.168.0.134')
     check(app['id'] == f'drehmflight-cyclone-rotor-{app_id_suffix}' and
           device['id'] == f'drehmflight-cyclone-rotor-device-{app_id_suffix}', 'Profile version mismatch')
     check(d == {'kind': 'device', 'target_profile': a['target_profile'],
                 'application_profile': app['id'], 'gateway_ip': gateway}, 'Device references')
-    if version == 'v13':
+    if version in ('v13', 'v14'):
         channels = {c['id']: c for c in a['channels']}
-        for channel, unit in {3: '°', 11: 'g', 12: '码', 13: 'g', 14: 'g', 22: 'g'}.items():
+        units = {3: '°', 11: 'g', 12: '码', 13: 'g', 14: 'g', 22: 'g'}
+        if version == 'v14':
+            units.update({26: 'µs', 27: 'µs'})
+            for card in a['cards']:
+                if card['id'] in (43, 44):
+                    check(card['unit'] == '°' and card['enabled'], 'Trim offset card unit/visibility')
+        for channel, unit in units.items():
             check(channels[channel]['unit'] == unit and channels[channel]['scale'] == 1 and
                   channels[channel]['visible'] and any(channel in w['channels'] for w in windows),
-                  f'v13 diagnostic channel {channel}: unit, scaling or visibility mismatch')
+                  f'{version} diagnostic channel {channel}: unit, scaling or visibility mismatch')
 
 
 def exchange(agent, path, payload=None):

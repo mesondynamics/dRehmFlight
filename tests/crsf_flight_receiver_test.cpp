@@ -12,6 +12,11 @@ static const uint8_t arm[] = {0xc8,0x18,0x16,0xe0,0xa3,0x28,0x2b,0x26,0xce,0x0a,
                                 0x7c,0xe0,0x03,0x1f,0xf8,0xc0,0x07,0x3e,0xf0,0x81,0x0f,0x7c,0x49};
 static const uint8_t stats[] = {0xc8,0x0c,0x14,0x28,0x2a,0x63,0x03,0x01,0x02,0x03,0x2c,0x64,0x02,0xe8};
 static const uint8_t shortRc[] = {0xc8,0x04,0x16,0x00,0x00,0xb9};
+// Same first six controls as cut, with CH7/CH8 at opposite 60% travel limits.
+static const uint8_t trimLowHigh[] = {0xc8,0x18,0x16,0xe0,0xa3,0x28,0x2b,0x26,0x3e,0x71,0xf0,0x01,0x08,
+                                      0xb8,0xe0,0x03,0x1f,0xf8,0xc0,0x07,0x3e,0xf0,0x81,0x0f,0x7c,0x00};
+static const uint8_t trimHighLow[] = {0xc8,0x18,0x16,0xe0,0xa3,0x28,0x2b,0x26,0x3e,0x71,0xf0,0x01,0x17,
+                                      0x40,0xe0,0x03,0x1f,0xf8,0xc0,0x07,0x3e,0xf0,0x81,0x0f,0x7c,0x39};
 
 template <size_t N>
 static Event frame(CrsfFlightReceiver &receiver, const uint8_t (&bytes)[N], uint32_t now) {
@@ -25,9 +30,11 @@ int main() {
   const uint32_t start = UINT32_MAX - 2000;
   assert(!receiver.fresh(start));
   assert(!receiver.statisticsFresh(start));
+  assert(receiver.channelsUs[6] == 1500 && receiver.channelsUs[7] == 1500);
   assert(frame(receiver,cut,start) == Event::Channels);
-  const uint16_t expected[] = {1500,1693,1000,2000,2000,1500};
+  const uint16_t expected[] = {1500,1693,1000,2000,2000,1500,1500,1500};
   assert(!memcmp(receiver.channelsUs,expected,sizeof(expected)));
+
   uint8_t broken[sizeof(arm)];
   memcpy(broken,arm,sizeof(arm));
   broken[12] ^= 1;
@@ -63,6 +70,20 @@ int main() {
   uint8_t foreign[sizeof(arm)+4]={0xea,sizeof(arm)+2,0x55};
   memcpy(foreign+3,arm,sizeof(arm));
   assert(frame(receiver,foreign,4500000)==Event::None);
+  assert(!memcmp(receiver.channelsUs,expected,sizeof(expected)));
+
+  assert(frame(receiver,trimLowHigh,4600000) == Event::Channels);
+  assert(!memcmp(receiver.channelsUs,expected,6*sizeof(uint16_t)));
+  assert(receiver.channelsUs[6] == 1200 && receiver.channelsUs[7] == 1800);
+  memcpy(broken,trimHighLow,sizeof(broken));
+  broken[12] ^= 1;
+  assert(frame(receiver,broken,4750000) == Event::None);
+  assert(receiver.channelsUs[6] == 1200 && receiver.channelsUs[7] == 1800);
+  assert(!receiver.fresh(4900001));  // A corrupt frame cannot keep an old slider input fresh.
+  assert(frame(receiver,trimHighLow,4905000) == Event::Channels);
+  assert(!memcmp(receiver.channelsUs,expected,6*sizeof(uint16_t)));
+  assert(receiver.channelsUs[6] == 1800 && receiver.channelsUs[7] == 1200);
+  assert(frame(receiver,cut,4910000) == Event::Channels);
   assert(!memcmp(receiver.channelsUs,expected,sizeof(expected)));
 
   auto observe = [&](unsigned sa, uint32_t elapsed, unsigned throttle=1000, unsigned spin=1500) {

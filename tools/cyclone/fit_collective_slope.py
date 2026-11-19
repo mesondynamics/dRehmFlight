@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare pilot-confirmed airborne plateaus within a single v13 battery flight."""
+"""Compare pilot-confirmed airborne plateaus with neutral trim in one battery flight."""
 import argparse
 from bisect import bisect_left, bisect_right
 import json
@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 from statistics import fmean, median
 
-from inspect_recording import HOVER_SLOPE_BUILD as BUILD, read_recording
+from inspect_recording import HOVER_SLOPE_BUILD, XY_TRIM_BUILD, read_recording
 
 
 G = 9.81
@@ -22,17 +22,17 @@ def read_flight(path, metadata_path):
     metadata = metadata.get("recording", metadata)
     target = metadata["target"]
     if (metadata["state"] != "complete" or metadata["dropped_frames"] or metadata["error"] or
-            target["build_id"] != BUILD or target["sample_rate_hz"] != 100 or
+            target["build_id"] not in (HOVER_SLOPE_BUILD, XY_TRIM_BUILD) or target["sample_rate_hz"] != 100 or
             target["channels"] != 32 or target["schema_id"] != 1):
-        raise ValueError("Expected a sealed 100 Hz v13 hardware recording with no recording drops")
+        raise ValueError("Expected a sealed 100 Hz v13 or v14 recording with no recording drops")
     if metadata["mode"] != "hardware" or target["device_id"] != "teensy40-1881bf":
         raise ValueError("Incorrect data source")
     sessions, frames, digest = read_recording(path, include_parameter_pages=True)
     if len(sessions) != 1 or frames != metadata["frames"]:
         raise ValueError("Boot or frame-count mismatch")
     boot, session = next(iter(sessions.items()))
-    if session.get("build_id") != BUILD:
-        raise ValueError("On-wire firmware identity does not match the v13 measurement layout")
+    if session.get("build_id") != target["build_id"]:
+        raise ValueError("On-wire firmware identity differs from recording metadata")
     return metadata, boot, session, digest
 
 
@@ -116,6 +116,11 @@ def analyze(session, pairs, mass):
     if any(b - a > 1.5e6 for a, b in zip(stamps, stamps[1:])):
         raise ValueError("Missing state snapshots")
     snapshots = [states[us] for us in stamps]
+    if session.get("build_id") == XY_TRIM_BUILD:
+        # Preserve v13's centered-slider comparison, including time between plateaus.
+        if (any(abs(v[c] - 1500) > 20 for _, v in rows[first:last] for c in (26, 27)) or
+                any(s.get(c) != 0 for s in snapshots for c in (43, 44))):
+            raise ValueError("Slider input left the center deadband or effective flight trim is nonzero")
     for s in snapshots:
         if (s[1], s[4], s[6], s[10], s[11], s[19], s[37], s[47]) != (1, 1, 0, 1, 0, 0, 0, 0):
             raise ValueError("Unexpected arming, IMU, fault, flight, link or spin state")
@@ -200,7 +205,7 @@ def main():
             raise ValueError("Incomplete preflight parameter readback")
     except (ValueError, OSError, KeyError) as error:
         parser.error(str(error))
-    print(json.dumps({"recording_id": metadata["id"], "build": BUILD, "boot": boot,
+    print(json.dumps({"recording_id": metadata["id"], "build": metadata["target"]["build_id"], "boot": boot,
                       "sha256": digest, **result}, indent=2, allow_nan=False))
 
 

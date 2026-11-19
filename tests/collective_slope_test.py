@@ -6,6 +6,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "cyclone"))
 from fit_collective_slope import G, analyze
+from inspect_recording import XY_TRIM_BUILD
 
 
 def flight():
@@ -49,6 +50,20 @@ class CollectiveSlopeTest(unittest.TestCase):
         session, pairs = flight()
         for chosen in (pairs[:1], pairs[::2]):
             self.assertEqual(analyze(session, chosen, .75)["within_flight_repeatability"], "descriptive_only")
+
+    def test_v14_requires_centered_sliders_throughout_the_maneuvers(self):
+        session, pairs = flight()
+        session["build_id"] = XY_TRIM_BUILD
+        for _, v in session["rows"].values():
+            v[26:28] = [1480., 1520.]
+        self.assertEqual(analyze(session, pairs, .75)["within_flight_repeatability"], "passes_internal_checks")
+        session["rows"][400][1][27] = 1521.
+        with self.assertRaisesRegex(ValueError, "Slider"):
+            analyze(session, pairs, .75)
+        session["rows"][400][1][27] = 1520.
+        session["states"][4000000][43] = .4
+        with self.assertRaisesRegex(ValueError, "trim"):
+            analyze(session, pairs, .75)
 
     def test_change_in_wrong_direction_and_reused_windows(self):
         session, pairs = flight()

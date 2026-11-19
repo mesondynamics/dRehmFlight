@@ -38,6 +38,7 @@ struct ControlOutput {
   bool yawSlewLimited;
   FlightMode mode;
   bool fault;
+  NormalSliderTrim sliderContribution; // Degrees after stick fade, before reference limiting/slew.
 };
 
 class CycloneControl {
@@ -61,7 +62,7 @@ class CycloneControl {
                      bool armed, bool cut, bool sensorHealthy, const ControlGains &gains,
                      const SpinDynamicsModel *spinModel,
                      const AttitudeReferenceConfig *referenceConfig,
-                     const SpinSafetyConfig *safetyConfig=nullptr) {
+                     const SpinSafetyConfig *safetyConfig=nullptr, NormalSliderTrim sliders={}) {
     ControlOutput out{};
     out.servoDeg = servoCenterDeg;
     out.mixScale = 1;
@@ -254,17 +255,25 @@ class CycloneControl {
     const float h = reference_*radians;
     const Vec3 forward{std::cos(h), -std::sin(h), 0};
     const Vec3 right{std::sin(h), std::cos(h), 0};
-    float pitchInput = in.pitch;
-    if (mode_ == FlightMode::Normal && referenceConfig && referenceConfig->normalPitchTrimDeg != 0) {
-      // Trim the centered pitch demand in body-heading coordinates. Fade it
-      // toward either stick endpoint to retain full pilot authority.
-      pitchInput += (referenceConfig->normalPitchTrimDeg / tiltLimit_) *
-                    (1 - std::fmin(1.f, std::fabs(in.pitch)));
+    float rollInput = in.roll, pitchInput = in.pitch;
+    if (mode_ == FlightMode::Normal) {
+      if (referenceConfig && referenceConfig->normalPitchTrimDeg != 0) {
+        pitchInput += (referenceConfig->normalPitchTrimDeg / tiltLimit_) *
+                      (1 - std::fmin(1.f, std::fabs(in.pitch)));
+      }
+      if (sliders.forwardDeg != 0 || sliders.leftDeg != 0) {
+        // Yield both slider axes to a full transverse stick demand, including diagonals.
+        const float pilotNorm = std::sqrt(in.roll*in.roll + in.pitch*in.pitch);
+        const float trimWeight = 1 - std::fmin(1.f,pilotNorm);
+        out.sliderContribution = {sliders.forwardDeg*trimWeight, sliders.leftDeg*trimWeight};
+        pitchInput += out.sliderContribution.forwardDeg/tiltLimit_;
+        rollInput -= out.sliderContribution.leftDeg/tiltLimit_; // Pilot roll is right-positive.
+      }
     }
     // Limit the stick vector radially, so diagonals cannot exceed the tilt limit.
-    const float stickNorm = std::sqrt(in.roll*in.roll+pitchInput*pitchInput);
+    const float stickNorm = std::sqrt(rollInput*rollInput+pitchInput*pitchInput);
     const float k = tiltLimit_*radians / std::fmax(1.0f, stickNorm);
-    const float roll = in.roll*k, pitch = pitchInput*k;
+    const float roll = rollInput*k, pitch = pitchInput*k;
     const Vec3 wantedUp = forward*(std::sin(pitch)*std::cos(roll)) +
                          right*std::sin(roll) + Vec3{0,0,-std::cos(pitch)*std::cos(roll)};
     const Vec3 desiredUp=haveSpinModel ?

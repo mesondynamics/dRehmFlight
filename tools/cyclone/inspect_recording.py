@@ -16,6 +16,7 @@ import zlib
 
 BUILD = "drehm-cyclone-rotor-v2-level-20261105"
 HOVER_SLOPE_BUILD = "drehm-cyclone-rotor-v13-hover-slope-20261119"
+XY_TRIM_BUILD = "drehm-cyclone-rotor-v14-xy-trim-20261119"
 SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v4-entry-hys-20261105",
                     "drehm-cyclone-rotor-v5-laser-20261105",
@@ -25,7 +26,7 @@ SUPPORTED_BUILDS = (BUILD, "drehm-cyclone-rotor-v3-entry-20261105",
                     "drehm-cyclone-rotor-v9-pitch-trim-20261119",
                     "drehm-cyclone-rotor-v10-arm-guard-20261119",
                     "drehm-cyclone-rotor-v11-entry-888-20261119",
-                    "drehm-cyclone-rotor-v12-dshot-resolution-20261119", HOVER_SLOPE_BUILD)
+                    "drehm-cyclone-rotor-v12-dshot-resolution-20261119", HOVER_SLOPE_BUILD, XY_TRIM_BUILD)
 CHANNELS = (
     "S1_us", "servo_us", "mode", "phase_deg", "roll_input_us",
     "pitch_input_us", "heading_deg", "reference_deg", "target_rate_dps",
@@ -40,6 +41,9 @@ HOVER_SLOPE_CHANNELS = CHANNELS[:11] + (
     "world_up_specific_force_filtered_g", "mean_wire_dshot_filtered_code",
     "sensor_acc_x_g", "sensor_acc_y_g",
 ) + CHANNELS[15:]
+XY_TRIM_CHANNELS = HOVER_SLOPE_CHANNELS[:26] + (
+    "ch7_x_trim_input_us", "ch8_y_trim_input_us"
+) + HOVER_SLOPE_CHANNELS[28:]
 
 
 def read_recording(path, *, include_parameter_pages=False):
@@ -138,7 +142,8 @@ def summarize(session, start, end, build=None):
     layout_build = recorded_build or build
     if layout_build not in SUPPORTED_BUILDS:
         raise ValueError("Unknown firmware identity for waveform decoding")
-    channels = HOVER_SLOPE_CHANNELS if layout_build == HOVER_SLOPE_BUILD else CHANNELS
+    channels = {HOVER_SLOPE_BUILD: HOVER_SLOPE_CHANNELS, XY_TRIM_BUILD: XY_TRIM_CHANNELS}.get(
+        layout_build, CHANNELS)
     ordered = sorted(session["rows"].items())
     if any(b[1][0] <= a[1][0] for a, b in zip(ordered, ordered[1:])):
         raise ValueError("Source time is not monotonic within this boot")

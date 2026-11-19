@@ -296,7 +296,7 @@ unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channe
 #if defined USE_CRSF_RX
   tricopter::CrsfFlightReceiver crsfReceiver;
   tricopter::CrsfArmSwitch crsfArmSwitch;
-  const uint16_t (&crsfInputChannelsUs)[6] = crsfReceiver.channelsUs;
+  const auto &crsfInputChannelsUs = crsfReceiver.channelsUs;
   uint16_t crsfChannelsUs[6] = {1000, 1500, 1500, 1500, 2000, 1500};
   bool crsfLinkUp = false;
   bool crsfFailsafe = true;
@@ -614,12 +614,17 @@ void controlCyclone() {
     {0.01f*Kp_pitch_angle, 0.01f*Ki_pitch_angle, 0.01f*Kd_pitch_angle},
     {0.01f*Kp_yaw, 0.01f*Ki_yaw, 0.01f*Kd_yaw}};
 #endif
+  tricopter::NormalSliderTrim sliders{};
+#if DREHM_REMOTE_MCU && defined(USE_CRSF_RX)
+  if (crsfChannelsReady && crsfLinkUp && !crsfFailsafe)
+    sliders=tricopter::normalSliderTrim(crsfInputChannelsUs[6],crsfInputChannelsUs[7]);
+#endif
   const uint32_t previousFaultCount=flightControl.faultCount();
   flightOutput = flightControl.step(pilot, flightAttitude, flightGyroDps, dt,
       armedFly, channel_5_pwm >= 1500, imuSampleHealthy && imuFusionHealthy, gains,
       DREHM_REMOTE_MCU ? &config.spin : nullptr,
       DREHM_REMOTE_MCU ? &config.reference : nullptr,
-      DREHM_REMOTE_MCU ? &config.safety : nullptr);
+      DREHM_REMOTE_MCU ? &config.safety : nullptr, sliders);
   if (flightControl.faultCount()!=previousFaultCount) {
     lastControlFaultTimeUs=current_time;
     lastControlFaultImuReason=imuDiagnostics.currentReason;
@@ -644,6 +649,7 @@ void controlCyclone() {
   if (allocationWork>maxAllocationWorkUs) maxAllocationWorkUs=allocationWork;
   if (normalYawOutput.fault) {
     normalYawFaultLatched=true; armedFly=false; flightOutput.motors={0,0,0};
+    flightOutput.sliderContribution={};
 #if defined USE_CRSF_RX
     crsfChannelsReady=false;
 #endif
@@ -738,11 +744,13 @@ void serviceRemoteMcu() {
   sample.values[5]=crsfInputChannelsUs[1];
   sample.values[18]=crsfInputChannelsUs[2];
   sample.values[19]=crsfInputChannelsUs[tricopter::crsfYawChannelIndex];
+  sample.values[26]=crsfInputChannelsUs[6]; sample.values[27]=crsfInputChannelsUs[7];
   sample.state[18]=!crsfLinkUp || crsfFailsafe;
 #else
   sample.values[0]=channel_6_pwm; sample.values[18]=channel_1_pwm;
   sample.values[4]=channel_2_pwm; sample.values[5]=channel_3_pwm;
   sample.values[19]=3000-channel_4_pwm;
+  sample.values[26]=1500; sample.values[27]=1500;
 #endif
   const float servoLogical=s1_command_scaled*180.0f;
   sample.values[1]=tricopter::servoPulseCommandUs(servoLogical);
@@ -762,7 +770,6 @@ void serviceRemoteMcu() {
   sample.values[20]=flightGyroDps.x; sample.values[21]=flightGyroDps.y;
   sample.values[22]=AccZ; // Sensor Z, unchanged: this is not world vertical acceleration.
   sample.values[23]=d2; sample.values[24]=d4; sample.values[25]=d3;
-  sample.values[26]=normalYawOutput.torqueTarget.x; sample.values[27]=normalYawOutput.torqueTarget.y;
   sample.values[28]=loopPeriodUs; sample.values[29]=previousLoopWorkUs;
   sample.values[30]=flightOutput.tiltErrorDeg;
   sample.values[31]=flightControl.supervisor().reasons(); // Latched abort reason at waveform rate.
@@ -796,10 +803,9 @@ void serviceRemoteMcu() {
   sample.state[37]=flightParameters.config().spinReady;
   sample.state[38]=flightParameters.config().laserEnabled;
   sample.state[39]=maxLoopWorkUs; sample.state[40]=maxLoopPeriodUs;
-  const float liftScale=normalYawOutput.liftScale, tiltLimit=flightOutput.tiltLimit;
-  const float couplingZ=normalYawOutput.couplingTorque.z;
-  memcpy(&sample.state[41],&liftScale,4); memcpy(&sample.state[42],&tiltLimit,4);
-  memcpy(&sample.state[43],&couplingZ,4);
+  memcpy(&sample.state[41],&normalYawOutput.liftScale,4);
+  memcpy(&sample.state[42],&flightOutput.sliderContribution.forwardDeg,4);
+  memcpy(&sample.state[43],&flightOutput.sliderContribution.leftDeg,4);
   sample.state[44]=laserSync.lastPulseUs();
   memcpy(&sample.state[45],&normalYawOutput.attitudeScale,4);
   const auto &supervisor=flightControl.supervisor();

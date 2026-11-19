@@ -242,12 +242,13 @@ int main() {
   sample.state[58]=static_cast<unsigned>(tricopter::SpinEntryState::AbortLocked);
   const float diagnostics[]={1.1f,.5f,-20.f,60.f,.25f,0.f,0.f,.5f,1.5f};
   for(unsigned j=0;j<9;++j) std::memcpy(&sample.state[j<8 ? 48+j : 57],&diagnostics[j],4);
-  const float newStates[]={.875f,10.f,-.012f,.75f};
+  const float newStates[]={.875f,1.25f,-.5f,.75f}; // Lift scale, +X/+Y slider trim, attitude scale.
   for (unsigned j=0;j<4;++j)
     std::memcpy(&sample.state[j<3 ? 41+j : 45],&newStates[j],4);
   for (unsigned i=0;i<remote_mcu::channelCount;++i) sample.values[i]=i+.25f;
   sample.values[6]=90; sample.values[7]=1504; sample.values[18]=1; sample.values[19]=0;
-  sample.values[20]=0; sample.values[21]=1; sample.values[27]=0;
+  sample.values[20]=0; sample.values[21]=1;
+  sample.values[26]=1695; sample.values[27]=1410;
   sample.safeToFlash=true;
   uint32_t now=1000;
   for (int i=0;i<50;++i,now+=500) telemetry.poll(port,sample,now);
@@ -266,7 +267,12 @@ int main() {
     assert(rmp_get_u32(p)==1 && rmp_get_u16(p+8)==10000 && p[10]==1 &&
            p[11]==remote_mcu::channelCount);
     float servo; const uint32_t bits=rmp_get_u32(p+12+6*4); std::memcpy(&servo,&bits,4);
-    assert(servo==90); ++samples;
+    assert(servo==90);
+    for (unsigned i : {26u,27u}) {
+      float us; const uint32_t raw=rmp_get_u32(p+12+i*4);
+      std::memcpy(&us,&raw,4); assert(us==sample.values[i]);
+    }
+    ++samples;
   }
   assert(samples>=2);
   bool sawDiagnostics=false;

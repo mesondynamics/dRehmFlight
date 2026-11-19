@@ -6,6 +6,7 @@ namespace tricopter {
 class CrsfFlightReceiver {
  public:
   enum class Event { None, Channels, LinkStatistics };
+  static constexpr unsigned channelCount = 8;
   static constexpr uint32_t statisticsMaxAgeUs = 3000000;
 
   Event consume(uint8_t byte, uint32_t now) {
@@ -43,7 +44,7 @@ class CrsfFlightReceiver {
       return Event::LinkStatistics;
     }
     if (body_[0] != 0x16 || length_ < 24) return Event::None;
-    for (unsigned channel = 0; channel < 6; ++channel) {
+    for (unsigned channel = 0; channel < channelCount; ++channel) {
       const unsigned bit = 11 * channel;
       const uint8_t *data = body_ + 1 + bit / 8;
       const uint32_t packed = data[0] | (uint32_t(data[1]) << 8) | (uint32_t(data[2]) << 16);
@@ -65,7 +66,8 @@ class CrsfFlightReceiver {
     return haveStatistics_;
   }
 
-  uint16_t channelsUs[6] = {};
+  // Last CRC-validated input. Keep CH7/8 neutral until the first channel frame.
+  uint16_t channelsUs[channelCount] = {0, 0, 0, 0, 0, 0, 1500, 1500};
   uint8_t uplinkQuality = 0, uplinkRssi = 255;
 
  private:

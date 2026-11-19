@@ -1,6 +1,6 @@
 # 三旋翼与低速 Cyclone 旋转控制
 
-当前分支 `feature/cyclone-rotor-tricopter` 的普通/低速自旋动力学、GPIO14 激光同步和调试步骤以[离线 HTML 文档](reports/cyclone-rotor-model.html)（[源文档](CYCLONE_ROTOR_MODEL.md)）为准；RemoteMCU 使用[cyclone-rotor-flight.json](remote-mcu/cyclone-rotor-flight.json)，32波形／46状态／94参数。CH1→Yaw、CH4→Roll；自旋率默认45°/s，上限90°/s，开关默认关闭。下面的2026-10月记录包含旧通道、旧Profile和360°/s台架接口等历史约定，不能用于本版操作或解析新数据。本版尚未下载或自由飞行验证。
+当前分支 `feature/cyclone-rotor-tricopter` 的 v14 在普通模式使用 CH7/LS 调机体前后配平、CH8/RS 调机体左右配平。CH1 控制 Yaw、CH4 控制 Roll，CH5 为 SA、CH6 为 S1。新版本应先停机核对滑杆。本版方向、倾角范围和操作见[控制模型第 5.1 节](CYCLONE_ROTOR_MODEL.md)及[离线 HTML](reports/cyclone-rotor-model.html)，网页使用匹配的 [v14 应用配置](remote-mcu/cyclone-v14-xy-trim-flight.json)。以下为先前版本的调试记录。
 
 当前进度：完整动力学Yaw闭环已下载；±8g修正版在约250g配重持续拉紧的系留试飞中未复现健康停机，用户报告可稳定离地。原始数据与限制见[系留试飞记录](YAW_TETHERED_TEST_20261029.md)。按用户随后纠正，最新源码接收映射为CH1→Yaw、CH4→Roll，CH2→Pitch、CH3→油门、CH5→SA、CH6→S1；**这与下方历史AETR表不同**。当前应用revision5：32路波形、34状态、71参数，四轴复测及下载进度见[测试准备](YAW_FOUR_AXIS_TEST_20261029.md)。
 
