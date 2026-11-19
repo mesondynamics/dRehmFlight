@@ -1,0 +1,17 @@
+{
+  "name": "v10 15 RPM first-direction re-entry and complete exit",
+  "expected_build": "drehm-cyclone-rotor-v10-arm-guard-20261119",
+  "baseline": "build/cyclone-v9-pitch-trim-20261119/flight-preflight.json#parameters (112; validated against the v10 ordinary hover configuration)",
+  "storage": "RAM only; restore and verify the baseline stopped; merge these differences, verify all 112 and fresh state, start an independent recording before flight. Not a full restore file.",
+  "guard_policy": "Retain current v10 baseline thresholds including IDs 104,106,110,111,112. Do not loosen them in response to a rejected test. Preserve v10 level alignment and normal trim. ID 76 is a shared motor model setting, not spin-only.",
+  "values": [
+    {"id":2,"type":3,"value":1},
+    {"id":76,"type":1,"value":0.08},
+    {"id":82,"type":1,"value":90},
+    {"id":83,"type":1,"value":30},
+    {"id":84,"type":1,"value":1},
+    {"id":97,"type":1,"value":5},
+    {"id":115,"type":1,"value":1},
+    {"id":116,"type":1,"value":4.5}
+  ]
+}
