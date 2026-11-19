@@ -1,0 +1,15 @@
+{
+  "name": "v11 ordinary-hover heading gain trial",
+  "expected_build": "drehm-cyclone-rotor-v11-entry-888-20261119",
+  "baseline": "docs/remote-mcu/cyclone-v11-15rpm-reentry.json",
+  "scope": "RAM only. Restore the v11 baseline, verify all 112 parameters, and apply only the candidate below. Hold S1 centered during ordinary hover to observe entry readiness.",
+  "parameter": {
+    "id": 3,
+    "name": "heading_kp_1_s",
+    "type": 1,
+    "baseline": 0.8,
+    "candidate": 0.65,
+    "rollback": 0.8
+  },
+  "acceptance": "Compare continuous 20 s neutral-stick hover windows at similar throttle. Look for lower measured yaw-rate RMS and longer ready windows, with no material increase in heading error or roll/pitch variability. A higher ready count by itself is insufficient."
+}
